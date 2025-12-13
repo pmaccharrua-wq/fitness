@@ -1,0 +1,175 @@
+That is an ambitious and exciting project! Developing an AI-powered fitness and nutrition app requires integrating several complex models and features. Since your goal is to "vibe code this" (focus on the high-level structure and necessary components for a Replit project) and utilize Azure OpenAI Service for the core intelligence, I will focus on outlining the Architecture, the Key AI/Health Models, and the Core Code Components you'll need.Here is an architectural and component breakdown to guide your development.🏗️ AI Fitness & Nutrition App Architecture OverviewComponentFunctionTechnology/Model FocusFrontend AppUser Interface (Profile setup, plan viewing, logging, notifications).Mobile/Web Framework (e.g., React Native, Flutter)Backend ServerManages data persistence, user accounts, and handles requests to AI/Model services.Python (Flask/Django) or Node.js (Express)Azure OpenAI ServiceGenerates personalized fitness plans, analyzes user input, and crafts meal/recipe examples based on health models.Azure API calls (e.g., GPT-4/GPT-3.5)Health Calculation ModelsExecutes standard and AI-driven calculations (TDEE, BMR, Water).Internal Python functions/librariesData StoreStores User Profiles, Exercise Library, Recipes, and Session History.Database (e.g., PostgreSQL, MongoDB)💡 Key Health & AI Models for CalculationsBefore calling the Azure OpenAI service for personalization, you'll need the following standard health models for initial numerical baselines:1. Basal Metabolic Rate (BMR) and Total Daily Energy Expenditure (TDEE)These are crucial for determining the necessary calorie intake.BMR Calculation: Use the Mifflin-St Jeor equation (most accurate for general use).Men: $10W + 6.25H - 5A + 5$Women: $10W + 6.25H - 5A - 161$Where: $W$ = weight in kg, $H$ = height in cm, $A$ = age in years.TDEE Calculation: $TDEE = BMR \times Activity\_Multiplier$.Activity Multipliers range from 1.2 (sedentary) to 1.9 (extremely active).2. Water ConsumptionGeneral Model: The app should use a basic formula like Weight (in kg) $\times$ 35 ml to establish a baseline, then adjust based on activity level (sweat loss) and climate.3. Nutrition Macro/Micro SplitBased on the user's desired state (e.g., muscle building, weight loss), apply standard macro splits to the TDEE target:GoalProteinCarbohydratesFatsMuscle Building30–40%40–50%20–30%Weight Loss35–45%30–40%20–30%Maintenance20–30%45–55%25–35%💻 Core Vibe Code Components (Replit)You can structure your Replit project with the following files and directories. This is a typical Python-based backend structure.1. config.pyStores all sensitive keys and constants.Python# --- config.py ---
+
+# Azure OpenAI Credentials
+AZURE_OPENAI_API_KEY = "YOUR_API_KEY"
+AZURE_OPENAI_ENDPOINT = "YOUR_ENDPOINT_URL"
+AZURE_OPENAI_DEPLOYMENT_NAME = "gpt-4-deployment"
+
+# Exercise & Nutrition Data Sources (You'll need a simple JSON/DB for these)
+EXERCISE_DB_PATH = "data/exercises.json"
+RECIPE_DB_PATH = "data/recipes.json"
+2. models/user.pyDefines the data structure for a user's profile and progress.Python# --- models/user.py ---
+
+class UserProfile:
+    def __init__(self, sex, weight_kg, height_cm, age_years,
+                 current_status, desired_status,
+                 difficulty, time_per_day_min, impediments=None):
+        # Initial Setup Parameters
+        self.sex = sex
+        self.weight = weight_kg
+        self.height = height_cm
+        self.age = age_years
+        self.current_status = current_status
+        self.desired_status = desired_status
+        self.impediments = impediments if impediments else "None"
+
+        # Plan Generation Parameters
+        self.desired_difficulty = difficulty
+        self.time_per_day = time_per_day_min
+        
+        # Calculated Parameters
+        self.bmr = 0
+        self.tdee = 0
+        self.macro_targets = {}
+        self.water_target_ml = 0
+        
+    def calculate_health_metrics(self):
+        # Placeholder: Implement Mifflin-St Jeor and TDEE calculation here
+        # self.bmr = ...
+        # self.tdee = ...
+        # self.water_target_ml = ...
+        pass
+3. services/azure_ai_generator.pyThis is the core intelligence where you prompt the Azure OpenAI Service.Python# --- services/azure_ai_generator.py ---
+
+from openai import AzureOpenAI
+from config import AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_DEPLOYMENT_NAME
+
+client = AzureOpenAI(
+    api_key=AZURE_OPENAI_API_KEY,
+    azure_endpoint=AZURE_OPENAI_ENDPOINT,
+    api_version="2024-02-15-preview"
+)
+
+def generate_full_plan(user: 'UserProfile', available_gear: list):
+    """
+    Generates the 30-day fitness plan and recipe guidelines using Azure OpenAI.
+    """
+    
+    # 1. Construct the detailed prompt
+    system_prompt = (
+        "You are an expert AI Fitness and Nutrition Planner. Your goal is to create a 30-day fitness plan and 3 days of meal examples (lunch/dinner recipes, intermediate meals) "
+        "based on the user's detailed profile, target calories, and available equipment. "
+        "The output MUST be a strict JSON object for programmatic parsing."
+    )
+    
+    # User data to inject into the prompt
+    user_data = f"""
+    USER PROFILE: {vars(user)}
+    CALORIE TARGET: {user.tdee} kcal
+    MACRO TARGETS: {user.macro_targets}
+    AVAILABLE GEAR: {available_gear}
+    REQUIRED OUTPUT STRUCTURE: {{
+        "fitness_plan_30_days": [{{
+            "day": 1, 
+            "workout_name": "...", 
+            "estimated_calories_burnt": 350,
+            "exercises": [{{
+                "name": "...", 
+                "sets": 3, 
+                "reps_or_time": "12 reps", 
+                "focus": "muscle building",
+                "equipment_used": "4 kg dumbell",
+                "image_link": "URL", 
+                "video_link": "YouTube URL"
+            }}]
+        }}, ...],
+        "nutrition_guidelines": {{
+            "sample_recipes": [{{
+                "meal": "lunch",
+                "description": "Exemplo de prato de peixe com vegetais.",
+                "ingredients": ["Peixe", "Verduras", "Azeite"],
+                "calories": 500,
+                "macros": {{ "protein": "40g", "carbs": "30g", "fat": "20g" }}
+            }}, ...]
+        }}
+    }}
+    """
+    
+    # 2. Call the Azure OpenAI API
+    try:
+        response = client.chat.completions.create(
+            model=AZURE_OPENAI_DEPLOYMENT_NAME,
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_data}
+            ]
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        print(f"Error calling Azure OpenAI: {e}")
+        return None
+
+# The list of available gear for injection into the prompt
+GEAR_LIST = [
+    "2kg dumbells", "4 kg dumbell", "9 kg dumbell", "6kg kettlebell",
+    "titanium strength SUPREME Leg Press / Hack Squat",
+    "Adidas Adidas Home Gym New Multi-ginásio",
+    "treadmill with adjustable elevation and speed",
+    "bicycle", "step machine", "adidas bench", "gym ball"
+]
+4. app.py (Main Application Logic)This file handles the flow: user input $\rightarrow$ calculation $\rightarrow$ AI generation.Python# --- app.py ---
+
+from models.user import UserProfile
+from services.azure_ai_generator import generate_full_plan, GEAR_LIST
+import json
+
+def run_app():
+    # 1. Simulated User Input (Initial Profile Setup)
+    # In a real app, this comes from the frontend UI
+    user_data = {
+        "sex": "Female",
+        "weight_kg": 65,
+        "height_cm": 170,
+        "age_years": 30,
+        "current_status": "Moderately Active, Wants to Lose Weight",
+        "desired_status": "Weight Loss (5kg) & Moderate Muscle Tone",
+        "difficulty": "Medium",
+        "time_per_day_min": 45,
+        "impediments": "Slight knee pain"
+    }
+    
+    # 2. Instantiate and Calculate Health Metrics
+    user = UserProfile(**user_data)
+    user.calculate_health_metrics() # This populates BMR, TDEE, etc.
+    
+    # FOR DEMO: Set dummy calculated values
+    user.tdee = 1800 
+    user.macro_targets = {"protein": "40%", "carbs": "35%", "fat": "25%"}
+    
+    print("--- 🧠 Calling Azure OpenAI for Personalized Plan ---")
+    
+    # 3. Generate Plan
+    plan_json_str = generate_full_plan(user, GEAR_LIST)
+    
+    if plan_json_str:
+        plan_data = json.loads(plan_json_str)
+        print("\n--- ✅ Generation Successful! ---")
+        
+        # 4. Display or Save the Generated Plan
+        # In a real app, you would save this to the database and serve it to the frontend.
+        print("\n**Sample Fitness Day 1:**")
+        print(json.dumps(plan_data["fitness_plan_30_days"][0], indent=2))
+        
+        print("\n**Sample Nutrition Guideline:**")
+        print(json.dumps(plan_data["nutrition_guidelines"]["sample_recipes"], indent=2))
+    else:
+        print("Plan generation failed.")
+
+if __name__ == "__main__":
+    run_app()
+
+# TODO for Frontend:
+# 1. Implement push notifications (e.g., using a service like Firebase or a simple cron job in the backend) for water reminders.
+# 2. Implement the end-of-session feedback loop to update the user's next session. (This requires re-calling the Azure AI service with the feedback: "Last session was 'Hard', adjust Day X").
+🛠️ Next Steps and Feedback LoopIterative Adjustment: For the feedback loop ("easy," "hard," "just right"), you will need to re-prompt the Azure OpenAI service for the next workout plan.New Prompt: "The user found the last session (Day X) 'Hard'. Regenerate Day X+1 to be slightly easier. Keep the total time dedication at 45 minutes and the muscle focus the same."Exercise Data: You will need a comprehensive (JSON/DB) list of exercises with associated links/images to ensure the Azure AI Model uses valid and available resources in the plans it generates. The AI model will select from this library.Would you like me to focus on creating a basic exercises.json file that the Azure AI service can use as a reference for the available equipment?
