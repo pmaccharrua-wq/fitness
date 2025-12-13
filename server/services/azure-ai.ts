@@ -11,7 +11,7 @@ const config: AzureOpenAIConfig = {
   apiKey: process.env.AZURE_OPENAI_API_KEY || "",
   endpoint: process.env.AZURE_OPENAI_ENDPOINT || "",
   deployment: process.env.AZURE_OPENAI_DEPLOYMENT || "",
-  apiVersion: process.env.AZURE_OPENAI_API_VERSION || "2024-02-15-preview",
+  apiVersion: process.env.AZURE_OPENAI_API_VERSION || "2024-08-01-preview",
 };
 
 const AVAILABLE_EQUIPMENT = [
@@ -44,8 +44,8 @@ export interface GeneratedPlan {
       sets: number;
       reps_or_time_pt: string;
       equipment_used_pt: string;
-      image_link?: string;
-      video_link?: string;
+      image_link: string;
+      video_link: string;
     }>;
   }>;
   nutrition_plan_3_days: Array<{
@@ -249,8 +249,94 @@ export async function generateFitnessPlan(
 
 IMPORTANTE: O total calórico de cada dia de nutrição DEVE estar dentro de ±50 kcal de ${targetCalories} kcal.`;
 
+  const jsonSchema = {
+    name: "fitness_plan_response",
+    strict: true,
+    schema: {
+      type: "object",
+      properties: {
+        plan_summary_pt: { type: "string" },
+        fitness_plan_7_days: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              day: { type: "integer" },
+              is_rest_day: { type: "boolean" },
+              workout_name_pt: { type: "string" },
+              duration_minutes: { type: "integer" },
+              estimated_calories_burnt: { type: "integer" },
+              focus_pt: { type: "string" },
+              exercises: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    name_pt: { type: "string" },
+                    sequence_order: { type: "integer" },
+                    sets: { type: "integer" },
+                    reps_or_time_pt: { type: "string" },
+                    equipment_used_pt: { type: "string" },
+                    image_link: { type: "string" },
+                    video_link: { type: "string" }
+                  },
+                  required: ["name_pt", "sequence_order", "sets", "reps_or_time_pt", "equipment_used_pt", "image_link", "video_link"],
+                  additionalProperties: false
+                }
+              }
+            },
+            required: ["day", "is_rest_day", "workout_name_pt", "duration_minutes", "estimated_calories_burnt", "focus_pt", "exercises"],
+            additionalProperties: false
+          }
+        },
+        nutrition_plan_3_days: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              day: { type: "integer" },
+              total_daily_calories: { type: "integer" },
+              total_daily_macros: { type: "string" },
+              meals: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    meal_time_pt: { type: "string" },
+                    description_pt: { type: "string" },
+                    main_ingredients_pt: { type: "string" },
+                    calories: { type: "integer" },
+                    protein_g: { type: "number" },
+                    carbs_g: { type: "number" },
+                    fat_g: { type: "number" }
+                  },
+                  required: ["meal_time_pt", "description_pt", "main_ingredients_pt", "calories", "protein_g", "carbs_g", "fat_g"],
+                  additionalProperties: false
+                }
+              }
+            },
+            required: ["day", "total_daily_calories", "total_daily_macros", "meals"],
+            additionalProperties: false
+          }
+        },
+        hydration_guidelines_pt: {
+          type: "object",
+          properties: {
+            water_target_ml: { type: "integer" },
+            notification_schedule_pt: { type: "string" }
+          },
+          required: ["water_target_ml", "notification_schedule_pt"],
+          additionalProperties: false
+        }
+      },
+      required: ["plan_summary_pt", "fitness_plan_7_days", "nutrition_plan_3_days", "hydration_guidelines_pt"],
+      additionalProperties: false
+    }
+  };
+
   try {
-    const url = `${config.endpoint}openai/deployments/${config.deployment}/chat/completions?api-version=${config.apiVersion}`;
+    const apiVersion = config.apiVersion || "2024-08-01-preview";
+    const url = `${config.endpoint}openai/deployments/${config.deployment}/chat/completions?api-version=${apiVersion}`;
     
     const response = await fetch(url, {
       method: "POST",
@@ -263,7 +349,10 @@ IMPORTANTE: O total calórico de cada dia de nutrição DEVE estar dentro de ±5
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
-        response_format: { type: "json_object" },
+        response_format: { 
+          type: "json_schema",
+          json_schema: jsonSchema
+        },
         temperature: 0.7,
         max_tokens: 16000,
       }),
