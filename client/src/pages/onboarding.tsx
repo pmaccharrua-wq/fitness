@@ -111,17 +111,17 @@ export default function Onboarding() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-lg space-y-8">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 safe-area-inset">
+      <div className="w-full max-w-lg space-y-6 sm:space-y-8">
         <div className="text-center space-y-2">
-          <h1 className="text-3xl font-heading font-bold text-primary">Setup Your Plan</h1>
-          <p className="text-muted-foreground">Step {currentStep} of {steps.length}: {steps[currentStep-1].title}</p>
+          <h1 className="text-2xl sm:text-3xl font-heading font-bold text-primary">Setup Your Plan</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Step {currentStep} of {steps.length}: {steps[currentStep-1].title}</p>
         </div>
 
         <Progress value={(currentStep / steps.length) * 100} className="h-2" />
 
         <Card className="border-primary/20 bg-card/50 backdrop-blur">
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <AnimatePresence mode="wait" custom={direction}>
               <motion.div
                 key={currentStep}
@@ -148,18 +148,18 @@ export default function Onboarding() {
                       </RadioGroup>
                     </div>
                     
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label>Age</Label>
-                        <Input type="number" placeholder="30" {...form.register("age")} />
+                    <div className="grid grid-cols-3 gap-2 sm:gap-4">
+                      <div className="space-y-1 sm:space-y-2">
+                        <Label className="text-xs sm:text-sm">Age</Label>
+                        <Input type="number" placeholder="30" className="h-12 text-base" inputMode="numeric" {...form.register("age")} />
                       </div>
-                      <div className="space-y-2">
-                        <Label>Weight (kg)</Label>
-                        <Input type="number" placeholder="70" {...form.register("weight")} />
+                      <div className="space-y-1 sm:space-y-2">
+                        <Label className="text-xs sm:text-sm">Weight (kg)</Label>
+                        <Input type="number" placeholder="70" className="h-12 text-base" inputMode="numeric" {...form.register("weight")} />
                       </div>
-                      <div className="space-y-2">
-                        <Label>Height (cm)</Label>
-                        <Input type="number" placeholder="175" {...form.register("height")} />
+                      <div className="space-y-1 sm:space-y-2">
+                        <Label className="text-xs sm:text-sm">Height (cm)</Label>
+                        <Input type="number" placeholder="175" className="h-12 text-base" inputMode="numeric" {...form.register("height")} />
                       </div>
                     </div>
                   </div>

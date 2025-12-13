@@ -8,54 +8,54 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background text-foreground overflow-hidden font-sans">
       {/* Navigation */}
-      <nav className="absolute top-0 w-full p-6 flex justify-between items-center z-50">
-        <h1 className="text-2xl font-heading font-bold text-primary tracking-tighter">
+      <nav className="absolute top-0 w-full p-4 sm:p-6 flex justify-between items-center z-50">
+        <h1 className="text-xl sm:text-2xl font-heading font-bold text-primary tracking-tighter">
             AI<span className="text-foreground">FITNESS</span>
         </h1>
         <Link href="/login">
-          <Button variant="ghost" className="text-foreground hover:text-primary">Login</Button>
+          <Button variant="ghost" className="text-foreground hover:text-primary text-sm sm:text-base">Login</Button>
         </Link>
       </nav>
 
       {/* Hero Section */}
-      <section className="relative h-screen flex items-center">
+      <section className="relative min-h-screen flex items-center py-20 sm:py-0">
         {/* Background Image with Overlay */}
         <div className="absolute inset-0 z-0">
           <img 
             src={heroImage} 
             alt="Gym Background" 
-            className="w-full h-full object-cover opacity-60"
+            className="w-full h-full object-cover opacity-40 sm:opacity-60"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/90 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-b sm:bg-gradient-to-r from-background via-background/95 sm:via-background/90 to-background/70 sm:to-transparent" />
         </div>
 
-        <div className="container mx-auto px-6 relative z-10 grid md:grid-cols-2 gap-12 items-center">
+        <div className="container mx-auto px-4 sm:px-6 relative z-10 grid md:grid-cols-2 gap-8 md:gap-12 items-center">
           <motion.div 
-            initial={{ opacity: 0, x: -50 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8 }}
-            className="space-y-6"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="space-y-4 sm:space-y-6 text-center sm:text-left"
           >
-            <div className="inline-block px-3 py-1 border border-primary/50 rounded-full bg-primary/10 text-primary text-sm font-medium tracking-wide uppercase">
+            <div className="inline-block px-3 py-1 border border-primary/50 rounded-full bg-primary/10 text-primary text-xs sm:text-sm font-medium tracking-wide uppercase">
               Powered by Azure OpenAI
             </div>
-            <h1 className="text-5xl md:text-7xl font-heading font-bold leading-tight uppercase">
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-heading font-bold leading-tight uppercase">
               Train Smarter,<br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-teal-400">
                 Not Harder.
               </span>
             </h1>
-            <p className="text-lg text-muted-foreground max-w-md leading-relaxed">
+            <p className="text-base sm:text-lg text-muted-foreground max-w-md mx-auto sm:mx-0 leading-relaxed">
               Your personalized AI coach. Generates 30-day fitness and nutrition plans tailored exactly to your body type, goals, and equipment.
             </p>
             
-            <div className="flex gap-4 pt-4">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4">
               <Link href="/onboarding">
-                <Button size="lg" className="h-14 px-8 text-lg font-bold bg-primary hover:bg-primary/90 text-primary-foreground rounded-full shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] transition-all">
+                <Button size="lg" className="w-full sm:w-auto h-14 px-8 text-base sm:text-lg font-bold bg-primary hover:bg-primary/90 text-primary-foreground rounded-full shadow-[0_0_20px_rgba(16,185,129,0.3)] active:scale-95 transition-all touch-manipulation">
                   Start Your Journey
                 </Button>
               </Link>
-              <Button size="lg" variant="outline" className="h-14 px-8 text-lg font-bold rounded-full border-muted-foreground/30 hover:bg-white/5">
+              <Button size="lg" variant="outline" className="w-full sm:w-auto h-14 px-8 text-base sm:text-lg font-bold rounded-full border-muted-foreground/30 hover:bg-white/5 active:scale-95 transition-all touch-manipulation">
                 Learn More
               </Button>
             </div>
