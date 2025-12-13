@@ -1,18 +1,66 @@
-import { sql } from "drizzle-orm";
-import { pgTable, text, varchar } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
+import { pgTable, text, integer, serial, jsonb, timestamp } from "drizzle-orm/pg-core";
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+// User Profile Table
+export const userProfiles = pgTable("user_profiles", {
+  id: serial("id").primaryKey(),
+  sex: text("sex").notNull(),
+  age: integer("age").notNull(),
+  weight: integer("weight").notNull(), // in kg
+  height: integer("height").notNull(), // in cm
+  goal: text("goal").notNull(), // "loss", "muscle", "endurance"
+  activityLevel: text("activity_level").notNull(),
+  equipment: text("equipment").array(),
+  impediments: text("impediments"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
+// Fitness Plans Table
+export const fitnessPlans = pgTable("fitness_plans", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => userProfiles.id),
+  planData: jsonb("plan_data").notNull(), // Stores the entire 30-day plan from Azure AI
+  currentDay: integer("current_day").default(1).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
+// Exercise Progress Tracking
+export const exerciseProgress = pgTable("exercise_progress", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => userProfiles.id),
+  planId: integer("plan_id").notNull().references(() => fitnessPlans.id),
+  day: integer("day").notNull(),
+  completed: integer("completed").default(0).notNull(), // 0 = not started, 1 = completed
+  difficulty: text("difficulty"), // "easy", "just right", "hard"
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Types
+export type UserProfile = typeof userProfiles.$inferSelect;
+export type InsertUserProfile = z.infer<typeof insertUserProfileSchema>;
+
+export type FitnessPlan = typeof fitnessPlans.$inferSelect;
+export type InsertFitnessPlan = z.infer<typeof insertFitnessPlanSchema>;
+
+export type ExerciseProgress = typeof exerciseProgress.$inferSelect;
+export type InsertExerciseProgress = z.infer<typeof insertExerciseProgressSchema>;
+
+// Insert Schemas
+export const insertUserProfileSchema = createInsertSchema(userProfiles).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertFitnessPlanSchema = createInsertSchema(fitnessPlans).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertExerciseProgressSchema = createInsertSchema(exerciseProgress).omit({
+  id: true,
+  createdAt: true,
+});
