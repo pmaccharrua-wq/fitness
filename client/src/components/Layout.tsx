@@ -25,15 +25,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <nav className="flex-1 px-4 space-y-2">
           {navItems.map((item) => (
             <Link key={item.href} href={item.href}>
-              <a className={cn(
-                "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group",
+              <div className={cn(
+                "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group cursor-pointer",
                 location === item.href 
                   ? "bg-primary/10 text-primary border-l-2 border-primary" 
                   : "text-muted-foreground hover:text-foreground hover:bg-white/5"
               )}>
                 <item.icon className="w-5 h-5" />
                 <span className="font-medium">{item.label}</span>
-              </a>
+              </div>
             </Link>
           ))}
         </nav>
