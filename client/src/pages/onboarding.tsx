@@ -11,7 +11,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Check, ChevronRight, ChevronLeft } from "lucide-react";
+import { Check, ChevronRight, ChevronLeft, Loader2 } from "lucide-react";
+import { submitOnboarding, saveUserId } from "@/lib/api";
+import { toast } from "sonner";
 
 const formSchema = z.object({
   sex: z.enum(["Male", "Female", "Other"]),
@@ -35,6 +37,7 @@ export default function Onboarding() {
   const [, setLocation] = useLocation();
   const [currentStep, setCurrentStep] = useState(1);
   const [direction, setDirection] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -48,13 +51,38 @@ export default function Onboarding() {
     }
   });
 
-  const nextStep = () => {
+  const nextStep = async () => {
     if (currentStep < steps.length) {
       setDirection(1);
       setCurrentStep(s => s + 1);
     } else {
-      // Submit logic - in mockup we just go to dashboard
-      setLocation("/dashboard");
+      // Final step - submit to API
+      setIsLoading(true);
+      try {
+        const formData = form.getValues();
+        const response = await submitOnboarding({
+          sex: formData.sex,
+          age: parseInt(formData.age),
+          weight: parseInt(formData.weight),
+          height: parseInt(formData.height),
+          goal: formData.goal,
+          activityLevel: formData.activityLevel,
+          equipment: formData.equipment,
+        });
+
+        if (response.success) {
+          saveUserId(response.userId);
+          toast.success("Your personalized plan has been generated!");
+          setLocation("/dashboard");
+        } else {
+          toast.error(response.error || "Failed to generate plan");
+        }
+      } catch (error) {
+        console.error("Onboarding error:", error);
+        toast.error("An error occurred. Please try again.");
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -198,12 +226,25 @@ export default function Onboarding() {
           <Button 
             variant="outline" 
             onClick={prevStep}
-            disabled={currentStep === 1}
+            disabled={currentStep === 1 || isLoading}
           >
             <ChevronLeft className="w-4 h-4 mr-2" /> Back
           </Button>
-          <Button onClick={nextStep} className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold">
-            {currentStep === steps.length ? "Generate Plan" : "Next"} <ChevronRight className="w-4 h-4 ml-2" />
+          <Button 
+            onClick={nextStep} 
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                {currentStep === steps.length ? "Generate Plan" : "Next"} <ChevronRight className="w-4 h-4 ml-2" />
+              </>
+            )}
           </Button>
         </div>
       </div>
