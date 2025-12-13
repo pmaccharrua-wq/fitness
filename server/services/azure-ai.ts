@@ -353,8 +353,8 @@ IMPORTANTE: O total calórico de cada dia de nutrição DEVE estar dentro de ±5
           type: "json_schema",
           json_schema: jsonSchema
         },
-        temperature: 0.7,
-        max_tokens: 16000,
+        temperature: 1,
+        max_completion_tokens: 16000,
       }),
     });
 
