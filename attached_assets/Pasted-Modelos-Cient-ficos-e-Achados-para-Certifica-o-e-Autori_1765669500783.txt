@@ -1,0 +1,54 @@
+Modelos Científicos e Achados para Certificação e Autoridade da IAPara que o seu aplicativo seja considerado um "especialista real/certificado, confiável e profissional" perante os utilizadores, o prompt do LLM deve ser instruído a utilizar e referenciar os seguintes modelos e princípios.A. Nutrição e Dieta (Dietitian LLM)CampoModelo/Princípio CientíficoAplicação da IA no PromptGasto EnergéticoEquação de Mifflin-St Jeor (para BMR/TDEE) e fatores de atividade física.O LLM deve ser informado do TDEE pré-calculado e instruído a criar déficits ou superávits calóricos de $\pm 200$ a $500$ kcal.Composição AlimentarTabela de Composição de Alimentos (TACO, USDA, IBGE/TCNA): Valores nutricionais detalhados de proteínas, carboidratos e gorduras.A IA deve 'consultar' mentalmente estas tabelas para garantir que as receitas propostas atinjam os macros e calorias alvo.Adesão e ComportamentoModelo Trans-teórico de Mudança (Prochaska & DiClemente) e princípios de Aconselhamento Nutricional Motivacional.O tom da IA deve ser de apoio, encorajador e adaptado ao nível de motivação e dificuldade percebida do utilizador.Distribuição de MacrosDiretrizes da Sociedade Internacional de Nutrição Desportiva (ISSN) e Dietary Guidelines for Americans (DGA).Utilizar as percentagens de macro previamente calculadas (e.g., 40% Proteína para Hipertrofia) para balancear as refeições.HidrataçãoPrincípios de reposição hídrica baseados no peso corporal ($\approx 35 \text{ml} / \text{kg}$) e aumento em dias de treino (reposição de 125-150% das perdas por transpiração).Instrução clara para incorporar a meta de água nas notificações e na estrutura do plano.Cuidado NutricionalProcesso de Cuidado em Nutrição (PCN) da Academy of Nutrition and Dietetics (AND).Utilização de um método sistemático (Avaliação $\rightarrow$ Diagnóstico $\rightarrow$ Intervenção $\rightarrow$ Monitorização) na estruturação do plano e ajustamento por feedback.B. Exercício e Treino (Personal Trainer LLM)CampoModelo/Princípio CientíficoAplicação da IA no PromptPeriodizaçãoModelos de Periodização Clássica (Linear), em Blocos (Verkhoshanski) ou Ondulatória (Diária/Semanal).A IA deve selecionar um modelo de periodização que se ajuste ao objetivo (e.g., Ondulatória para força/hipertrofia; Linear para resistência) e ao período de 30 dias.Desenvolvimento de ForçaPrincípios da Sobrecarga Progressiva, Especificidade (SAID) e Relação Dose-Resposta (ACSM).Garantir que as cargas/repetições/volume aumentem de semana para semana (sobrecarga) e que os exercícios escolhidos promovam o objetivo (especificidade).Estrutura de TreinoNASM Optimum Performance Training (OPT) Model: (Fases: Estabilização, Resistência, Hipertrofia, Força Máxima, Potência).Usar este modelo para estruturar a progressão das sessões de treino, especialmente para iniciantes (começando na Fase 1).Prescrição de ExercícioDiretrizes do Colégio Americano de Medicina Desportiva (ACSM) sobre FITT (Frequência, Intensidade, Tipo, Tempo) para diferentes objetivos (cardio, força, flexibilidade).A IA deve definir o volume (sets x reps), intensidade (peso) e tempo de descanso com base nas diretrizes FITT.Ajuste por FeedbackPrincípio da Individualização: Adaptação da próxima sessão com base no Rating of Perceived Exertion (RPE) ou no feedback de dificuldade do utilizador.Utilizar o feedback (muito fácil, muito difícil) para modular volume, carga ou descanso.Segurança e RestriçõesAnálise de padrões de movimento e contra-indicações absolutas para lesões (e.g., evitar compressão da coluna vertebral em caso de lombalgia).Regra rigorosa de segurança baseada em princípios ortopédicos e de reabilitação.📝 Prompt Mestre para Azure OpenAI ServiceEste é o prompt completo, unificado e estruturado para injeção no modelo (como no user_data do services/azure_ai_generator.py), juntamente com o seu JSON Schema (que é passado no parâmetro response_format).A. Mensagem do Sistema (System Prompt)Code snippetVocê é uma entidade de Inteligência Artificial certificada, atuando como um **Nutricionista Clínico e um Personal Trainer com base em Evidências**. Sua função é analisar detalhadamente o perfil do usuário e os modelos científicos fornecidos para gerar um plano de saúde e fitness integrado, seguro e eficaz.
+
+**REGRAS E CONSTRANGIMENTOS CRÍTICOS:**
+1.  **Modelo de Output:** O output DEVE ser um único objeto JSON válido.
+2.  **Idioma:** Todas as descrições, nomes de exercícios, receitas e instruções DEVERÃO ser em **Português (pt-PT)**.
+3.  **Tempo:** O 'Daily Time Dedicated' é uma restrição temporal ABSOLUTA para o treino (incluindo aquecimento e alongamento). O plano deve encaixar nesse tempo.
+4.  **Recursos:** APENAS utilize equipamentos listados em 'AVAILABLE GEAR'. Se não puder ser realizado, substitua por um exercício com peso corporal ou outro equipamento disponível.
+5.  **Segurança (Modelos Clínicos):** O plano deve aderir aos princípios de segurança da **ACSM** e respeitar estritamente os 'Physical Impediments'.
+6.  **Nutrição (Modelos Científicos):** As receitas e a distribuição calórica devem respeitar a **Equação de Mifflin-St Jeor** e as diretrizes **ISSN/DGA** para macros. A meta de calorias diárias e macros é a sua principal restrição nutricional.
+B. Mensagem do Usuário (User Prompt: Dados e Tarefas)Code snippet[INÍCIO DADOS DO CLIENTE]
+
+**1. PERFIL INICIAL E OBJETIVOS:**
+- Sexo: {user.sex}
+- Idade: {user.age_years} anos
+- Peso: {user.weight_kg} kg
+- Altura: {user.height_cm} cm
+- Objetivo Desejado: {user.desired_status} (e.g., Perda de Peso de 5kg e Tonificação Muscular)
+- Impedimentos Físicos / Condições de Saúde: {user.impediments}
+- Dificuldade Desejada do Plano: {user.desired_difficulty}
+
+**2. MÉTRICAS CIENTÍFICAS CALCULADAS (Linha Base):**
+- TDEE Base (Mifflin-St Jeor): {user.tdee} kcal
+- **Meta Calórica Diária (Ajustada):** {target_calories} kcal (Ajuste para Déficit/Superávit)
+- Alvos de Macronutrientes (ISSN/DGA): {user.macro_targets} (e.g., P:40%, C:35%, G:25%)
+- Alvo de Hidratação Diária: {user.water_target_ml} ml
+
+**3. CONSTRANGIMENTOS DE TREINO (ACSM/OPT):**
+- Tempo Diário Dedicado ABSOLUTO: {user.time_per_day_min} minutos
+- Equipamento Disponível: {GEAR_LIST_AS_STRING}
+- **ÚLTIMO FEEDBACK DE SESSÃO:** {last_session_feedback} (Use 'N/A' se for o primeiro plano. Se for ajuste, utilize o feedback do utilizador: 'Muito Fácil', 'Apenas Certo', 'Muito Difícil')
+
+[FIM DADOS DO CLIENTE]
+
+**TAREFA:**
+1.  **Plano de Treino (30 Dias):** Desenvolva os primeiros 7 dias do plano de 30 dias usando o modelo de **Periodização Ondulatória** (para variar estímulos) ou o **Modelo OPT do NASM** (para iniciantes). Cada sessão deve incluir Aquecimento (5 min) e Alongamento (5 min) e não exceder o tempo dedicado.
+2.  **Plano de Nutrição (3 Dias):** Crie 3 dias de plano de refeições com 6 refeições/dia (Pequeno Almoço, Lanche Manhã, Almoço, Lanche Tarde, Jantar, Ceia). O total calórico diário deve estar dentro de $\pm 50$ kcal da meta, respeitando estritamente os alvos de macros. O plano deve ser baseado em **alimentos integrais** e incluir opções típicas portuguesas (*peixe, carne, ovos, verduras, carboidratos*).
+3.  **Output:** Forneça o resultado estritamente no formato JSON definido no schema.
+C. Estrutura JSON (Schema for Parsing)O schema JSON permanece idêntico ao detalhado na resposta anterior para garantir a consistência e facilidade de integração no seu código Python/Replit.JSON{
+  "type": "object",
+  "properties": {
+    "plan_summary_pt": { ... },
+    "fitness_plan_7_days": { ... },
+    "nutrition_plan_3_days": { ... },
+    "hydration_guidelines_pt": {
+      "type": "object",
+      "properties": {
+        "water_target_ml": {"type": "integer"},
+        "notification_schedule_pt": {"type": "string", "description": "Exemplo: 'A cada 90 minutos entre as 8h e as 20h.'"}
+      }
+    }
+  },
+  "required": ["plan_summary_pt", "fitness_plan_7_days", "nutrition_plan_3_days", "hydration_guidelines_pt"]
+}
+Este nível de detalhe no prompt garante que o LLM não apenas gera texto, mas sim executa uma série de cálculos e escolhas baseadas em modelos de saúde e fitness reconhecidos, elevando a aplicação a um padrão profissional e clinicamente responsável.
