@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Play, Pause, SkipForward, ChevronRight, CheckCircle2, Timer, Volume2, VolumeX, Eye, Dumbbell } from "lucide-react";
+import { Play, Pause, SkipForward, ChevronRight, CheckCircle2, Timer, Volume2, VolumeX, Eye, Dumbbell, Plus } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
 
 interface Exercise {
@@ -204,12 +204,12 @@ export default function WorkoutTimer({
   }, [currentExercise, speak, txt]);
 
   const startPrepCountdown = useCallback(() => {
-    setPrepCountdown(3);
+    setPrepCountdown(4);
     setPhase("prep_countdown");
     
     speak(txt("Prepara-te!", "Get ready!"));
     
-    let count = 3;
+    let count = 4;
     countdownIntervalRef.current = setInterval(() => {
       count -= 1;
       setPrepCountdown(count);
@@ -573,20 +573,38 @@ export default function WorkoutTimer({
 
           {phase === "exercise" && (
             <>
-              <div className="text-center space-y-2">
-                <h2 className="text-2xl font-heading font-bold" data-testid="text-exercise-name">
+              {(libraryData.imageUrl || videoEmbedUrl) && (
+                <div className="relative aspect-video bg-muted rounded-lg overflow-hidden max-h-48">
+                  {libraryData.imageUrl && !videoEmbedUrl && (
+                    <img
+                      src={libraryData.imageUrl}
+                      alt={currentExercise.name}
+                      className="w-full h-full object-cover"
+                    />
+                  )}
+                  {videoEmbedUrl && (
+                    <iframe
+                      src={videoEmbedUrl}
+                      className="w-full h-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      title={currentExercise.name}
+                    />
+                  )}
+                </div>
+              )}
+
+              <div className="text-center space-y-1">
+                <h2 className="text-xl font-heading font-bold" data-testid="text-exercise-name">
                   {currentExercise.name_pt || currentExercise.name}
                 </h2>
-                <div className="text-primary font-medium">{currentExercise.focus}</div>
-                <div className="text-sm text-muted-foreground">
-                  {currentExercise.equipment_used}
-                </div>
+                <div className="text-primary font-medium text-sm">{currentExercise.focus}</div>
               </div>
 
               <div className="text-center">
                 {isTimeBased && targetSeconds > 0 ? (
                   <div className="space-y-2">
-                    <div className="text-7xl font-mono font-bold" data-testid="text-timer">
+                    <div className="text-6xl font-mono font-bold" data-testid="text-timer">
                       {formatTime(Math.max(0, targetSeconds - seconds))}
                     </div>
                     <Progress value={(seconds / targetSeconds) * 100} className="h-3" />
@@ -595,15 +613,15 @@ export default function WorkoutTimer({
                     </div>
                   </div>
                 ) : (
-                  <div className="text-7xl font-mono font-bold" data-testid="text-timer">
+                  <div className="text-6xl font-mono font-bold" data-testid="text-timer">
                     {formatTime(seconds)}
                   </div>
                 )}
               </div>
 
-              <div className="flex justify-center gap-8">
+              <div className="flex justify-center gap-6">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-primary" data-testid="text-current-set">
+                  <div className="text-2xl font-bold text-primary" data-testid="text-current-set">
                     {currentSet}/{currentExercise.sets}
                   </div>
                   <div className="text-xs text-muted-foreground uppercase">
@@ -611,7 +629,7 @@ export default function WorkoutTimer({
                   </div>
                 </div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold" data-testid="text-reps">
+                  <div className="text-2xl font-bold" data-testid="text-reps">
                     {currentExercise.reps_or_time}
                   </div>
                   <div className="text-xs text-muted-foreground uppercase">
@@ -620,20 +638,32 @@ export default function WorkoutTimer({
                 </div>
               </div>
 
-              <div className="flex justify-center">
+              <div className="flex justify-center gap-4">
                 <Button
                   size="lg"
                   variant={isRunning ? "outline" : "default"}
                   onClick={() => setIsRunning(!isRunning)}
-                  className="w-16 h-16 rounded-full"
+                  className="w-14 h-14 rounded-full"
                   data-testid="button-play-pause"
                 >
                   {isRunning ? (
-                    <Pause className="w-8 h-8" />
+                    <Pause className="w-7 h-7" />
                   ) : (
-                    <Play className="w-8 h-8 ml-1" />
+                    <Play className="w-7 h-7 ml-1" />
                   )}
                 </Button>
+                {isTimeBased && targetSeconds > 0 && (
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    onClick={() => setTargetSeconds((t) => t + 10)}
+                    className="w-14 h-14 rounded-full"
+                    data-testid="button-extend-time"
+                  >
+                    <Plus className="w-5 h-5" />
+                    <span className="text-xs">10s</span>
+                  </Button>
+                )}
               </div>
 
               <div className="flex gap-3">
