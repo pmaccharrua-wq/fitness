@@ -83,7 +83,9 @@ export class DatabaseStorage implements IStorage {
           eq(userProfiles.phoneNumber, phoneNumber),
           eq(userProfiles.pin, pin)
         )
-      );
+      )
+      .orderBy(desc(userProfiles.id))
+      .limit(1);
     return profile;
   }
 
