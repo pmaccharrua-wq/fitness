@@ -100,6 +100,77 @@ export async function getExerciseImage(
   }
 }
 
+export async function getMealImage(mealDescription: string, mealTime: string): Promise<ExerciseImage> {
+  const descLower = mealDescription.toLowerCase();
+  let searchTerms = "healthy food";
+  
+  if (descLower.includes("frango") || descLower.includes("chicken")) searchTerms = "grilled chicken meal";
+  else if (descLower.includes("peixe") || descLower.includes("salmão") || descLower.includes("fish") || descLower.includes("salmon")) searchTerms = "salmon fish meal";
+  else if (descLower.includes("ovo") || descLower.includes("egg")) searchTerms = "eggs breakfast";
+  else if (descLower.includes("salada") || descLower.includes("salad")) searchTerms = "healthy salad bowl";
+  else if (descLower.includes("arroz") || descLower.includes("rice")) searchTerms = "rice bowl meal";
+  else if (descLower.includes("aveia") || descLower.includes("oat")) searchTerms = "oatmeal breakfast";
+  else if (descLower.includes("iogurte") || descLower.includes("yogurt")) searchTerms = "yogurt fruit bowl";
+  else if (descLower.includes("batido") || descLower.includes("shake") || descLower.includes("whey")) searchTerms = "protein shake";
+  else if (descLower.includes("carne") || descLower.includes("beef") || descLower.includes("bife")) searchTerms = "steak dinner";
+  else if (descLower.includes("massa") || descLower.includes("pasta")) searchTerms = "pasta meal";
+  else if (descLower.includes("sopa") || descLower.includes("soup")) searchTerms = "healthy soup bowl";
+  else if (descLower.includes("sanduíche") || descLower.includes("sandwich") || descLower.includes("tosta")) searchTerms = "healthy sandwich";
+  else if (mealTime.toLowerCase().includes("pequeno") || mealTime.toLowerCase().includes("breakfast")) searchTerms = "healthy breakfast";
+  else if (mealTime.toLowerCase().includes("lanche") || mealTime.toLowerCase().includes("snack")) searchTerms = "healthy snack";
+  else if (mealTime.toLowerCase().includes("jantar") || mealTime.toLowerCase().includes("dinner")) searchTerms = "healthy dinner plate";
+  else if (mealTime.toLowerCase().includes("almoço") || mealTime.toLowerCase().includes("lunch")) searchTerms = "healthy lunch";
+
+  const cacheKey = `meal_${searchTerms}`;
+  if (imageCache[cacheKey]) {
+    return imageCache[cacheKey];
+  }
+
+  const apiKey = process.env.PEXELS_API_KEY;
+  if (!apiKey) {
+    throw new Error("PEXELS_API_KEY is not configured");
+  }
+
+  try {
+    const response = await fetch(
+      `https://api.pexels.com/v1/search?query=${encodeURIComponent(searchTerms)}&per_page=1&orientation=landscape`,
+      {
+        headers: {
+          Authorization: apiKey,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Pexels API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    if (data.photos && data.photos.length > 0) {
+      const photo = data.photos[0];
+      const result: ExerciseImage = {
+        url: photo.src.medium,
+        source: "pexels",
+        photographer: photo.photographer,
+      };
+      imageCache[cacheKey] = result;
+      return result;
+    }
+
+    return {
+      url: "https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=800",
+      source: "pexels-fallback",
+    };
+  } catch (error) {
+    console.error("Error fetching meal image from Pexels:", error);
+    return {
+      url: "https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=800",
+      source: "pexels-fallback",
+    };
+  }
+}
+
 export async function testImageGeneration(): Promise<{ success: boolean; error?: string; image?: ExerciseImage }> {
   try {
     const image = await getExerciseImage("Push-Up", "Flexão", "bodyweight", ["chest", "triceps"]);

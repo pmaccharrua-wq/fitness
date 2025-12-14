@@ -5,7 +5,7 @@ import { generateFitnessPlan, AVAILABLE_EQUIPMENT } from "./services/azure-ai";
 import { insertUserProfileSchema } from "@shared/schema";
 import { exerciseLibrary as exerciseData } from "./exerciseData";
 import { checkWaterReminder, createWaterReminder, getUnreadNotifications } from "./services/notifications";
-import { testImageGeneration, getExerciseImage } from "./services/image-generation";
+import { testImageGeneration, getExerciseImage, getMealImage } from "./services/image-generation";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 
@@ -549,6 +549,28 @@ export async function registerRoutes(
       res.status(500).json({ 
         success: false, 
         error: error instanceof Error ? error.message : "Failed to generate image" 
+      });
+    }
+  });
+
+  // Get image for a meal
+  app.post("/api/images/meal", async (req: Request, res: Response) => {
+    try {
+      const { description, mealTime } = req.body;
+      
+      if (!description || !mealTime) {
+        return res.status(400).json({ 
+          success: false, 
+          error: "description and mealTime are required" 
+        });
+      }
+
+      const image = await getMealImage(description, mealTime);
+      res.json({ success: true, image });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false, 
+        error: error instanceof Error ? error.message : "Failed to get meal image" 
       });
     }
   });
