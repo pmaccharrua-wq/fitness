@@ -740,48 +740,32 @@ export async function generateMealFromIngredients(
   const isPt = language === "pt";
   
   const systemPrompt = isPt
-    ? `És um Chef e Nutricionista Registado. O utilizador fornece ingredientes que tem disponíveis e tu deves criar uma refeição equilibrada que use o máximo possível desses ingredientes.
+    ? `Cria uma refeição SIMPLES e rápida do dia-a-dia.
 
-REGRAS CRÍTICAS:
-1. A refeição DEVE ter calorias dentro de ±50 kcal do alvo
-2. Prioriza usar os ingredientes fornecidos pelo utilizador
-3. Podes adicionar ingredientes básicos (sal, azeite, especiarias) se necessário
-4. Inclui receita detalhada com passos de preparação
-5. A hora da refeição deve ser: ${targets.mealTime}
-6. TODAS as descrições e receitas devem estar em Português (pt-PT)`
-    : `You are a Chef and Registered Nutritionist. The user provides ingredients they have available and you must create a balanced meal using as many of those ingredients as possible.
+REGRAS:
+1. Usa apenas 2-4 ingredientes principais da lista
+2. Calorias aproximadas: ${targets.targetCalories} kcal (±100 está OK)
+3. Preparação em 2-3 passos curtos (máximo 1 frase cada)
+4. Refeição: ${targets.mealTime}
+5. Português (pt-PT)`
+    : `Create a SIMPLE, quick everyday meal.
 
-CRITICAL RULES:
-1. The meal MUST have calories within ±50 kcal of the target
-2. Prioritize using the ingredients provided by the user
-3. You can add basic ingredients (salt, olive oil, spices) if needed
-4. Include detailed recipe with preparation steps
-5. Meal time should be: ${targets.mealTime}
-6. ALL descriptions and recipes should be in English`;
+RULES:
+1. Use only 2-4 main ingredients from the list
+2. Approximate calories: ${targets.targetCalories} kcal (±100 is OK)
+3. Preparation in 2-3 short steps (max 1 sentence each)
+4. Meal time: ${targets.mealTime}
+5. English`;
 
   const userPrompt = isPt
-    ? `INGREDIENTES DISPONÍVEIS:
-${ingredients.map(i => `- ${i}`).join('\n')}
+    ? `Ingredientes: ${ingredients.join(', ')}
+Meta: ~${targets.targetCalories} kcal, ~${targets.targetProtein}g proteína
 
-ALVOS NUTRICIONAIS:
-- Hora da refeição: ${targets.mealTime}
-- Calorias alvo: ${targets.targetCalories} kcal (±50)
-- Proteína alvo: ${targets.targetProtein}g
-- Carboidratos alvo: ${targets.targetCarbs}g
-- Gordura alvo: ${targets.targetFat}g
+Cria 1 refeição simples.`
+    : `Ingredients: ${ingredients.join(', ')}
+Target: ~${targets.targetCalories} kcal, ~${targets.targetProtein}g protein
 
-Cria uma refeição usando estes ingredientes em formato JSON.`
-    : `AVAILABLE INGREDIENTS:
-${ingredients.map(i => `- ${i}`).join('\n')}
-
-NUTRITIONAL TARGETS:
-- Meal time: ${targets.mealTime}
-- Target calories: ${targets.targetCalories} kcal (±50)
-- Target protein: ${targets.targetProtein}g
-- Target carbs: ${targets.targetCarbs}g
-- Target fat: ${targets.targetFat}g
-
-Create a meal using these ingredients in JSON format.`;
+Create 1 simple meal.`;
 
   const jsonSchema = {
     name: "meal_from_ingredients_response",
