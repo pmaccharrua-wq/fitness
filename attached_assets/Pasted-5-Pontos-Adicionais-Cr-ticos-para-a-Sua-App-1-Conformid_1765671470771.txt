@@ -1,0 +1,32 @@
+5 Pontos Adicionais Críticos para a Sua App
+1. ⚠️ Conformidade Legal e Disclaimer (O Mais Importante)
+Visto que a sua aplicação está a gerar recomendações de saúde, dieta e exercício, a conformidade e os disclaimers são absolutamente essenciais para mitigar riscos legais.
+* Disclaimer Médico Obrigatório: A sua aplicação NÃO É um médico ou nutricionista profissional. Deve ter um aviso proeminente na primeira utilização (e nas configurações) declarando que o conteúdo gerado pela IA é informativo e educacional, não substituindo o conselho de um profissional de saúde qualificado (médico, fisiologista, dietista).
+* Privacidade de Dados (RGPD/GDPR): Uma vez que está a recolher dados sensíveis (peso, altura, condição de saúde, impedimentos), deve garantir a total conformidade com o Regulamento Geral sobre a Proteção de Dados (RGPD) se estiver a operar na Europa. Isto inclui:
+    * Consentimento explícito do utilizador para processar dados de saúde.
+    * Métodos seguros de armazenamento e anonimização dos dados.
+* Idade Mínima: Definir uma idade mínima clara (e.g., 18 anos) ou exigir o consentimento dos pais/tutores.
+2. 📱 UX/UI e Experiência do Utilizador (Adoção)
+A melhor IA do mundo falhará se a aplicação for difícil de usar.
+* Design Minimalista e Escuro: Para uma aplicação de fitness e nutrição, um design limpo, com um modo escuro (muito popular em ambientes de ginásio) ajuda a focar o utilizador no conteúdo (exercícios, contagens, receitas).
+* Contador e Progresso em Tempo Real:
+    * Treino: O ecrã de treino deve ter um timer grande, a repetição ou o tempo restante em destaque, e botões grandes de "PRÓXIMO" e "SALTAR".
+    * Nutrição: Mecanismo fácil para o utilizador marcar refeições e água como concluídas.
+* Dashboard Visual: Os utilizadores precisam de ver o seu progresso em gráficos (peso, força, calorias consumidas vs. queimadas, e o tempo restante para o objetivo final) para manter a motivação.
+3. 🔄 O Loop de Feedback Inteligente (Ajuste da IA)
+Conforme mencionado, a adaptação do plano é a funcionalidade mais valiosa. Certifique-se de que o feedback de dificuldade não é a única variável:
+Variável de Feedback	O que a IA deve aprender/ajustar
+Dificuldade (RPE)	Se "Muito Fácil", aumentar a carga, o volume (sets/reps) ou reduzir o tempo de descanso na próxima sessão. Se "Muito Difícil", reduzir.
+Tempo Real vs. Tempo Planeado	Se o treino de 45 minutos demorou 60 minutos, a IA deve ajustar o volume da próxima sessão ou priorizar exercícios de circuito para melhorar a eficiência.
+Adesão Nutricional	Se o utilizador reporta que não consegue consumir todas as refeições (falha na meta calórica), a IA deve consolidar as calorias em menos refeições, mas com maior densidade.
+Preferências	Se o utilizador salta exercícios repetidamente (e.g., leg press), a IA deve minimizar ou remover esse equipamento dos planos futuros e focar-se noutras máquinas ou peso corporal.
+4. 🗂️ Gestão de Ativos (Imagens e Vídeos)
+Como a Azure OpenAI não gera as imagens e vídeos reais, a gestão dos ativos de treino é sua responsabilidade.
+* Biblioteca de Exercícios Local/BD: Crie uma base de dados (JSON, MongoDB, etc.) de todos os exercícios que a IA pode recomendar.
+    * Estrutura do Asset: Nome do Exercício (ID), Músculos Primários, Equipamento Necessário, Link para Imagem/GIF, Link para Vídeo do YouTube.
+* Mapeamento de IDs: A IA deve ser instruída a retornar o ID do Exercício em vez do nome no seu JSON de output. Isso permite que a sua frontend obtenha o nome, o GIF e o vídeo do YouTube da sua base de dados local, garantindo que os links são válidos e controláveis.
+5. 🔔 Sistema de Notificação Robusto
+As notificações (para água, refeições, treino) são a forma como a aplicação se insere no dia a dia do utilizador.
+* Lógica de Água: O seu backend precisa de um mecanismo para enviar notificações periódicas (e.g., a cada 90 minutos) para o utilizador beber {X} ml de água, respeitando o water_target_ml e o horário de sono do utilizador (não envie notificações de madrugada).
+* Tecnologia: Para o Replit, terá de integrar com serviços de notificações push móveis, como o Firebase Cloud Messaging (FCM) (para Android) ou APNs (para iOS), que requerem um backend persistente para disparar as mensagens.
+Estes elementos, quando combinados com a arquitetura de IA que delineámos, transformam o seu projeto de um gerador de prompts num produto digital completo e responsável.

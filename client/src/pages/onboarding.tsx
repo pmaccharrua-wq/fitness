@@ -20,8 +20,9 @@ const formSchema = z.object({
   language: z.enum(["pt", "en"]),
   firstName: z.string().min(1, "Nome é obrigatório"),
   phoneNumber: z.string().min(9, "Número de telefone inválido"),
+  gdprConsent: z.boolean().refine(val => val === true, "Deve aceitar o processamento de dados"),
   sex: z.enum(["Male", "Female"]),
-  age: z.string().min(1, "Idade é obrigatória"),
+  age: z.string().min(1, "Idade é obrigatória").refine(val => parseInt(val) >= 18, "Deve ter 18 anos ou mais"),
   weight: z.string().min(1, "Peso é obrigatório"),
   height: z.string().min(1, "Altura é obrigatória"),
   somatotype: z.string().optional(),
@@ -65,6 +66,7 @@ export default function Onboarding() {
       language: "pt",
       firstName: "",
       phoneNumber: "",
+      gdprConsent: false,
       sex: "Male",
       age: "",
       weight: "",
@@ -243,6 +245,20 @@ export default function Onboarding() {
                           {...form.register("phoneNumber")} 
                         />
                       </div>
+                    </div>
+                    <div className="flex items-start space-x-3 pt-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                      <Checkbox 
+                        id="gdpr-consent" 
+                        checked={form.watch("gdprConsent")} 
+                        onCheckedChange={(checked) => form.setValue("gdprConsent", checked as boolean)}
+                        data-testid="checkbox-gdpr-consent"
+                      />
+                      <label htmlFor="gdpr-consent" className="text-sm cursor-pointer leading-tight">
+                        {t(
+                          "Autorizo o processamento dos meus dados pessoais e de saúde para gerar planos de fitness personalizados, conforme o RGPD.",
+                          "I authorize the processing of my personal and health data to generate personalized fitness plans, in accordance with GDPR."
+                        )}
+                      </label>
                     </div>
                   </div>
                 )}

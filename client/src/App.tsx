@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { I18nProvider } from "@/lib/i18n";
+import DisclaimerModal from "@/components/DisclaimerModal";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import Onboarding from "@/pages/onboarding";
@@ -26,6 +27,7 @@ function App() {
       <I18nProvider>
         <TooltipProvider>
           <Toaster />
+          <DisclaimerModal />
           <Router />
         </TooltipProvider>
       </I18nProvider>
