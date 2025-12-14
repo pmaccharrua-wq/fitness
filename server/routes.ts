@@ -138,6 +138,52 @@ export async function registerRoutes(
     }
   });
 
+  // Get all user plans
+  app.get("/api/plans/:userId", async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ success: false, error: "Invalid user ID" });
+      }
+      const plans = await storage.getUserPlans(userId);
+      res.json({ success: true, plans });
+    } catch (error) {
+      console.error("Error fetching plans:", error);
+      res.status(500).json({ success: false, error: "Failed to fetch plans" });
+    }
+  });
+
+  // Activate a plan
+  app.patch("/api/plan/:planId/activate", async (req: Request, res: Response) => {
+    try {
+      const planId = parseInt(req.params.planId);
+      const { userId } = req.body;
+      if (isNaN(planId) || !userId) {
+        return res.status(400).json({ success: false, error: "Invalid plan or user ID" });
+      }
+      await storage.setActivePlan(userId, planId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error activating plan:", error);
+      res.status(500).json({ success: false, error: "Failed to activate plan" });
+    }
+  });
+
+  // Delete a plan
+  app.delete("/api/plan/:planId", async (req: Request, res: Response) => {
+    try {
+      const planId = parseInt(req.params.planId);
+      if (isNaN(planId)) {
+        return res.status(400).json({ success: false, error: "Invalid plan ID" });
+      }
+      await storage.deletePlan(planId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting plan:", error);
+      res.status(500).json({ success: false, error: "Failed to delete plan" });
+    }
+  });
+
   // Record exercise completion with difficulty feedback
   app.post("/api/progress", async (req: Request, res: Response) => {
     try {

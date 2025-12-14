@@ -71,6 +71,7 @@ export const fitnessPlans = pgTable("fitness_plans", {
   userId: integer("user_id").notNull().references(() => userProfiles.id),
   planData: jsonb("plan_data").notNull(), // Stores the entire 30-day plan from Azure AI
   currentDay: integer("current_day").default(1).notNull(),
+  isActive: boolean("is_active").default(true).notNull(), // Whether this is the active plan
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

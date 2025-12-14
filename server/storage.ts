@@ -31,7 +31,11 @@ export interface IStorage {
   createFitnessPlan(data: InsertFitnessPlan): Promise<FitnessPlan>;
   getFitnessPlan(id: number): Promise<FitnessPlan | undefined>;
   getUserLatestPlan(userId: number): Promise<FitnessPlan | undefined>;
+  getUserActivePlan(userId: number): Promise<FitnessPlan | undefined>;
+  getUserPlans(userId: number): Promise<FitnessPlan[]>;
   updatePlanCurrentDay(planId: number, day: number): Promise<void>;
+  setActivePlan(userId: number, planId: number): Promise<void>;
+  deletePlan(planId: number): Promise<void>;
   
   // Exercise Progress Operations
   createExerciseProgress(data: InsertExerciseProgress): Promise<ExerciseProgress>;
@@ -116,10 +120,48 @@ export class DatabaseStorage implements IStorage {
     return plan;
   }
 
+  async getUserActivePlan(userId: number): Promise<FitnessPlan | undefined> {
+    const [plan] = await db
+      .select()
+      .from(fitnessPlans)
+      .where(and(eq(fitnessPlans.userId, userId), eq(fitnessPlans.isActive, true)))
+      .orderBy(desc(fitnessPlans.createdAt))
+      .limit(1);
+    return plan;
+  }
+
+  async getUserPlans(userId: number): Promise<FitnessPlan[]> {
+    return await db
+      .select()
+      .from(fitnessPlans)
+      .where(eq(fitnessPlans.userId, userId))
+      .orderBy(desc(fitnessPlans.createdAt));
+  }
+
   async updatePlanCurrentDay(planId: number, day: number): Promise<void> {
     await db
       .update(fitnessPlans)
       .set({ currentDay: day, updatedAt: new Date() })
+      .where(eq(fitnessPlans.id, planId));
+  }
+
+  async setActivePlan(userId: number, planId: number): Promise<void> {
+    await db
+      .update(fitnessPlans)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(fitnessPlans.userId, userId));
+    await db
+      .update(fitnessPlans)
+      .set({ isActive: true, updatedAt: new Date() })
+      .where(eq(fitnessPlans.id, planId));
+  }
+
+  async deletePlan(planId: number): Promise<void> {
+    await db
+      .delete(exerciseProgress)
+      .where(eq(exerciseProgress.planId, planId));
+    await db
+      .delete(fitnessPlans)
       .where(eq(fitnessPlans.id, planId));
   }
 
