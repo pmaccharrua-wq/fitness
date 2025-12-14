@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { generateFitnessPlan, AVAILABLE_EQUIPMENT, generateMealSwapAlternatives, generateMealFromIngredients } from "./services/azure-ai";
+import { generateFitnessPlan, AVAILABLE_EQUIPMENT, generateMealSwapAlternatives, generateMealFromIngredients, validateWeightGoal } from "./services/azure-ai";
 import { insertUserProfileSchema, insertCustomMealSchema } from "@shared/schema";
 import { exerciseLibrary as exerciseData } from "./exerciseData";
 import { checkWaterReminder, createWaterReminder, getUnreadNotifications } from "./services/notifications";
@@ -613,6 +613,45 @@ export async function registerRoutes(
       res.json({ success: true, exercises: matched });
     } catch (error) {
       res.status(500).json({ success: false, error: "Failed to match exercises" });
+    }
+  });
+
+  // ============ WEIGHT GOAL VALIDATION ============
+
+  // Validate weight goal with AI feedback
+  app.post("/api/validate-weight-goal", async (req: Request, res: Response) => {
+    try {
+      const schema = z.object({
+        currentWeight: z.number().min(30).max(300),
+        targetWeight: z.number().min(30).max(300),
+        weeks: z.number().min(1).max(104), // 1 week to 2 years
+        sex: z.string(),
+        age: z.number().min(18).max(100),
+        height: z.number().min(100).max(250),
+        goal: z.string(),
+        activityLevel: z.string(),
+        language: z.string().optional(),
+      });
+
+      const validatedData = schema.parse(req.body);
+      
+      const result = await validateWeightGoal({
+        ...validatedData,
+        language: validatedData.language || "pt"
+      });
+
+      res.json({ success: true, ...result });
+    } catch (error) {
+      console.error("Error validating weight goal:", error);
+      
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, error: fromZodError(error).toString() });
+      }
+
+      res.status(500).json({ 
+        success: false, 
+        error: error instanceof Error ? error.message : "Failed to validate weight goal" 
+      });
     }
   });
 
