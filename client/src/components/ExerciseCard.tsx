@@ -5,6 +5,43 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { PlayCircle, ExternalLink, Dumbbell } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
 
+function getStockImageUrl(exerciseName: string, primaryMuscles?: string[]): string {
+  const exerciseLower = exerciseName.toLowerCase();
+  let searchTerm = "fitness workout gym";
+  
+  if (exerciseLower.includes("squat")) searchTerm = "squat exercise gym";
+  else if (exerciseLower.includes("deadlift")) searchTerm = "deadlift exercise gym";
+  else if (exerciseLower.includes("press") && exerciseLower.includes("bench")) searchTerm = "bench press gym";
+  else if (exerciseLower.includes("push-up") || exerciseLower.includes("pushup") || exerciseLower.includes("flexão")) searchTerm = "pushup exercise fitness";
+  else if (exerciseLower.includes("pull-up") || exerciseLower.includes("pullup")) searchTerm = "pullup exercise gym";
+  else if (exerciseLower.includes("plank") || exerciseLower.includes("prancha")) searchTerm = "plank exercise fitness";
+  else if (exerciseLower.includes("lunge") || exerciseLower.includes("afundo")) searchTerm = "lunge exercise gym";
+  else if (exerciseLower.includes("row") || exerciseLower.includes("remada")) searchTerm = "rowing exercise gym";
+  else if (exerciseLower.includes("curl") || exerciseLower.includes("rosca")) searchTerm = "dumbbell curl gym";
+  else if (exerciseLower.includes("crunch") || exerciseLower.includes("abdominal")) searchTerm = "ab crunch exercise";
+  else if (exerciseLower.includes("leg press")) searchTerm = "leg press machine gym";
+  else if (exerciseLower.includes("shoulder") || exerciseLower.includes("ombro")) searchTerm = "shoulder press gym";
+  else if (exerciseLower.includes("chest") || exerciseLower.includes("peito")) searchTerm = "chest workout gym";
+  else if (exerciseLower.includes("back") || exerciseLower.includes("costas")) searchTerm = "back workout gym";
+  else if (primaryMuscles?.[0]) {
+    const muscleMap: Record<string, string> = {
+      chest: "chest workout gym",
+      back: "back workout gym",
+      shoulders: "shoulder press gym",
+      biceps: "biceps curl gym",
+      triceps: "triceps workout gym",
+      quadriceps: "leg workout squat",
+      hamstrings: "leg workout gym",
+      glutes: "glutes workout gym",
+      core: "core workout gym",
+      abs: "abs workout gym",
+    };
+    searchTerm = muscleMap[primaryMuscles[0].toLowerCase()] || "fitness workout gym";
+  }
+  
+  return `https://source.unsplash.com/800x600/?${encodeURIComponent(searchTerm)}`;
+}
+
 interface ExerciseData {
   name?: string;
   name_pt?: string;
@@ -40,7 +77,6 @@ export default function ExerciseCard({ exercise, libraryMatch, index }: Exercise
   const [showDetails, setShowDetails] = useState(false);
   const { t, language } = useTranslation();
 
-  const hasMedia = libraryMatch?.imageUrl || libraryMatch?.videoUrl;
   const displayName = libraryMatch 
     ? (language === "pt" ? libraryMatch.namePt : libraryMatch.name) 
     : (language === "pt" && exercise.name_pt ? exercise.name_pt : (exercise.name || exercise.name_pt));
@@ -49,6 +85,11 @@ export default function ExerciseCard({ exercise, libraryMatch, index }: Exercise
     : null;
   const repsOrTime = exercise.reps_or_time || exercise.reps_or_time_pt || "";
   const equipmentUsed = exercise.equipment_used || exercise.equipment_used_pt || "";
+  
+  const imageUrl = libraryMatch?.imageUrl || getStockImageUrl(
+    displayName || exercise.name || exercise.name_pt || "",
+    libraryMatch?.primaryMuscles
+  );
 
   return (
     <>
@@ -57,28 +98,21 @@ export default function ExerciseCard({ exercise, libraryMatch, index }: Exercise
         data-testid={`card-exercise-${index}`}
         onClick={() => setShowDetails(true)}
       >
-        {libraryMatch?.imageUrl && (
-          <div className="h-32 bg-muted relative overflow-hidden">
-            <img 
-              src={libraryMatch.imageUrl} 
-              alt={displayName}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
-              }}
-            />
-            {libraryMatch?.videoUrl && (
-              <div className="absolute top-2 right-2 p-1.5 bg-black/60 rounded-full">
-                <PlayCircle className="w-4 h-4 text-white" />
-              </div>
-            )}
-          </div>
-        )}
-        {!libraryMatch?.imageUrl && (
-          <div className="h-24 bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-            <Dumbbell className="w-10 h-10 text-primary/40" />
-          </div>
-        )}
+        <div className="h-32 bg-muted relative overflow-hidden">
+          <img 
+            src={imageUrl} 
+            alt={displayName}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
+          />
+          {libraryMatch?.videoUrl && (
+            <div className="absolute top-2 right-2 p-1.5 bg-black/60 rounded-full">
+              <PlayCircle className="w-4 h-4 text-white" />
+            </div>
+          )}
+        </div>
         <CardHeader className="pb-2">
           <CardTitle className="text-lg">{displayName}</CardTitle>
           {exercise.focus && <div className="text-sm text-primary font-medium">{exercise.focus}</div>}
@@ -105,15 +139,13 @@ export default function ExerciseCard({ exercise, libraryMatch, index }: Exercise
             <DialogTitle>{displayName}</DialogTitle>
           </DialogHeader>
           
-          {libraryMatch?.imageUrl && (
-            <div className="h-48 bg-muted rounded-lg overflow-hidden">
-              <img 
-                src={libraryMatch.imageUrl} 
-                alt={displayName}
-                className="w-full h-full object-cover"
-              />
-            </div>
-          )}
+          <div className="h-48 bg-muted rounded-lg overflow-hidden">
+            <img 
+              src={imageUrl} 
+              alt={displayName}
+              className="w-full h-full object-cover"
+            />
+          </div>
 
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-4 text-center">
