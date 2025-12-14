@@ -841,13 +841,16 @@ Create 1 simple meal.`;
 
     const data = await response.json();
     
-    // Debug: Log the full response structure
-    console.log("Meal from ingredients API response:", JSON.stringify({
+    // Debug: Log the FULL response including content
+    console.log("=== MEAL FROM INGREDIENTS - FULL API RESPONSE ===");
+    console.log("Status:", {
       finish_reason: data.choices?.[0]?.finish_reason,
       refusal: data.choices?.[0]?.message?.refusal,
       content_length: data.choices?.[0]?.message?.content?.length,
       usage: data.usage
-    }));
+    });
+    console.log("RAW CONTENT:", data.choices?.[0]?.message?.content);
+    console.log("=== END RESPONSE ===");
     
     const choice = data.choices?.[0];
     
