@@ -69,8 +69,11 @@ export default function Dashboard() {
     const todaysPlan = fitnessPlanData?.[dayIndex] || fitnessPlanData?.[0];
     if (todaysPlan?.exercises) {
       const exerciseNames = todaysPlan.exercises.map((ex: any) => ex.name || ex.name_pt);
+      const warmupNames = (todaysPlan.warmup_exercises || []).map((ex: any) => ex.name || ex.name_pt);
+      const cooldownNames = (todaysPlan.cooldown_exercises || []).map((ex: any) => ex.name || ex.name_pt);
+      const allNames = [...warmupNames, ...exerciseNames, ...cooldownNames].filter(Boolean);
       try {
-        const matchResult = await matchExercises(exerciseNames);
+        const matchResult = await matchExercises(allNames);
         if (matchResult.success && day === latestDayRef.current) {
           setExerciseLibrary(matchResult.exercises);
         }
@@ -466,34 +469,100 @@ export default function Dashboard() {
                </Card>
              ) : (
                <>
-                 {todaysPlan.warmup_pt && (
-                   <Card className="bg-green-500/10 border-green-500/30" data-testid="card-warmup">
-                     <CardContent className="p-4">
-                       <h4 className="font-bold text-green-600 mb-2">{language === "pt" ? "Aquecimento" : "Warm-up"}</h4>
-                       <p className="text-sm text-muted-foreground">{todaysPlan.warmup_pt}</p>
-                     </CardContent>
-                   </Card>
+                 {(todaysPlan.warmup_exercises?.length > 0 || todaysPlan.warmup_pt) && (
+                   <div>
+                     <h4 className="font-bold text-green-600 mb-3 flex items-center gap-2">
+                       <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                       {language === "pt" ? "Aquecimento" : "Warm-up"}
+                     </h4>
+                     {todaysPlan.warmup_exercises?.length > 0 ? (
+                       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                         {todaysPlan.warmup_exercises.map((ex: any, i: number) => {
+                           const exerciseKey = ex.name || ex.name_pt;
+                           return (
+                             <ExerciseCard 
+                               key={`warmup-${i}`} 
+                               exercise={{ 
+                                 name: ex.name,
+                                 name_pt: ex.name_pt, 
+                                 sets: 1, 
+                                 reps_or_time: language === "pt" ? `${ex.duration_seconds} segundos` : `${ex.duration_seconds} seconds`,
+                                 reps_or_time_pt: `${ex.duration_seconds} segundos`,
+                                 focus: ex.description_pt || (language === "pt" ? "Aquecimento" : "Warm-up"),
+                                 equipment_used: language === "pt" ? "Peso corporal" : "Bodyweight",
+                                 equipment_used_pt: "Peso corporal"
+                               }} 
+                               libraryMatch={exerciseLibrary[exerciseKey]} 
+                               index={i} 
+                             />
+                           );
+                         })}
+                       </div>
+                     ) : (
+                       <Card className="bg-green-500/10 border-green-500/30" data-testid="card-warmup">
+                         <CardContent className="p-4">
+                           <p className="text-sm text-muted-foreground">{todaysPlan.warmup_pt}</p>
+                         </CardContent>
+                       </Card>
+                     )}
+                   </div>
                  )}
-                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {(todaysPlan.exercises || []).map((ex: any, i: number) => {
-                      const exerciseKey = ex.name || ex.name_pt;
-                      return (
-                        <ExerciseCard 
-                          key={i} 
-                          exercise={{ ...ex, focus: todaysPlan.focus_pt }} 
-                          libraryMatch={exerciseLibrary[exerciseKey]} 
-                          index={i} 
-                        />
-                      );
-                    })}
+                 <div>
+                   <h4 className="font-bold text-primary mb-3 flex items-center gap-2">
+                     <span className="w-2 h-2 bg-primary rounded-full"></span>
+                     {language === "pt" ? "Exercícios Principais" : "Main Exercises"}
+                   </h4>
+                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      {(todaysPlan.exercises || []).map((ex: any, i: number) => {
+                        const exerciseKey = ex.name || ex.name_pt;
+                        return (
+                          <ExerciseCard 
+                            key={i} 
+                            exercise={{ ...ex, focus: todaysPlan.focus_pt }} 
+                            libraryMatch={exerciseLibrary[exerciseKey]} 
+                            index={i} 
+                          />
+                        );
+                      })}
+                   </div>
                  </div>
-                 {todaysPlan.cooldown_pt && (
-                   <Card className="bg-blue-500/10 border-blue-500/30" data-testid="card-cooldown">
-                     <CardContent className="p-4">
-                       <h4 className="font-bold text-blue-600 mb-2">{language === "pt" ? "Arrefecimento" : "Cool-down"}</h4>
-                       <p className="text-sm text-muted-foreground">{todaysPlan.cooldown_pt}</p>
-                     </CardContent>
-                   </Card>
+                 {(todaysPlan.cooldown_exercises?.length > 0 || todaysPlan.cooldown_pt) && (
+                   <div>
+                     <h4 className="font-bold text-blue-600 mb-3 flex items-center gap-2">
+                       <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                       {language === "pt" ? "Arrefecimento" : "Cool-down"}
+                     </h4>
+                     {todaysPlan.cooldown_exercises?.length > 0 ? (
+                       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                         {todaysPlan.cooldown_exercises.map((ex: any, i: number) => {
+                           const exerciseKey = ex.name || ex.name_pt;
+                           return (
+                             <ExerciseCard 
+                               key={`cooldown-${i}`} 
+                               exercise={{ 
+                                 name: ex.name,
+                                 name_pt: ex.name_pt, 
+                                 sets: 1, 
+                                 reps_or_time: language === "pt" ? `${ex.duration_seconds} segundos` : `${ex.duration_seconds} seconds`,
+                                 reps_or_time_pt: `${ex.duration_seconds} segundos`,
+                                 focus: ex.description_pt || (language === "pt" ? "Arrefecimento" : "Cool-down"),
+                                 equipment_used: language === "pt" ? "Peso corporal" : "Bodyweight",
+                                 equipment_used_pt: "Peso corporal"
+                               }} 
+                               libraryMatch={exerciseLibrary[exerciseKey]} 
+                               index={i} 
+                             />
+                           );
+                         })}
+                       </div>
+                     ) : (
+                       <Card className="bg-blue-500/10 border-blue-500/30" data-testid="card-cooldown">
+                         <CardContent className="p-4">
+                           <p className="text-sm text-muted-foreground">{todaysPlan.cooldown_pt}</p>
+                         </CardContent>
+                       </Card>
+                     )}
+                   </div>
                  )}
                </>
              )}

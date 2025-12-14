@@ -33,6 +33,7 @@ const AVAILABLE_EQUIPMENT = [
 export { AVAILABLE_EQUIPMENT };
 
 interface WarmupCooldownExercise {
+  name: string;
   name_pt: string;
   duration_seconds: number;
   description_pt: string;
@@ -343,19 +344,19 @@ ${exerciseLibraryReference}
       "focus_pt": "Cardio/Força/Full Body/Descanso Ativo",
       "warmup_pt": "5 minutos de aquecimento dinâmico",
       "warmup_exercises": [
-        {"name_pt": "Marcha no Lugar", "duration_seconds": 60, "description_pt": "Marchar no lugar com joelhos altos"},
-        {"name_pt": "Rotações de Braços", "duration_seconds": 45, "description_pt": "Rotações circulares com os braços"},
-        {"name_pt": "Agachamentos Leves", "duration_seconds": 60, "description_pt": "Agachamentos sem peso, movimento controlado"},
-        {"name_pt": "Jumping Jacks", "duration_seconds": 45, "description_pt": "Polichinelos para aumentar ritmo cardíaco"},
-        {"name_pt": "Rotações de Anca", "duration_seconds": 45, "description_pt": "Rotações circulares das ancas"}
+        {"name": "High Knees", "name_pt": "Joelhos Altos", "duration_seconds": 60, "description_pt": "Correr no lugar elevando os joelhos ao peito"},
+        {"name": "Arm Circles", "name_pt": "Rotações de Braços", "duration_seconds": 45, "description_pt": "Rotações circulares com os braços estendidos"},
+        {"name": "Bodyweight Squat", "name_pt": "Agachamento Livre", "duration_seconds": 60, "description_pt": "Agachamentos sem peso, movimento controlado"},
+        {"name": "Jumping Jacks", "name_pt": "Polichinelo", "duration_seconds": 45, "description_pt": "Polichinelos para aumentar ritmo cardíaco"},
+        {"name": "Hip Circles", "name_pt": "Rotações de Anca", "duration_seconds": 45, "description_pt": "Rotações circulares das ancas"}
       ],
       "cooldown_pt": "5 minutos de alongamento estático",
       "cooldown_exercises": [
-        {"name_pt": "Alongamento de Quadríceps", "duration_seconds": 45, "description_pt": "Puxar pé para trás, alongando coxa"},
-        {"name_pt": "Alongamento de Isquiotibiais", "duration_seconds": 45, "description_pt": "Inclinar tronco para tocar nos pés"},
-        {"name_pt": "Alongamento de Peito", "duration_seconds": 45, "description_pt": "Braços para trás, abrir o peito"},
-        {"name_pt": "Alongamento de Costas", "duration_seconds": 45, "description_pt": "Abraçar os joelhos ao peito"},
-        {"name_pt": "Respiração Profunda", "duration_seconds": 60, "description_pt": "Inspirar e expirar profundamente"}
+        {"name": "Quad Stretch", "name_pt": "Alongamento de Quadríceps", "duration_seconds": 45, "description_pt": "Puxar pé para trás, alongando coxa"},
+        {"name": "Hamstring Stretch", "name_pt": "Alongamento de Isquiotibiais", "duration_seconds": 45, "description_pt": "Inclinar tronco para tocar nos pés"},
+        {"name": "Chest Stretch", "name_pt": "Alongamento de Peito", "duration_seconds": 45, "description_pt": "Braços para trás, abrir o peito"},
+        {"name": "Back Stretch", "name_pt": "Alongamento de Costas", "duration_seconds": 45, "description_pt": "Abraçar os joelhos ao peito"},
+        {"name": "Deep Breathing", "name_pt": "Respiração Profunda", "duration_seconds": 60, "description_pt": "Inspirar e expirar profundamente"}
       ],
       "exercises": [
         {
@@ -426,11 +427,12 @@ IMPORTANTE: O total calórico de cada dia de nutrição DEVE estar dentro de ±5
                 items: {
                   type: "object",
                   properties: {
+                    name: { type: "string" },
                     name_pt: { type: "string" },
                     duration_seconds: { type: "integer" },
                     description_pt: { type: "string" }
                   },
-                  required: ["name_pt", "duration_seconds", "description_pt"],
+                  required: ["name", "name_pt", "duration_seconds", "description_pt"],
                   additionalProperties: false
                 }
               },
@@ -440,11 +442,12 @@ IMPORTANTE: O total calórico de cada dia de nutrição DEVE estar dentro de ±5
                 items: {
                   type: "object",
                   properties: {
+                    name: { type: "string" },
                     name_pt: { type: "string" },
                     duration_seconds: { type: "integer" },
                     description_pt: { type: "string" }
                   },
-                  required: ["name_pt", "duration_seconds", "description_pt"],
+                  required: ["name", "name_pt", "duration_seconds", "description_pt"],
                   additionalProperties: false
                 }
               },

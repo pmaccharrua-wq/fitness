@@ -15,6 +15,7 @@ interface Exercise {
 }
 
 interface WarmupCooldownExercise {
+  name: string;
   name_pt: string;
   duration_seconds: number;
   description_pt: string;
@@ -73,7 +74,7 @@ export default function WorkoutTimer({
   
   const convertWarmupCooldownToExercises = (items: WarmupCooldownExercise[], isWarmup: boolean): Exercise[] => {
     return items.map((item) => ({
-      name: isWarmup ? "Warm-up" : "Cool-down",
+      name: item.name || (isWarmup ? "Warm-up" : "Cool-down"),
       name_pt: item.name_pt,
       sets: 1,
       reps_or_time: `${item.duration_seconds} segundos`,
