@@ -36,6 +36,7 @@ export default function Plan() {
   const [allPlans, setAllPlans] = useState<any[]>([]);
   const [nutritionDay, setNutritionDay] = useState(1);
   const [customMeals, setCustomMeals] = useState<CustomMealRecord[]>([]);
+  const [durationDays, setDurationDays] = useState(30);
   const latestDayRef = useRef<number>(1);
   const { t, language } = useTranslation();
 
@@ -85,6 +86,7 @@ export default function Plan() {
         setCurrentDay(planResponse.currentDay);
         setPlanId(planResponse.planId);
         setProgress(planResponse.progress || []);
+        setDurationDays(planResponse.durationDays || 30);
         
         // Fetch custom meals for this plan
         const customMealsResponse = await getCustomMeals(userId, planResponse.planId);
@@ -183,9 +185,7 @@ export default function Plan() {
         });
         setProgress([...progress, { day: currentDay }]);
         toast.success(language === "pt" ? "Treino concluído! Excelente trabalho!" : "Workout complete! Great job!");
-        const fitnessPlanData = planData?.fitness_plan_15_days || planData?.fitness_plan_7_days;
-        const planLength = fitnessPlanData?.length || 15;
-        if (currentDay < planLength) {
+        if (currentDay < durationDays) {
           setCurrentDay(currentDay + 1);
         }
       } catch (error) {
@@ -208,7 +208,8 @@ export default function Plan() {
   }
 
   const fitnessPlan = planData?.fitness_plan_15_days || planData?.fitness_plan_7_days;
-  const totalDays = fitnessPlan?.length || 15;
+  const planLength = fitnessPlan?.length || 15;
+  const totalDays = durationDays;
 
   if (!planData || !fitnessPlan) {
     return (
@@ -221,7 +222,7 @@ export default function Plan() {
     );
   }
 
-  const dayIndex = ((currentDay - 1) % totalDays);
+  const dayIndex = ((currentDay - 1) % planLength);
   const todaysPlan = fitnessPlan[dayIndex] || fitnessPlan[0];
   const nutritionPlan = planData.nutrition_plan_7_days || planData.nutrition_plan_3_days || [];
   const hydrationGuidelines = planData.hydration_guidelines_pt;
@@ -545,16 +546,29 @@ export default function Plan() {
 
           <TabsContent value="schedule">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-              {fitnessPlan.map((day: any) => {
+              {Array.from({ length: totalDays }, (_, i) => i + 1).map((dayNum) => {
+                const dayIdx = (dayNum - 1) % planLength;
+                const dayPlan = fitnessPlan[dayIdx];
                 const dayData = {
-                  day: day.day,
-                  workout_name: day.workout_name_pt,
-                  estimated_calories_burnt: day.estimated_calories_burnt,
-                  exercises: day.exercises,
+                  day: dayNum,
+                  workout_name: dayPlan?.workout_name_pt || "",
+                  estimated_calories_burnt: dayPlan?.estimated_calories_burnt || 0,
+                  exercises: dayPlan?.exercises || [],
                   meals: nutritionPlan[0]?.meals || [],
                 };
+                const isCompleted = progress.some(p => p.day === dayNum);
                 return (
-                  <DayCard key={day.day} day={dayData} isActive={day.day === currentDay} />
+                  <div 
+                    key={dayNum} 
+                    className="cursor-pointer" 
+                    onClick={() => setCurrentDay(dayNum)}
+                  >
+                    <DayCard 
+                      day={dayData} 
+                      isActive={dayNum === currentDay}
+                      isCompleted={isCompleted}
+                    />
+                  </div>
                 );
               })}
             </div>
