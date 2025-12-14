@@ -292,6 +292,13 @@ ${exerciseLibraryReference}
 7. Se houver último feedback (${lastFeedback}), ajusta a intensidade conforme necessário.
 8. **PRIORIZA** equipamentos que o utilizador possui: ${userEquipment}.
 9. **EXIGÊNCIA DE DIVERSIDADE:** O plano de 15 dias DEVE utilizar a Máquina Multifuncional (Home Gym) em pelo menos 4 sessões e a Bola de Ginástica para Core ou Estabilidade em pelo menos 5 sessões.
+10. **EQUIPMENT_USED OBRIGATÓRIO:** Para cada exercício, o campo "equipment_used" DEVE especificar o equipamento real da lista disponível:
+    - Exercícios com máquinas/cabos: usa "Adidas Home Gym Multi-ginásio"
+    - Exercícios de pernas com máquina: usa "Titanium Strength SUPREME Leg Press / Hack Squat" ou "Adidas Home Gym Multi-ginásio"
+    - Exercícios com halteres: usa "Halteres de 2kg", "Haltere de 4kg" ou "Haltere de 9kg"
+    - Exercícios com kettlebell: usa "Kettlebell de 6kg"
+    - Exercícios sem equipamento: usa "Peso corporal"
+    - NUNCA deixes "equipment_used" vazio ou com "Sem equipamento" se o exercício requer equipamento.
 
 **B. PLANO DE NUTRIÇÃO (7 Dias Completos com Receitas):**
 1. Cria 7 dias de plano de refeições com 6 refeições/dia:
