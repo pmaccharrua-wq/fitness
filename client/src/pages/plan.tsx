@@ -580,6 +580,8 @@ export default function Plan() {
         exercises={todaysPlan.exercises}
         exerciseLibrary={exerciseLibrary}
         userDifficulty={planData?.user_difficulty || "medium"}
+        warmup={todaysPlan.warmup_pt}
+        cooldown={todaysPlan.cooldown_pt}
         open={showTimer}
         onClose={() => setShowTimer(false)}
         onComplete={handleWorkoutComplete}

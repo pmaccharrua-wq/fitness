@@ -26,6 +26,8 @@ interface WorkoutTimerProps {
   exercises: Exercise[];
   exerciseLibrary?: Record<string, LibraryMatch>;
   userDifficulty?: string;
+  warmup?: string;
+  cooldown?: string;
   open: boolean;
   onClose: () => void;
   onComplete: () => void;
@@ -37,6 +39,8 @@ export default function WorkoutTimer({
   exercises, 
   exerciseLibrary = {}, 
   userDifficulty = "medium",
+  warmup,
+  cooldown,
   open, 
   onClose, 
   onComplete 
@@ -59,11 +63,31 @@ export default function WorkoutTimer({
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
-  const currentExercise = exercises?.[currentExerciseIndex];
-  const totalExercises = exercises?.length || 0;
-  const progressPercent = ((currentExerciseIndex + 1) / totalExercises) * 100;
-  
   const txt = (pt: string, en: string) => language === "pt" ? pt : en;
+  
+  const allExercises: Exercise[] = [
+    ...(warmup ? [{
+      name: "Warm-up",
+      name_pt: "Aquecimento",
+      sets: 1,
+      reps_or_time: "5 minutos",
+      focus: warmup,
+      equipment_used: txt("Nenhum", "None"),
+    }] : []),
+    ...exercises,
+    ...(cooldown ? [{
+      name: "Cool-down",
+      name_pt: "Arrefecimento",
+      sets: 1,
+      reps_or_time: "5 minutos",
+      focus: cooldown,
+      equipment_used: txt("Nenhum", "None"),
+    }] : []),
+  ];
+  
+  const currentExercise = allExercises?.[currentExerciseIndex];
+  const totalExercises = allExercises?.length || 0;
+  const progressPercent = ((currentExerciseIndex + 1) / totalExercises) * 100;
   
   const exerciseName = currentExercise?.name || currentExercise?.name_pt || "";
   const exerciseNamePt = currentExercise?.name_pt || currentExercise?.name || "";
