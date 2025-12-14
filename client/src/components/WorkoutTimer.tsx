@@ -30,7 +30,7 @@ interface WorkoutTimerProps {
   onComplete: () => void;
 }
 
-type Phase = "preview" | "exercise" | "countdown" | "resting";
+type Phase = "preview" | "prep_countdown" | "exercise" | "countdown" | "resting";
 
 export default function WorkoutTimer({ 
   exercises, 
@@ -44,15 +44,19 @@ export default function WorkoutTimer({
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [currentSet, setCurrentSet] = useState(1);
   const [seconds, setSeconds] = useState(0);
+  const [targetSeconds, setTargetSeconds] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [phase, setPhase] = useState<Phase>("preview");
   const [restSeconds, setRestSeconds] = useState(0);
   const [countdownValue, setCountdownValue] = useState(0);
+  const [prepCountdown, setPrepCountdown] = useState(3);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [halfwayAnnounced, setHalfwayAnnounced] = useState(false);
   
   const speechSynthRef = useRef<SpeechSynthesisUtterance | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   const currentExercise = exercises?.[currentExerciseIndex];
   const totalExercises = exercises?.length || 0;
@@ -82,6 +86,20 @@ export default function WorkoutTimer({
     return null;
   };
 
+  const parseTime = (repsOrTime: string): number | null => {
+    const lower = repsOrTime.toLowerCase();
+    const match = repsOrTime.match(/(\d+)/);
+    if (!match) return null;
+    const value = parseInt(match[1], 10);
+    if (lower.includes("min")) {
+      return value * 60;
+    }
+    if (lower.includes("seg") || lower.includes("sec") || lower.includes("second")) {
+      return value;
+    }
+    return null;
+  };
+
   const speak = useCallback((text: string) => {
     if (!voiceEnabled || typeof window === "undefined" || !window.speechSynthesis) return;
     
@@ -94,13 +112,54 @@ export default function WorkoutTimer({
     window.speechSynthesis.speak(utterance);
   }, [voiceEnabled, language]);
 
-  const startCountdown = useCallback(() => {
-    const reps = parseReps(currentExercise?.reps_or_time || "");
-    if (!reps) {
-      setPhase("exercise");
-      setIsRunning(true);
-      return;
+  const getNextExerciseName = useCallback(() => {
+    if (currentSet < currentExercise?.sets) {
+      return `${currentExercise.name_pt || currentExercise.name} - ${txt("Série", "Set")} ${currentSet + 1}`;
+    } else if (currentExerciseIndex < totalExercises - 1) {
+      const next = exercises[currentExerciseIndex + 1];
+      return next?.name_pt || next?.name || "";
     }
+    return txt("Treino completo!", "Workout complete!");
+  }, [currentSet, currentExercise, currentExerciseIndex, totalExercises, exercises, txt]);
+
+  const advanceToNextSet = useCallback(() => {
+    setIsRunning(false);
+    setHalfwayAnnounced(false);
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+    }
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+    }
+    
+    if (currentSet < currentExercise.sets) {
+      const nextName = getNextExerciseName();
+      setCurrentSet((s) => s + 1);
+      setSeconds(0);
+      setPhase("resting");
+      setRestSeconds(60);
+      speak(txt(`Descanso. 60 segundos. Próximo: ${nextName}`, `Rest. 60 seconds. Next: ${nextName}`));
+    } else {
+      if (currentExerciseIndex < totalExercises - 1) {
+        const nextExercise = exercises[currentExerciseIndex + 1];
+        const nextName = nextExercise?.name_pt || nextExercise?.name || "";
+        setCurrentExerciseIndex((i) => i + 1);
+        setCurrentSet(1);
+        setSeconds(0);
+        setPhase("resting");
+        setRestSeconds(90);
+        setImageLoaded(false);
+        speak(txt(`Próximo exercício: ${nextName}. Descanso de 90 segundos.`, `Next exercise: ${nextName}. 90 seconds rest.`));
+      } else {
+        speak(txt("Treino concluído! Excelente trabalho!", "Workout complete! Great job!"));
+        onComplete();
+      }
+    }
+  }, [currentSet, currentExercise, currentExerciseIndex, totalExercises, exercises, onComplete, speak, txt, getNextExerciseName]);
+
+  const startRepCountdown = useCallback(() => {
+    const reps = parseReps(currentExercise?.reps_or_time || "");
+    if (!reps) return;
     
     setCountdownValue(reps);
     setPhase("countdown");
@@ -124,18 +183,63 @@ export default function WorkoutTimer({
           }
           speak(txt("Concluído!", "Done!"));
           setTimeout(() => {
-            setPhase("exercise");
-            setIsRunning(true);
-          }, 1000);
+            advanceToNextSet();
+          }, 1500);
         }
       }, speed);
     }, 1000);
-  }, [currentExercise, speak, txt, userDifficulty]);
+  }, [currentExercise, speak, txt, userDifficulty, advanceToNextSet]);
+
+  const startTimeBasedExercise = useCallback(() => {
+    const targetTime = parseTime(currentExercise?.reps_or_time || "");
+    if (!targetTime) return;
+    
+    setTargetSeconds(targetTime);
+    setSeconds(0);
+    setHalfwayAnnounced(false);
+    setPhase("exercise");
+    setIsRunning(true);
+    
+    speak(txt("Começar!", "Start!"));
+  }, [currentExercise, speak, txt]);
+
+  const startPrepCountdown = useCallback(() => {
+    setPrepCountdown(3);
+    setPhase("prep_countdown");
+    
+    speak(txt("Prepara-te!", "Get ready!"));
+    
+    let count = 3;
+    countdownIntervalRef.current = setInterval(() => {
+      count -= 1;
+      setPrepCountdown(count);
+      
+      if (count > 0) {
+        speak(String(count));
+      } else {
+        if (countdownIntervalRef.current) {
+          clearInterval(countdownIntervalRef.current);
+        }
+        
+        const reps = parseReps(currentExercise?.reps_or_time || "");
+        const targetTime = parseTime(currentExercise?.reps_or_time || "");
+        
+        if (reps) {
+          startRepCountdown();
+        } else if (targetTime) {
+          startTimeBasedExercise();
+        }
+      }
+    }, 1000);
+  }, [currentExercise, speak, txt, startRepCountdown, startTimeBasedExercise]);
 
   useEffect(() => {
     return () => {
       if (countdownIntervalRef.current) {
         clearInterval(countdownIntervalRef.current);
+      }
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
       }
       if (typeof window !== "undefined" && window.speechSynthesis) {
         window.speechSynthesis.cancel();
@@ -148,25 +252,75 @@ export default function WorkoutTimer({
       setCurrentExerciseIndex(0);
       setCurrentSet(1);
       setSeconds(0);
+      setTargetSeconds(0);
       setIsRunning(false);
       setPhase("preview");
       setRestSeconds(0);
       setImageLoaded(false);
+      setHalfwayAnnounced(false);
       if (countdownIntervalRef.current) {
         clearInterval(countdownIntervalRef.current);
+      }
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
       }
     }
   }, [open]);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isRunning && phase === "exercise") {
-      interval = setInterval(() => {
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+    }
+    
+    if (isRunning && phase === "exercise" && targetSeconds > 0) {
+      timerIntervalRef.current = setInterval(() => {
+        setSeconds((s) => {
+          const newSeconds = s + 1;
+          const remaining = targetSeconds - newSeconds;
+          const halfway = Math.floor(targetSeconds / 2);
+          
+          if (newSeconds === halfway && !halfwayAnnounced) {
+            setHalfwayAnnounced(true);
+            speak(txt("Metade do tempo!", "Halfway there!"));
+          }
+          
+          if (remaining === 5) {
+            speak("5");
+          } else if (remaining === 4) {
+            speak("4");
+          } else if (remaining === 3) {
+            speak("3");
+          } else if (remaining === 2) {
+            speak("2");
+          } else if (remaining === 1) {
+            speak("1");
+          } else if (remaining <= 0) {
+            speak(txt("Concluído!", "Done!"));
+            setIsRunning(false);
+            if (timerIntervalRef.current) {
+              clearInterval(timerIntervalRef.current);
+            }
+            setTimeout(() => {
+              advanceToNextSet();
+            }, 1500);
+            return targetSeconds;
+          }
+          
+          return newSeconds;
+        });
+      }, 1000);
+    } else if (isRunning && phase === "exercise" && targetSeconds === 0) {
+      timerIntervalRef.current = setInterval(() => {
         setSeconds((s) => s + 1);
       }, 1000);
     }
-    return () => clearInterval(interval);
-  }, [isRunning, phase]);
+    
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+      }
+    };
+  }, [isRunning, phase, targetSeconds, halfwayAnnounced, speak, txt, advanceToNextSet]);
 
   useEffect(() => {
     let restInterval: NodeJS.Timeout;
@@ -178,15 +332,15 @@ export default function WorkoutTimer({
             setImageLoaded(false);
             return 0;
           }
-          if (s === 4) speak(txt("3", "3"));
-          if (s === 3) speak(txt("2", "2"));
-          if (s === 2) speak(txt("1", "1"));
+          if (s === 4) speak("3");
+          if (s === 3) speak("2");
+          if (s === 2) speak("1");
           return s - 1;
         });
       }, 1000);
     }
     return () => clearInterval(restInterval);
-  }, [phase, restSeconds, speak, txt]);
+  }, [phase, restSeconds, speak]);
 
   const formatTime = (totalSeconds: number) => {
     const mins = Math.floor(totalSeconds / 60);
@@ -196,9 +350,13 @@ export default function WorkoutTimer({
 
   const handleStartSet = () => {
     setSeconds(0);
+    setHalfwayAnnounced(false);
+    
     const reps = parseReps(currentExercise?.reps_or_time || "");
-    if (reps && voiceEnabled) {
-      startCountdown();
+    const targetTime = parseTime(currentExercise?.reps_or_time || "");
+    
+    if (reps || targetTime) {
+      startPrepCountdown();
     } else {
       setPhase("exercise");
       setIsRunning(true);
@@ -206,43 +364,24 @@ export default function WorkoutTimer({
   };
 
   const handleNextSet = useCallback(() => {
-    setIsRunning(false);
-    if (countdownIntervalRef.current) {
-      clearInterval(countdownIntervalRef.current);
-    }
-    
-    if (currentSet < currentExercise.sets) {
-      setCurrentSet((s) => s + 1);
-      setSeconds(0);
-      setPhase("resting");
-      setRestSeconds(60);
-      speak(txt("Descanso. 60 segundos.", "Rest. 60 seconds."));
-    } else {
-      if (currentExerciseIndex < totalExercises - 1) {
-        setCurrentExerciseIndex((i) => i + 1);
-        setCurrentSet(1);
-        setSeconds(0);
-        setPhase("resting");
-        setRestSeconds(90);
-        setImageLoaded(false);
-        speak(txt("Próximo exercício em 90 segundos.", "Next exercise in 90 seconds."));
-      } else {
-        speak(txt("Treino concluído! Excelente trabalho!", "Workout complete! Great job!"));
-        onComplete();
-      }
-    }
-  }, [currentSet, currentExercise, currentExerciseIndex, totalExercises, onComplete, speak, txt]);
+    advanceToNextSet();
+  }, [advanceToNextSet]);
 
   const handleSkipExercise = useCallback(() => {
     setIsRunning(false);
+    setHalfwayAnnounced(false);
     if (countdownIntervalRef.current) {
       clearInterval(countdownIntervalRef.current);
+    }
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
     }
     
     if (currentExerciseIndex < totalExercises - 1) {
       setCurrentExerciseIndex((i) => i + 1);
       setCurrentSet(1);
       setSeconds(0);
+      setTargetSeconds(0);
       setPhase("preview");
       setImageLoaded(false);
     } else {
@@ -254,12 +393,16 @@ export default function WorkoutTimer({
     if (countdownIntervalRef.current) {
       clearInterval(countdownIntervalRef.current);
     }
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+    }
     if (typeof window !== "undefined" && window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
     setCurrentExerciseIndex(0);
     setCurrentSet(1);
     setSeconds(0);
+    setTargetSeconds(0);
     setIsRunning(false);
     setPhase("preview");
     onClose();
@@ -276,7 +419,9 @@ export default function WorkoutTimer({
   if (!currentExercise) return null;
 
   const reps = parseReps(currentExercise.reps_or_time);
+  const targetTime = parseTime(currentExercise.reps_or_time);
   const isRepBased = reps !== null;
+  const isTimeBased = targetTime !== null;
   const videoEmbedUrl = libraryData.videoUrl ? getYouTubeEmbedUrl(libraryData.videoUrl) : null;
 
   return (
@@ -369,7 +514,7 @@ export default function WorkoutTimer({
                   data-testid="button-start-set"
                 >
                   <Play className="w-6 h-6 mr-2" />
-                  {isRepBased && voiceEnabled 
+                  {(isRepBased || isTimeBased) && voiceEnabled 
                     ? txt("Iniciar com Contagem por Voz", "Start with Voice Countdown")
                     : txt("Iniciar Série", "Start Set")
                   }
@@ -382,6 +527,20 @@ export default function WorkoutTimer({
                   <SkipForward className="w-4 h-4 mr-2" />
                   {txt("Saltar Exercício", "Skip Exercise")}
                 </Button>
+              </div>
+            </div>
+          )}
+
+          {phase === "prep_countdown" && (
+            <div className="text-center space-y-6 py-8">
+              <div className="text-lg font-medium text-orange-500">
+                {txt("Prepara-te!", "Get Ready!")}
+              </div>
+              <div className="text-9xl font-mono font-bold text-orange-500 animate-pulse" data-testid="text-prep-countdown">
+                {prepCountdown}
+              </div>
+              <div className="text-muted-foreground">
+                {currentExercise.name_pt || currentExercise.name}
               </div>
             </div>
           )}
@@ -403,12 +562,11 @@ export default function WorkoutTimer({
                   if (countdownIntervalRef.current) {
                     clearInterval(countdownIntervalRef.current);
                   }
-                  setPhase("exercise");
-                  setIsRunning(true);
+                  advanceToNextSet();
                 }}
                 data-testid="button-skip-countdown"
               >
-                {txt("Saltar Contagem", "Skip Countdown")}
+                {txt("Saltar", "Skip")}
               </Button>
             </div>
           )}
@@ -426,9 +584,21 @@ export default function WorkoutTimer({
               </div>
 
               <div className="text-center">
-                <div className="text-7xl font-mono font-bold" data-testid="text-timer">
-                  {formatTime(seconds)}
-                </div>
+                {isTimeBased && targetSeconds > 0 ? (
+                  <div className="space-y-2">
+                    <div className="text-7xl font-mono font-bold" data-testid="text-timer">
+                      {formatTime(Math.max(0, targetSeconds - seconds))}
+                    </div>
+                    <Progress value={(seconds / targetSeconds) * 100} className="h-3" />
+                    <div className="text-sm text-muted-foreground">
+                      {txt("Tempo restante", "Time remaining")}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-7xl font-mono font-bold" data-testid="text-timer">
+                    {formatTime(seconds)}
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-center gap-8">
@@ -510,13 +680,17 @@ export default function WorkoutTimer({
               <div className="text-7xl font-mono font-bold text-primary" data-testid="text-rest-timer">
                 {formatTime(restSeconds)}
               </div>
-              <p className="text-sm text-muted-foreground">
-                {txt("Próximo: ", "Next: ")}
-                {currentSet <= currentExercise.sets 
-                  ? `${currentExercise.name_pt || currentExercise.name} - ${txt("Série", "Set")} ${currentSet}`
-                  : exercises[currentExerciseIndex + 1]?.name_pt || exercises[currentExerciseIndex + 1]?.name || txt("Concluído!", "Complete!")
-                }
-              </p>
+              <div className="p-4 bg-primary/10 rounded-lg">
+                <p className="text-sm text-muted-foreground mb-1">
+                  {txt("Próximo:", "Next:")}
+                </p>
+                <p className="font-heading font-bold text-lg" data-testid="text-next-exercise">
+                  {currentSet <= currentExercise.sets 
+                    ? `${currentExercise.name_pt || currentExercise.name} - ${txt("Série", "Set")} ${currentSet}`
+                    : exercises[currentExerciseIndex + 1]?.name_pt || exercises[currentExerciseIndex + 1]?.name || txt("Concluído!", "Complete!")
+                  }
+                </p>
+              </div>
               <Button 
                 variant="outline" 
                 onClick={() => {
