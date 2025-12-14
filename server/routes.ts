@@ -12,6 +12,14 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  // Auto-seed exercise library at startup
+  try {
+    await storage.seedExerciseLibrary(exerciseData);
+    console.log(`[startup] Seeded ${exerciseData.length} exercises to database`);
+  } catch (error) {
+    console.error("[startup] Error seeding exercises:", error);
+  }
+
   // Create user profile and generate AI fitness plan
   app.post("/api/onboarding", async (req: Request, res: Response) => {
     try {

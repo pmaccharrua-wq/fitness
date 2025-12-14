@@ -231,6 +231,7 @@ export async function generateFitnessPlan(
 4. **Gestão de Recursos:** Podes APENAS recomendar exercícios e equipamentos explicitamente listados na lista 'EQUIPAMENTO DISPONÍVEL'.
 5. **Idioma:** TODAS as descrições, nomes de exercícios, receitas e instruções DEVEM ser em **Português (pt-PT)**.
 6. **Nutrição Científica:** As receitas e distribuição calórica devem respeitar a Equação de Mifflin-St Jeor e as diretrizes ISSN/DGA para macros.
+7. **REGRA DE VARIEDADE:** Você DEVE utilizar a vasta gama de equipamentos disponíveis. Evite a repetição excessiva de exercícios na mesma semana. Priorize a inclusão de exercícios de Core/Estabilidade (Bola de Ginástica) e Isolamento (Home Gym/Halteres) para apoiar os objetivos.
 
 **ADAPTAÇÃO BASEADA NA COMPOSIÇÃO CORPORAL:**
 - **Ectomorfo + Ganho de Massa:** Segue diretrizes de Bulking Limpo com treinos de força de alto volume, maiores períodos de descanso, e superávit calórico moderado.
@@ -288,6 +289,7 @@ ${exerciseLibraryReference}
 7. Ajusta a intensidade baseado na dificuldade desejada: ${workoutDifficulty}.
 8. Se houver último feedback (${lastFeedback}), ajusta a intensidade conforme necessário.
 9. **PRIORIZA** equipamentos que o utilizador possui: ${userEquipment}.
+10. **EXIGÊNCIA DE DIVERSIDADE:** O plano de 7 dias DEVE utilizar a Máquina Multifuncional (Home Gym) em pelo menos 2 sessões e a Bola de Ginástica para Core ou Estabilidade em pelo menos 3 sessões, para maximizar o uso do equipamento e variar o estímulo.
 
 **B. PLANO DE NUTRIÇÃO (3 Dias Completos):**
 1. Cria 3 dias de plano de refeições com 6 refeições/dia:
