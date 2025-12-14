@@ -731,7 +731,10 @@ Generate 3 different alternatives in JSON format.`;
   }
 }
 
-// Generate meal from user ingredients
+// Token limits for progressive retry - starts high, increases on failure
+const TOKEN_LEVELS = [8000, 12000, 16000, 24000, 32000];
+
+// Generate meal from user ingredients with progressive token retry
 export async function generateMealFromIngredients(
   targets: MealTargets,
   ingredients: string[],
@@ -812,73 +815,102 @@ Create 1 simple meal.`;
     }
   };
 
-  try {
-    const apiVersion = config.apiVersion || "2024-08-01-preview";
-    const url = `${config.endpoint}openai/deployments/${config.deployment}/chat/completions?api-version=${apiVersion}`;
+  const apiVersion = config.apiVersion || "2024-08-01-preview";
+  const url = `${config.endpoint}openai/deployments/${config.deployment}/chat/completions?api-version=${apiVersion}`;
+  
+  let lastError: Error | null = null;
+  
+  // Progressive retry with increasing tokens
+  for (let attempt = 0; attempt < TOKEN_LEVELS.length; attempt++) {
+    const maxTokens = TOKEN_LEVELS[attempt];
+    console.log(`=== MEAL GENERATION ATTEMPT ${attempt + 1}/${TOKEN_LEVELS.length} with ${maxTokens} tokens ===`);
     
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "api-key": config.apiKey,
-      },
-      body: JSON.stringify({
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        response_format: { 
-          type: "json_schema",
-          json_schema: jsonSchema
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "api-key": config.apiKey,
         },
-        temperature: 1,
-        max_completion_tokens: 4000,
-      }),
-    });
+        body: JSON.stringify({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          response_format: { 
+            type: "json_schema",
+            json_schema: jsonSchema
+          },
+          temperature: 1,
+          max_completion_tokens: maxTokens,
+        }),
+      });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Azure OpenAI API error: ${response.status} - ${errorText}`);
-    }
+      if (!response.ok) {
+        const errorText = await response.text();
+        // If it's a token limit error, try next level
+        if (errorText.includes("max_tokens") || errorText.includes("context_length")) {
+          console.log(`Token limit error at ${maxTokens}, trying higher...`);
+          lastError = new Error(`Token limit at ${maxTokens}: ${errorText}`);
+          continue;
+        }
+        throw new Error(`Azure OpenAI API error: ${response.status} - ${errorText}`);
+      }
 
-    const data = await response.json();
-    
-    // Debug: Log the FULL response including content
-    console.log("=== MEAL FROM INGREDIENTS - FULL API RESPONSE ===");
-    console.log("Status:", {
-      finish_reason: data.choices?.[0]?.finish_reason,
-      refusal: data.choices?.[0]?.message?.refusal,
-      content_length: data.choices?.[0]?.message?.content?.length,
-      usage: data.usage
-    });
-    console.log("RAW CONTENT:", data.choices?.[0]?.message?.content);
-    console.log("=== END RESPONSE ===");
-    
-    const choice = data.choices?.[0];
-    
-    // Check for content filter or refusal
-    if (choice?.finish_reason === "content_filter") {
-      throw new Error("Azure OpenAI content filter triggered - try different ingredients");
-    }
-    
-    if (choice?.finish_reason === "length") {
-      throw new Error("Response was truncated - meal too complex");
-    }
-    
-    if (choice?.message?.refusal) {
-      throw new Error(`Azure OpenAI refused: ${choice.message.refusal}`);
-    }
-    
-    const content = choice?.message?.content;
+      const data = await response.json();
+      
+      console.log("Response status:", {
+        finish_reason: data.choices?.[0]?.finish_reason,
+        content_length: data.choices?.[0]?.message?.content?.length,
+        usage: data.usage
+      });
+      
+      const choice = data.choices?.[0];
+      
+      // Check for content filter
+      if (choice?.finish_reason === "content_filter") {
+        throw new Error("Azure OpenAI content filter triggered - try different ingredients");
+      }
+      
+      // If truncated, try with more tokens
+      if (choice?.finish_reason === "length") {
+        console.log(`Response truncated at ${maxTokens} tokens, trying higher...`);
+        lastError = new Error(`Response truncated at ${maxTokens} tokens`);
+        continue;
+      }
+      
+      if (choice?.message?.refusal) {
+        throw new Error(`Azure OpenAI refused: ${choice.message.refusal}`);
+      }
+      
+      const content = choice?.message?.content;
 
-    if (!content) {
-      console.error("Full Azure response with no content:", JSON.stringify(data, null, 2));
-      throw new Error("No content in Azure OpenAI response - check server logs for details");
-    }
+      // If no content, try with more tokens
+      if (!content) {
+        console.log(`No content at ${maxTokens} tokens, trying higher...`);
+        lastError = new Error(`No content at ${maxTokens} tokens`);
+        continue;
+      }
 
-    return JSON.parse(content);
-  } catch (error) {
-    console.error("Error generating meal from ingredients:", error);
-    throw error;
+      // Success!
+      console.log(`=== SUCCESS at ${maxTokens} tokens ===`);
+      return JSON.parse(content);
+      
+    } catch (error) {
+      lastError = error as Error;
+      // Only retry on specific errors, not all
+      if ((error as Error).message?.includes("truncated") || 
+          (error as Error).message?.includes("token") ||
+          (error as Error).message?.includes("No content")) {
+        console.log(`Retrying due to: ${(error as Error).message}`);
+        continue;
+      }
+      // For other errors, throw immediately
+      throw error;
+    }
   }
+  
+  // All attempts failed
+  console.error("All token levels exhausted, last error:", lastError);
+  throw lastError || new Error("Failed to generate meal after all retry attempts");
 }
