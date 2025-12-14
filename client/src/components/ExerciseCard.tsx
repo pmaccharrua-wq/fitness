@@ -86,7 +86,7 @@ export default function ExerciseCard({ exercise, libraryMatch, index }: Exercise
   const repsOrTime = exercise.reps_or_time || exercise.reps_or_time_pt || "";
   const equipmentUsed = exercise.equipment_used || exercise.equipment_used_pt || "";
   
-  const imageUrl = libraryMatch?.imageUrl || getStockImageUrl(
+  const imageUrl = getStockImageUrl(
     displayName || exercise.name || exercise.name_pt || "",
     libraryMatch?.primaryMuscles
   );
