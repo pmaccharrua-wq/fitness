@@ -37,15 +37,18 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    if (planData?.fitness_plan_15_days) {
+    const fitnessPlanData = planData?.fitness_plan_15_days || planData?.fitness_plan_7_days;
+    if (fitnessPlanData) {
       latestDayRef.current = currentDay;
       loadExerciseMatches(currentDay);
     }
   }, [currentDay, planData]);
 
   async function loadExerciseMatches(day: number) {
-    const dayIndex = ((day - 1) % 15);
-    const todaysPlan = planData?.fitness_plan_15_days[dayIndex] || planData?.fitness_plan_15_days[0];
+    const fitnessPlanData = planData?.fitness_plan_15_days || planData?.fitness_plan_7_days;
+    const planLength = fitnessPlanData?.length || 15;
+    const dayIndex = ((day - 1) % planLength);
+    const todaysPlan = fitnessPlanData?.[dayIndex] || fitnessPlanData?.[0];
     if (todaysPlan?.exercises) {
       const exerciseNames = todaysPlan.exercises.map((ex: any) => ex.name || ex.name_pt);
       try {
@@ -92,7 +95,9 @@ export default function Dashboard() {
         });
         setProgress([...progress, { day: currentDay }]);
         toast.success(language === "pt" ? "Treino concluído! Excelente trabalho!" : "Workout complete! Great job!");
-        if (currentDay < 15) {
+        const fitnessPlanData = planData?.fitness_plan_15_days || planData?.fitness_plan_7_days;
+        const planLength = fitnessPlanData?.length || 15;
+        if (currentDay < planLength) {
           setCurrentDay(currentDay + 1);
         }
       } catch (error) {
@@ -114,7 +119,10 @@ export default function Dashboard() {
     );
   }
 
-  if (!planData || !planData.fitness_plan_15_days) {
+  const fitnessPlan = planData?.fitness_plan_15_days || planData?.fitness_plan_7_days;
+  const totalDays = fitnessPlan?.length || 15;
+
+  if (!planData || !fitnessPlan) {
     return (
       <Layout>
         <div className="text-center space-y-4 py-12">
@@ -125,9 +133,9 @@ export default function Dashboard() {
     );
   }
 
-  const dayIndex = ((currentDay - 1) % 15);
-  const todaysPlan = planData.fitness_plan_15_days[dayIndex] || planData.fitness_plan_15_days[0];
-  const nutritionPlan = planData.nutrition_plan_7_days || [];
+  const dayIndex = ((currentDay - 1) % totalDays);
+  const todaysPlan = fitnessPlan[dayIndex] || fitnessPlan[0];
+  const nutritionPlan = planData.nutrition_plan_7_days || planData.nutrition_plan_3_days || [];
   const hydrationGuidelines = planData.hydration_guidelines_pt;
 
   return (
@@ -137,7 +145,7 @@ export default function Dashboard() {
           <div>
             <h1 className="text-4xl font-heading font-bold uppercase" data-testid="text-todays-focus">{t("dashboard", "todaysFocus")}</h1>
             <p className="text-muted-foreground mt-2" data-testid="text-day-info">
-              {t("dashboard", "dayOf", { current: String(currentDay), total: "15" })} • {todaysPlan.workout_name_pt}
+              {t("dashboard", "dayOf", { current: String(currentDay), total: String(totalDays) })} • {todaysPlan.workout_name_pt}
             </p>
           </div>
           <Button 
@@ -179,7 +187,7 @@ export default function Dashboard() {
                 <Trophy className="w-6 h-6 text-green-500" />
               </div>
               <div>
-                <div className="text-2xl font-bold" data-testid="text-progress">{progress.length}/15</div>
+                <div className="text-2xl font-bold" data-testid="text-progress">{progress.length}/{totalDays}</div>
                 <div className="text-xs text-muted-foreground uppercase">{t("dashboard", "daysComplete")}</div>
               </div>
             </CardContent>
@@ -317,7 +325,7 @@ export default function Dashboard() {
 
           <TabsContent value="schedule">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-              {planData.fitness_plan_15_days.map((day: any) => {
+              {fitnessPlan.map((day: any) => {
                 const dayData = {
                   day: day.day,
                   workout_name: day.workout_name_pt,

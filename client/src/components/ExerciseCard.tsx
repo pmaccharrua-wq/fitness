@@ -6,12 +6,14 @@ import { PlayCircle, ExternalLink, Dumbbell } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
 
 interface ExerciseData {
-  name: string;
+  name?: string;
   name_pt?: string;
   focus?: string;
   sets: number;
-  reps_or_time: string;
-  equipment_used: string;
+  reps_or_time?: string;
+  reps_or_time_pt?: string;
+  equipment_used?: string;
+  equipment_used_pt?: string;
 }
 
 interface LibraryExercise {
@@ -41,10 +43,12 @@ export default function ExerciseCard({ exercise, libraryMatch, index }: Exercise
   const hasMedia = libraryMatch?.imageUrl || libraryMatch?.videoUrl;
   const displayName = libraryMatch 
     ? (language === "pt" ? libraryMatch.namePt : libraryMatch.name) 
-    : (language === "pt" && exercise.name_pt ? exercise.name_pt : exercise.name);
+    : (language === "pt" && exercise.name_pt ? exercise.name_pt : (exercise.name || exercise.name_pt));
   const instructions = libraryMatch 
     ? (language === "pt" ? libraryMatch.instructionsPt : libraryMatch.instructions) 
     : null;
+  const repsOrTime = exercise.reps_or_time || exercise.reps_or_time_pt || "";
+  const equipmentUsed = exercise.equipment_used || exercise.equipment_used_pt || "";
 
   return (
     <>
@@ -86,11 +90,11 @@ export default function ExerciseCard({ exercise, libraryMatch, index }: Exercise
           </div>
           <div className="flex justify-between text-sm mb-2">
             <span className="text-muted-foreground">{t("dashboard", "repsTime")}</span>
-            <span className="font-bold">{exercise.reps_or_time}</span>
+            <span className="font-bold">{repsOrTime}</span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">{t("dashboard", "equipment")}</span>
-            <span className="font-bold">{exercise.equipment_used}</span>
+            <span className="font-bold">{equipmentUsed}</span>
           </div>
         </CardContent>
       </Card>
@@ -118,11 +122,11 @@ export default function ExerciseCard({ exercise, libraryMatch, index }: Exercise
                 <div className="text-xs text-muted-foreground uppercase">{t("dashboard", "sets")}</div>
               </div>
               <div className="bg-muted p-3 rounded-lg">
-                <div className="text-lg font-bold">{exercise.reps_or_time}</div>
+                <div className="text-lg font-bold">{repsOrTime}</div>
                 <div className="text-xs text-muted-foreground uppercase">{t("dashboard", "repsTime")}</div>
               </div>
               <div className="bg-muted p-3 rounded-lg">
-                <div className="text-sm font-bold">{exercise.equipment_used}</div>
+                <div className="text-sm font-bold">{equipmentUsed}</div>
                 <div className="text-xs text-muted-foreground uppercase">{t("dashboard", "equipment")}</div>
               </div>
             </div>
