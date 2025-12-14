@@ -781,15 +781,125 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     videoUrl: "https://www.youtube.com/watch?v=b1xGHEr_6iI",
     instructions: "Pedal at steady pace, adjust resistance as needed for intensity",
     instructionsPt: "Pedale a ritmo constante, ajuste a resistência conforme necessário para intensidade"
+  },
+
+  // ADDITIONAL DUMBBELL EXERCISES (from user request)
+  {
+    id: "db_french_press",
+    name: "Seated Tricep Extension (French Press)",
+    namePt: "Extensão de Tríceps Sentado (French Press)",
+    primaryMuscles: ["triceps"],
+    secondaryMuscles: [],
+    equipment: "dumbbell",
+    difficulty: "intermediate",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/11/seated-dumbbell-tricep-extension.gif",
+    videoUrl: "https://www.youtube.com/watch?v=Q0A2WqgU1Gk",
+    instructions: "Sit on bench, hold dumbbell overhead, lower behind head, extend arms",
+    instructionsPt: "Sente no banco, segure o haltere acima da cabeça, baixe atrás da cabeça, estenda os braços"
+  },
+
+  // HOME GYM MACHINE EXERCISES (from user request)
+  {
+    id: "homegym_leg_extension",
+    name: "Leg Extension Machine",
+    namePt: "Extensão de Perna na Máquina",
+    primaryMuscles: ["quadriceps"],
+    secondaryMuscles: [],
+    equipment: "cable machine",
+    difficulty: "beginner",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/01/leg-extension.gif",
+    videoUrl: "https://www.youtube.com/watch?v=Yy0JjW0B-18",
+    instructions: "Sit in machine, extend legs fully, control the return",
+    instructionsPt: "Sente na máquina, estenda as pernas totalmente, controle o retorno"
+  },
+  {
+    id: "homegym_cable_crunch",
+    name: "Cable Crunch",
+    namePt: "Abdominal com Cabo (Cable Crunch)",
+    primaryMuscles: ["core"],
+    secondaryMuscles: [],
+    equipment: "cable machine",
+    difficulty: "intermediate",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/01/cable-crunch.gif",
+    videoUrl: "https://www.youtube.com/watch?v=u_Jk0_Y_q6E",
+    instructions: "Kneel facing cable, pull rope down while crunching, squeeze abs",
+    instructionsPt: "Ajoelhe de frente para o cabo, puxe a corda para baixo enquanto contrai, aperte os abdominais"
+  },
+  {
+    id: "homegym_leg_curl",
+    name: "Leg Curl Machine",
+    namePt: "Flexão de Perna na Máquina (Leg Curl)",
+    primaryMuscles: ["hamstrings"],
+    secondaryMuscles: ["calves"],
+    equipment: "cable machine",
+    difficulty: "beginner",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/10/leg-curl.gif",
+    videoUrl: "https://www.youtube.com/watch?v=ELOCsoDSmrg",
+    instructions: "Lie face down, curl legs toward glutes, control the return",
+    instructionsPt: "Deite de barriga para baixo, curve as pernas em direção aos glúteos, controle o retorno"
+  },
+
+  // ADDITIONAL GYM BALL EXERCISES (from user request)
+  {
+    id: "gc_ball_pass",
+    name: "Ball Pass/Transfer",
+    namePt: "Passar a Bola (Ball Pass/Transfer)",
+    primaryMuscles: ["core"],
+    secondaryMuscles: ["hip flexors"],
+    equipment: "gym ball",
+    difficulty: "intermediate",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/03/stability-ball-pass.gif",
+    videoUrl: "https://www.youtube.com/watch?v=1v01q4b_1F8",
+    instructions: "Lie on back, pass ball from hands to feet and back",
+    instructionsPt: "Deite de costas, passe a bola das mãos para os pés e de volta"
+  },
+  {
+    id: "gc_wall_squat",
+    name: "Wall Squat with Ball",
+    namePt: "Agachamento Estático na Parede com Bola",
+    primaryMuscles: ["quadriceps"],
+    secondaryMuscles: ["glutes"],
+    equipment: "gym ball",
+    difficulty: "beginner",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/08/wall-sit.gif",
+    videoUrl: "https://www.youtube.com/watch?v=5U2zE8p3v2k",
+    instructions: "Place ball between back and wall, squat and hold position",
+    instructionsPt: "Coloque a bola entre as costas e a parede, agache e mantenha a posição"
+  },
+  {
+    id: "gc_back_extension",
+    name: "Back Extension on Ball",
+    namePt: "Extensão Lombar na Bola de Ginástica",
+    primaryMuscles: ["back"],
+    secondaryMuscles: ["glutes", "core"],
+    equipment: "gym ball",
+    difficulty: "beginner",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/02/stability-ball-back-extension.gif",
+    videoUrl: "https://www.youtube.com/watch?v=5_ejwx6bRZY",
+    instructions: "Lie face down on ball, extend back upward, squeeze lower back",
+    instructionsPt: "Deite de barriga para baixo na bola, estenda as costas para cima, aperte a lombar"
+  },
+  {
+    id: "gc_plank",
+    name: "Plank on Gym Ball",
+    namePt: "Prancha na Bola de Ginástica",
+    primaryMuscles: ["core"],
+    secondaryMuscles: ["shoulders", "glutes"],
+    equipment: "gym ball",
+    difficulty: "intermediate",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/03/stability-ball-plank.gif",
+    videoUrl: "https://www.youtube.com/watch?v=nBJUhxqH6y4",
+    instructions: "Forearms on ball, body straight, hold position engaging core",
+    instructionsPt: "Antebraços na bola, corpo reto, mantenha a posição contraindo o core"
   }
 ];
 
 export const exerciseIdsByCategory = {
   chest: ["pushup_standard", "bench_press_barbell", "bench_press_dumbbell", "incline_press_dumbbell", "chest_fly_dumbbell", "pec_dec_fly", "seated_chest_press", "cable_crossover", "pushup_incline", "pushup_decline"],
-  back: ["pullup", "lat_pulldown", "bent_over_row_barbell", "dumbbell_row", "deadlift_conventional", "seated_row_machine", "good_morning"],
-  legs: ["squat_bodyweight", "squat_barbell", "lunge_walking", "leg_press", "romanian_deadlift", "calf_raise", "hack_squat", "calf_press", "barbell_lunge", "goblet_squat", "rdl_dumbbell", "bulgarian_split_squat", "hip_thrust_ball", "hamstring_curl_ball", "kettlebell_swing"],
+  back: ["pullup", "lat_pulldown", "bent_over_row_barbell", "dumbbell_row", "deadlift_conventional", "seated_row_machine", "good_morning", "gc_back_extension"],
+  legs: ["squat_bodyweight", "squat_barbell", "lunge_walking", "leg_press", "romanian_deadlift", "calf_raise", "hack_squat", "calf_press", "barbell_lunge", "goblet_squat", "rdl_dumbbell", "bulgarian_split_squat", "hip_thrust_ball", "hamstring_curl_ball", "kettlebell_swing", "homegym_leg_extension", "homegym_leg_curl", "gc_wall_squat"],
   shoulders: ["overhead_press_barbell", "shoulder_press_dumbbell", "lateral_raise", "front_raise", "face_pull"],
-  arms: ["bicep_curl_dumbbell", "hammer_curl", "tricep_pushdown", "tricep_dip", "skull_crusher", "cable_tricep_extension"],
-  core: ["plank", "crunch", "russian_twist", "leg_raise", "mountain_climber", "gym_ball_crunch"],
+  arms: ["bicep_curl_dumbbell", "hammer_curl", "tricep_pushdown", "tricep_dip", "skull_crusher", "cable_tricep_extension", "db_french_press"],
+  core: ["plank", "crunch", "russian_twist", "leg_raise", "mountain_climber", "gym_ball_crunch", "homegym_cable_crunch", "gc_ball_pass", "gc_plank"],
   cardio: ["burpee", "jumping_jack", "high_knees", "jump_squat", "box_jump", "treadmill_hiit", "treadmill_incline_walk", "step_machine", "stationary_bike"]
 };
