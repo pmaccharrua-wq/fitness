@@ -914,3 +914,191 @@ Create 1 simple meal.`;
   console.error("All token levels exhausted, last error:", lastError);
   throw lastError || new Error("Failed to generate meal after all retry attempts");
 }
+
+// Validate weight goal and get AI feedback
+export interface WeightGoalValidation {
+  isRealistic: boolean;
+  feedback: string;
+  recommendedWeeks?: number;
+  weeklyChange: number; // kg per week (positive for gain, negative for loss)
+  healthRisk: "none" | "low" | "medium" | "high";
+}
+
+export async function validateWeightGoal(params: {
+  currentWeight: number;
+  targetWeight: number;
+  weeks: number;
+  sex: string;
+  age: number;
+  height: number;
+  goal: string; // "loss" or "gain"
+  activityLevel: string;
+  language?: string;
+}): Promise<WeightGoalValidation> {
+  const { currentWeight, targetWeight, weeks, sex, age, height, goal, activityLevel, language = "pt" } = params;
+  const isPt = language === "pt";
+  
+  const weightDiff = targetWeight - currentWeight;
+  const weeklyChange = weightDiff / weeks;
+  
+  const systemPrompt = isPt
+    ? `És um nutricionista e personal trainer certificado. Avalia se o objetivo de peso do utilizador é realista e saudável.
+
+DIRETRIZES CIENTÍFICAS:
+- Perda de peso saudável: 0.5-1 kg/semana (máximo 1% do peso corporal/semana)
+- Ganho de peso/massa muscular: 0.25-0.5 kg/semana para ganho lean
+- Considerar: idade, sexo, nível de atividade, metabolismo
+- Objetivos extremos (>1.5 kg/semana) são geralmente insustentáveis e potencialmente perigosos
+
+Responde SEMPRE em português (pt-PT).`
+    : `You are a certified nutritionist and personal trainer. Evaluate if the user's weight goal is realistic and healthy.
+
+SCIENTIFIC GUIDELINES:
+- Healthy weight loss: 0.5-1 kg/week (max 1% body weight/week)
+- Weight/muscle gain: 0.25-0.5 kg/week for lean gains
+- Consider: age, sex, activity level, metabolism
+- Extreme goals (>1.5 kg/week) are generally unsustainable and potentially dangerous
+
+Always respond in English.`;
+
+  const userPrompt = isPt
+    ? `Avalia este objetivo de peso:
+
+PERFIL:
+- Sexo: ${sex === "Male" ? "Masculino" : "Feminino"}
+- Idade: ${age} anos
+- Altura: ${height} cm
+- Peso atual: ${currentWeight} kg
+- Peso objetivo: ${targetWeight} kg
+- Prazo: ${weeks} semanas
+- Objetivo: ${goal === "loss" ? "Perda de peso" : "Ganho de peso/massa"}
+- Nível de atividade: ${activityLevel}
+
+CÁLCULOS:
+- Diferença de peso: ${weightDiff > 0 ? "+" : ""}${weightDiff.toFixed(1)} kg
+- Taxa semanal: ${weeklyChange > 0 ? "+" : ""}${weeklyChange.toFixed(2)} kg/semana
+
+Diz se é realista, dá feedback honesto e construtivo, e sugere prazo alternativo se necessário.`
+    : `Evaluate this weight goal:
+
+PROFILE:
+- Sex: ${sex}
+- Age: ${age} years
+- Height: ${height} cm
+- Current weight: ${currentWeight} kg
+- Target weight: ${targetWeight} kg
+- Timeframe: ${weeks} weeks
+- Goal: ${goal === "loss" ? "Weight loss" : "Weight/muscle gain"}
+- Activity level: ${activityLevel}
+
+CALCULATIONS:
+- Weight difference: ${weightDiff > 0 ? "+" : ""}${weightDiff.toFixed(1)} kg
+- Weekly rate: ${weeklyChange > 0 ? "+" : ""}${weeklyChange.toFixed(2)} kg/week
+
+Tell if it's realistic, give honest and constructive feedback, and suggest alternative timeframe if needed.`;
+
+  const jsonSchema = {
+    name: "weight_goal_validation",
+    strict: true,
+    schema: {
+      type: "object",
+      properties: {
+        isRealistic: { type: "boolean" },
+        feedback: { type: "string" },
+        recommendedWeeks: { type: "integer" },
+        healthRisk: { type: "string", enum: ["none", "low", "medium", "high"] }
+      },
+      required: ["isRealistic", "feedback", "recommendedWeeks", "healthRisk"],
+      additionalProperties: false
+    }
+  };
+
+  try {
+    const apiVersion = config.apiVersion || "2024-08-01-preview";
+    const url = `${config.endpoint}openai/deployments/${config.deployment}/chat/completions?api-version=${apiVersion}`;
+    
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "api-key": config.apiKey,
+      },
+      body: JSON.stringify({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        response_format: { 
+          type: "json_schema",
+          json_schema: jsonSchema
+        },
+        temperature: 1,
+        max_completion_tokens: 8000,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Azure OpenAI API error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+
+    if (!content) {
+      throw new Error("No content in Azure OpenAI response");
+    }
+
+    const result = JSON.parse(content);
+    return {
+      ...result,
+      weeklyChange: Math.abs(weeklyChange)
+    };
+  } catch (error) {
+    console.error("Error validating weight goal:", error);
+    // Fallback to basic validation
+    const absWeeklyChange = Math.abs(weeklyChange);
+    let isRealistic = true;
+    let healthRisk: "none" | "low" | "medium" | "high" = "none";
+    let feedback = "";
+    
+    if (goal === "loss") {
+      if (absWeeklyChange > 1.5) {
+        isRealistic = false;
+        healthRisk = "high";
+        feedback = isPt 
+          ? "Este ritmo de perda de peso é muito agressivo e potencialmente perigoso. Recomendamos no máximo 1 kg/semana."
+          : "This rate of weight loss is too aggressive and potentially dangerous. We recommend max 1 kg/week.";
+      } else if (absWeeklyChange > 1) {
+        healthRisk = "medium";
+        feedback = isPt
+          ? "Este ritmo é desafiador mas possível com compromisso total. Considere um prazo mais longo para resultados sustentáveis."
+          : "This rate is challenging but possible with full commitment. Consider a longer timeframe for sustainable results.";
+      } else {
+        feedback = isPt
+          ? "Objetivo realista e saudável! Com consistência, vai conseguir."
+          : "Realistic and healthy goal! With consistency, you'll achieve it.";
+      }
+    } else {
+      if (absWeeklyChange > 0.75) {
+        isRealistic = false;
+        healthRisk = "medium";
+        feedback = isPt
+          ? "Ganhar peso muito rapidamente resulta maioritariamente em gordura. Recomendamos 0.25-0.5 kg/semana para ganho muscular."
+          : "Gaining weight too quickly results mostly in fat. We recommend 0.25-0.5 kg/week for muscle gain.";
+      } else {
+        feedback = isPt
+          ? "Objetivo realista para ganho de massa muscular magra!"
+          : "Realistic goal for lean muscle gain!";
+      }
+    }
+    
+    return {
+      isRealistic,
+      feedback,
+      recommendedWeeks: isRealistic ? weeks : Math.ceil(Math.abs(weightDiff) / (goal === "loss" ? 0.75 : 0.4)),
+      weeklyChange: absWeeklyChange,
+      healthRisk
+    };
+  }
+}
