@@ -310,7 +310,7 @@ export default function Dashboard() {
                 <Clock className="w-6 h-6 text-blue-500" />
               </div>
               <div>
-                <div className="text-2xl font-bold">45m</div>
+                <div className="text-2xl font-bold">{todaysPlan.duration_minutes || 45}m</div>
                 <div className="text-xs text-muted-foreground uppercase">{t("dashboard", "duration")}</div>
               </div>
             </CardContent>
