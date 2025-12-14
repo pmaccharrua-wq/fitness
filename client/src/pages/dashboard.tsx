@@ -5,15 +5,24 @@ import DayCard from "@/components/DayCard";
 import WorkoutTimer from "@/components/WorkoutTimer";
 import ProgressCharts from "@/components/ProgressCharts";
 import ExerciseCard from "@/components/ExerciseCard";
-import MealCard from "@/components/MealCard";
+import MealCard, { type MealData } from "@/components/MealCard";
+import AIMealBuilder from "@/components/AIMealBuilder";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlayCircle, Flame, Clock, Trophy, Loader2, Trash2, CheckCircle } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { getUserPlan, getUserId, recordProgress, matchExercises, getUserPlans, activatePlan, deletePlan } from "@/lib/api";
+import { getUserPlan, getUserId, recordProgress, matchExercises, getUserPlans, activatePlan, deletePlan, getCustomMeals, deleteCustomMeal } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
 import { toast } from "sonner";
+
+interface CustomMealRecord {
+  id: number;
+  dayIndex: number;
+  mealSlot: number;
+  customMeal: MealData;
+  originalMeal: MealData | null;
+}
 
 export default function Dashboard() {
   const [, setLocation] = useLocation();
@@ -25,6 +34,7 @@ export default function Dashboard() {
   const [showTimer, setShowTimer] = useState(false);
   const [exerciseLibrary, setExerciseLibrary] = useState<Record<string, any>>({});
   const [allPlans, setAllPlans] = useState<any[]>([]);
+  const [customMeals, setCustomMeals] = useState<CustomMealRecord[]>([]);
   const latestDayRef = useRef<number>(1);
   const { t, language } = useTranslation();
 
@@ -75,6 +85,12 @@ export default function Dashboard() {
         setCurrentDay(planResponse.currentDay);
         setPlanId(planResponse.planId);
         setProgress(planResponse.progress || []);
+        
+        // Fetch custom meals for this plan
+        const customMealsResponse = await getCustomMeals(userId, planResponse.planId);
+        if (customMealsResponse.success && customMealsResponse.customMeals) {
+          setCustomMeals(customMealsResponse.customMeals);
+        }
       } else {
         toast.error(t("dashboard", "loadFailed"));
         setLocation("/onboarding");
@@ -88,6 +104,42 @@ export default function Dashboard() {
     } finally {
       setIsLoading(false);
     }
+  }
+
+  function handleMealSwapped(dayIndex: number, mealSlot: number, newMeal: MealData, originalMeal: MealData) {
+    setCustomMeals(prev => {
+      const filtered = prev.filter(cm => !(cm.dayIndex === dayIndex && cm.mealSlot === mealSlot));
+      return [...filtered, { id: -1, dayIndex, mealSlot, customMeal: newMeal, originalMeal }];
+    });
+    toast.success(language === "pt" ? "Refeição trocada!" : "Meal swapped!");
+  }
+
+  async function handleRevertMeal(customMealId: number) {
+    try {
+      const response = await deleteCustomMeal(customMealId);
+      if (response.success) {
+        setCustomMeals(prev => prev.filter(cm => cm.id !== customMealId));
+        toast.success(language === "pt" ? "Refeição original restaurada" : "Original meal restored");
+      }
+    } catch (error) {
+      toast.error(language === "pt" ? "Erro ao reverter" : "Error reverting");
+    }
+  }
+
+  function handleAIMealGenerated(meal: MealData, mealSlot: number) {
+    setCustomMeals(prev => {
+      const filtered = prev.filter(cm => !(cm.dayIndex === 0 && cm.mealSlot === mealSlot));
+      return [...filtered, { id: -1, dayIndex: 0, mealSlot, customMeal: meal, originalMeal: null }];
+    });
+    toast.success(language === "pt" ? "Refeição criada com IA!" : "AI meal created!");
+  }
+
+  function getMealForSlot(dayIdx: number, meals: MealData[], mealIdx: number): { meal: MealData; isCustom: boolean; customMealId?: number } {
+    const customMeal = customMeals.find(cm => cm.dayIndex === dayIdx && cm.mealSlot === mealIdx);
+    if (customMeal) {
+      return { meal: customMeal.customMeal, isCustom: true, customMealId: customMeal.id > 0 ? customMeal.id : undefined };
+    }
+    return { meal: meals[mealIdx], isCustom: false };
   }
 
   async function handleActivatePlan(targetPlanId: number) {
@@ -355,10 +407,41 @@ export default function Dashboard() {
                     </CardContent>
                   </Card>
                 </div>
+                <div className="flex justify-end mb-4">
+                  {planId && getUserId() && (
+                    <AIMealBuilder
+                      userId={getUserId()!}
+                      planId={planId}
+                      dayIndex={0}
+                      defaultTargets={{
+                        calories: Math.round((nutritionPlan[0]?.total_daily_calories || 2000) / 5),
+                        protein: 30,
+                        carbs: 50,
+                        fat: 15,
+                      }}
+                      onMealGenerated={handleAIMealGenerated}
+                    />
+                  )}
+                </div>
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {nutritionPlan[0]?.meals?.map((meal: any, idx: number) => (
-                    <MealCard key={idx} meal={meal} index={idx} />
-                  ))}
+                  {nutritionPlan[0]?.meals?.map((meal: any, idx: number) => {
+                    const { meal: displayMeal, isCustom, customMealId } = getMealForSlot(0, nutritionPlan[0]?.meals || [], idx);
+                    const userId = getUserId();
+                    return (
+                      <MealCard
+                        key={idx}
+                        meal={displayMeal}
+                        index={idx}
+                        dayIndex={0}
+                        userId={userId || undefined}
+                        planId={planId || undefined}
+                        isCustomMeal={isCustom}
+                        customMealId={customMealId}
+                        onMealSwapped={handleMealSwapped}
+                        onRevertMeal={customMealId ? handleRevertMeal : undefined}
+                      />
+                    );
+                  })}
                 </div>
               </>
             )}

@@ -191,3 +191,15 @@ export async function updateUserProfile(userId: number, data: ProfileUpdateData)
   });
   return response.json();
 }
+
+export async function getCustomMeals(userId: number, planId: number): Promise<any> {
+  const response = await fetch(`/api/nutrition/custom-meals/${userId}/${planId}`);
+  return response.json();
+}
+
+export async function deleteCustomMeal(customMealId: number): Promise<any> {
+  const response = await fetch(`/api/nutrition/custom-meal/${customMealId}`, {
+    method: "DELETE",
+  });
+  return response.json();
+}

@@ -1,8 +1,8 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { generateFitnessPlan, AVAILABLE_EQUIPMENT } from "./services/azure-ai";
-import { insertUserProfileSchema } from "@shared/schema";
+import { generateFitnessPlan, AVAILABLE_EQUIPMENT, generateMealSwapAlternatives, generateMealFromIngredients } from "./services/azure-ai";
+import { insertUserProfileSchema, insertCustomMealSchema } from "@shared/schema";
 import { exerciseLibrary as exerciseData } from "./exerciseData";
 import { checkWaterReminder, createWaterReminder, getUnreadNotifications } from "./services/notifications";
 import { testImageGeneration, getExerciseImage, getMealImage } from "./services/image-generation";
@@ -613,6 +613,138 @@ export async function registerRoutes(
       res.json({ success: true, exercises: matched });
     } catch (error) {
       res.status(500).json({ success: false, error: "Failed to match exercises" });
+    }
+  });
+
+  // ============ MEAL SWAP & AI INGREDIENT ENDPOINTS ============
+
+  // Get meal swap alternatives
+  app.post("/api/nutrition/meal-swap", async (req: Request, res: Response) => {
+    try {
+      const schema = z.object({
+        originalMeal: z.object({
+          meal_time_pt: z.string(),
+          description_pt: z.string(),
+          main_ingredients_pt: z.string(),
+          recipe_pt: z.string().optional(),
+          calories: z.number(),
+          protein_g: z.number(),
+          carbs_g: z.number(),
+          fat_g: z.number(),
+        }),
+        targetCalories: z.number(),
+        targetProtein: z.number(),
+        targetCarbs: z.number(),
+        targetFat: z.number(),
+        mealTime: z.string(),
+        language: z.string().optional(),
+      });
+
+      const { originalMeal, targetCalories, targetProtein, targetCarbs, targetFat, mealTime, language } = schema.parse(req.body);
+
+      const result = await generateMealSwapAlternatives(
+        { targetCalories, targetProtein, targetCarbs, targetFat, mealTime },
+        originalMeal as any,
+        language || "pt"
+      );
+
+      res.json({ success: true, alternatives: result.alternatives });
+    } catch (error) {
+      console.error("Error generating meal alternatives:", error);
+      
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, error: fromZodError(error).toString() });
+      }
+
+      res.status(500).json({ 
+        success: false, 
+        error: error instanceof Error ? error.message : "Failed to generate meal alternatives" 
+      });
+    }
+  });
+
+  // Generate meal from ingredients
+  app.post("/api/nutrition/meal-from-ingredients", async (req: Request, res: Response) => {
+    try {
+      const schema = z.object({
+        ingredients: z.array(z.string()).min(1),
+        targetCalories: z.number(),
+        targetProtein: z.number(),
+        targetCarbs: z.number(),
+        targetFat: z.number(),
+        mealTime: z.string(),
+        language: z.string().optional(),
+      });
+
+      const { ingredients, targetCalories, targetProtein, targetCarbs, targetFat, mealTime, language } = schema.parse(req.body);
+
+      const result = await generateMealFromIngredients(
+        { targetCalories, targetProtein, targetCarbs, targetFat, mealTime },
+        ingredients,
+        language || "pt"
+      );
+
+      res.json({ success: true, meal: result.meal });
+    } catch (error) {
+      console.error("Error generating meal from ingredients:", error);
+      
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, error: fromZodError(error).toString() });
+      }
+
+      res.status(500).json({ 
+        success: false, 
+        error: error instanceof Error ? error.message : "Failed to generate meal from ingredients" 
+      });
+    }
+  });
+
+  // Save custom meal (swap or AI-generated)
+  app.post("/api/nutrition/custom-meal", async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertCustomMealSchema.parse(req.body);
+      const customMeal = await storage.createCustomMeal(validatedData);
+      res.json({ success: true, customMeal });
+    } catch (error) {
+      console.error("Error saving custom meal:", error);
+      
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, error: fromZodError(error).toString() });
+      }
+
+      res.status(500).json({ success: false, error: "Failed to save custom meal" });
+    }
+  });
+
+  // Get custom meals for a plan
+  app.get("/api/nutrition/custom-meals/:userId/:planId", async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const planId = parseInt(req.params.planId);
+
+      if (isNaN(userId) || isNaN(planId)) {
+        return res.status(400).json({ success: false, error: "Invalid user or plan ID" });
+      }
+
+      const customMeals = await storage.getCustomMealsForPlan(userId, planId);
+      res.json({ success: true, customMeals });
+    } catch (error) {
+      res.status(500).json({ success: false, error: "Failed to fetch custom meals" });
+    }
+  });
+
+  // Delete custom meal (revert to original)
+  app.delete("/api/nutrition/custom-meal/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ success: false, error: "Invalid meal ID" });
+      }
+
+      await storage.deleteCustomMeal(id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ success: false, error: "Failed to delete custom meal" });
     }
   });
 

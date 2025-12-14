@@ -5,6 +5,7 @@ import {
   exerciseLibrary,
   notificationSettings,
   notificationLog,
+  customMeals,
   type UserProfile,
   type InsertUserProfile,
   type FitnessPlan,
@@ -17,6 +18,8 @@ import {
   type InsertNotificationSettings,
   type NotificationLogType,
   type InsertNotificationLog,
+  type CustomMeal,
+  type InsertCustomMeal,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, inArray } from "drizzle-orm";
@@ -59,6 +62,12 @@ export interface IStorage {
   createNotificationLog(data: InsertNotificationLog): Promise<NotificationLogType>;
   getUserNotifications(userId: number, limit?: number): Promise<NotificationLogType[]>;
   markNotificationRead(id: number): Promise<void>;
+
+  // Custom Meals Operations
+  createCustomMeal(data: InsertCustomMeal): Promise<CustomMeal>;
+  getCustomMeal(userId: number, planId: number, dayIndex: number, mealSlot: number): Promise<CustomMeal | undefined>;
+  getCustomMealsForPlan(userId: number, planId: number): Promise<CustomMeal[]>;
+  deleteCustomMeal(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -317,6 +326,61 @@ export class DatabaseStorage implements IStorage {
       .update(notificationLog)
       .set({ read: true })
       .where(eq(notificationLog.id, id));
+  }
+
+  // Custom Meals Operations
+  async createCustomMeal(data: InsertCustomMeal): Promise<CustomMeal> {
+    // First delete any existing custom meal for this slot
+    await db
+      .delete(customMeals)
+      .where(
+        and(
+          eq(customMeals.userId, data.userId),
+          eq(customMeals.planId, data.planId),
+          eq(customMeals.dayIndex, data.dayIndex),
+          eq(customMeals.mealSlot, data.mealSlot)
+        )
+      );
+    
+    const [meal] = await db
+      .insert(customMeals)
+      .values(data)
+      .returning();
+    return meal;
+  }
+
+  async getCustomMeal(userId: number, planId: number, dayIndex: number, mealSlot: number): Promise<CustomMeal | undefined> {
+    const [meal] = await db
+      .select()
+      .from(customMeals)
+      .where(
+        and(
+          eq(customMeals.userId, userId),
+          eq(customMeals.planId, planId),
+          eq(customMeals.dayIndex, dayIndex),
+          eq(customMeals.mealSlot, mealSlot)
+        )
+      );
+    return meal;
+  }
+
+  async getCustomMealsForPlan(userId: number, planId: number): Promise<CustomMeal[]> {
+    return await db
+      .select()
+      .from(customMeals)
+      .where(
+        and(
+          eq(customMeals.userId, userId),
+          eq(customMeals.planId, planId)
+        )
+      )
+      .orderBy(customMeals.dayIndex, customMeals.mealSlot);
+  }
+
+  async deleteCustomMeal(id: number): Promise<void> {
+    await db
+      .delete(customMeals)
+      .where(eq(customMeals.id, id));
   }
 }
 

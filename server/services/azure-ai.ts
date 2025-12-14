@@ -525,3 +525,321 @@ IMPORTANTE: O total calórico de cada dia de nutrição DEVE estar dentro de ±5
     throw error;
   }
 }
+
+// Interface for meal data
+export interface MealData {
+  meal_time_pt: string;
+  description_pt: string;
+  main_ingredients_pt: string;
+  recipe_pt: string;
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  ingredients?: Array<{
+    name_pt: string;
+    quantity: string;
+    calories: number;
+    protein_g: number;
+    carbs_g: number;
+    fat_g: number;
+  }>;
+}
+
+// Interface for meal targets
+export interface MealTargets {
+  targetCalories: number;
+  targetProtein: number;
+  targetCarbs: number;
+  targetFat: number;
+  mealTime: string;
+}
+
+// Generate meal swap alternatives
+export async function generateMealSwapAlternatives(
+  targets: MealTargets,
+  originalMeal: MealData,
+  language: string = "pt"
+): Promise<{ alternatives: MealData[] }> {
+  const isPt = language === "pt";
+  
+  const systemPrompt = isPt
+    ? `És um Nutricionista Registado especializado em planificação de refeições. A tua tarefa é gerar 3 alternativas de refeição que correspondam aos mesmos alvos nutricionais da refeição original.
+
+REGRAS CRÍTICAS:
+1. Cada alternativa DEVE ter calorias dentro de ±50 kcal do alvo
+2. Os macros devem ser similares à refeição original (±5g para proteína/carbs/gordura)
+3. Usa ingredientes portugueses comuns e acessíveis
+4. Para Almoço/Jantar, inclui receita detalhada
+5. Mantém a mesma refeição do dia (${targets.mealTime})
+6. As alternativas devem ser diferentes entre si e da original
+7. TODAS as descrições e receitas devem estar em Português (pt-PT)`
+    : `You are a Registered Nutritionist specialized in meal planning. Your task is to generate 3 meal alternatives that match the same nutritional targets as the original meal.
+
+CRITICAL RULES:
+1. Each alternative MUST have calories within ±50 kcal of the target
+2. Macros should be similar to the original meal (±5g for protein/carbs/fat)
+3. Use common, accessible ingredients
+4. For Lunch/Dinner, include detailed recipe
+5. Keep the same meal time (${targets.mealTime})
+6. Alternatives should be different from each other and the original
+7. ALL descriptions and recipes should be in English`;
+
+  const userPrompt = isPt
+    ? `REFEIÇÃO ORIGINAL:
+- Hora: ${originalMeal.meal_time_pt}
+- Descrição: ${originalMeal.description_pt}
+- Calorias: ${originalMeal.calories} kcal
+- Proteína: ${originalMeal.protein_g}g
+- Carboidratos: ${originalMeal.carbs_g}g
+- Gordura: ${originalMeal.fat_g}g
+
+ALVOS NUTRICIONAIS:
+- Calorias alvo: ${targets.targetCalories} kcal (±50)
+- Proteína alvo: ${targets.targetProtein}g
+- Carboidratos alvo: ${targets.targetCarbs}g
+- Gordura alvo: ${targets.targetFat}g
+
+Gera 3 alternativas diferentes em formato JSON.`
+    : `ORIGINAL MEAL:
+- Time: ${originalMeal.meal_time_pt}
+- Description: ${originalMeal.description_pt}
+- Calories: ${originalMeal.calories} kcal
+- Protein: ${originalMeal.protein_g}g
+- Carbs: ${originalMeal.carbs_g}g
+- Fat: ${originalMeal.fat_g}g
+
+NUTRITIONAL TARGETS:
+- Target calories: ${targets.targetCalories} kcal (±50)
+- Target protein: ${targets.targetProtein}g
+- Target carbs: ${targets.targetCarbs}g
+- Target fat: ${targets.targetFat}g
+
+Generate 3 different alternatives in JSON format.`;
+
+  const jsonSchema = {
+    name: "meal_alternatives_response",
+    strict: true,
+    schema: {
+      type: "object",
+      properties: {
+        alternatives: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              meal_time_pt: { type: "string" },
+              description_pt: { type: "string" },
+              main_ingredients_pt: { type: "string" },
+              recipe_pt: { type: "string" },
+              calories: { type: "integer" },
+              protein_g: { type: "number" },
+              carbs_g: { type: "number" },
+              fat_g: { type: "number" },
+              ingredients: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    name_pt: { type: "string" },
+                    quantity: { type: "string" },
+                    calories: { type: "integer" },
+                    protein_g: { type: "number" },
+                    carbs_g: { type: "number" },
+                    fat_g: { type: "number" }
+                  },
+                  required: ["name_pt", "quantity", "calories", "protein_g", "carbs_g", "fat_g"],
+                  additionalProperties: false
+                }
+              }
+            },
+            required: ["meal_time_pt", "description_pt", "main_ingredients_pt", "recipe_pt", "calories", "protein_g", "carbs_g", "fat_g", "ingredients"],
+            additionalProperties: false
+          }
+        }
+      },
+      required: ["alternatives"],
+      additionalProperties: false
+    }
+  };
+
+  try {
+    const apiVersion = config.apiVersion || "2024-08-01-preview";
+    const url = `${config.endpoint}openai/deployments/${config.deployment}/chat/completions?api-version=${apiVersion}`;
+    
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "api-key": config.apiKey,
+      },
+      body: JSON.stringify({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        response_format: { 
+          type: "json_schema",
+          json_schema: jsonSchema
+        },
+        temperature: 0.9,
+        max_completion_tokens: 4000,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Azure OpenAI API error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices[0]?.message?.content;
+
+    if (!content) {
+      throw new Error("No content in Azure OpenAI response");
+    }
+
+    return JSON.parse(content);
+  } catch (error) {
+    console.error("Error generating meal alternatives:", error);
+    throw error;
+  }
+}
+
+// Generate meal from user ingredients
+export async function generateMealFromIngredients(
+  targets: MealTargets,
+  ingredients: string[],
+  language: string = "pt"
+): Promise<{ meal: MealData }> {
+  const isPt = language === "pt";
+  
+  const systemPrompt = isPt
+    ? `És um Chef e Nutricionista Registado. O utilizador fornece ingredientes que tem disponíveis e tu deves criar uma refeição equilibrada que use o máximo possível desses ingredientes.
+
+REGRAS CRÍTICAS:
+1. A refeição DEVE ter calorias dentro de ±50 kcal do alvo
+2. Prioriza usar os ingredientes fornecidos pelo utilizador
+3. Podes adicionar ingredientes básicos (sal, azeite, especiarias) se necessário
+4. Inclui receita detalhada com passos de preparação
+5. A hora da refeição deve ser: ${targets.mealTime}
+6. TODAS as descrições e receitas devem estar em Português (pt-PT)`
+    : `You are a Chef and Registered Nutritionist. The user provides ingredients they have available and you must create a balanced meal using as many of those ingredients as possible.
+
+CRITICAL RULES:
+1. The meal MUST have calories within ±50 kcal of the target
+2. Prioritize using the ingredients provided by the user
+3. You can add basic ingredients (salt, olive oil, spices) if needed
+4. Include detailed recipe with preparation steps
+5. Meal time should be: ${targets.mealTime}
+6. ALL descriptions and recipes should be in English`;
+
+  const userPrompt = isPt
+    ? `INGREDIENTES DISPONÍVEIS:
+${ingredients.map(i => `- ${i}`).join('\n')}
+
+ALVOS NUTRICIONAIS:
+- Hora da refeição: ${targets.mealTime}
+- Calorias alvo: ${targets.targetCalories} kcal (±50)
+- Proteína alvo: ${targets.targetProtein}g
+- Carboidratos alvo: ${targets.targetCarbs}g
+- Gordura alvo: ${targets.targetFat}g
+
+Cria uma refeição usando estes ingredientes em formato JSON.`
+    : `AVAILABLE INGREDIENTS:
+${ingredients.map(i => `- ${i}`).join('\n')}
+
+NUTRITIONAL TARGETS:
+- Meal time: ${targets.mealTime}
+- Target calories: ${targets.targetCalories} kcal (±50)
+- Target protein: ${targets.targetProtein}g
+- Target carbs: ${targets.targetCarbs}g
+- Target fat: ${targets.targetFat}g
+
+Create a meal using these ingredients in JSON format.`;
+
+  const jsonSchema = {
+    name: "meal_from_ingredients_response",
+    strict: true,
+    schema: {
+      type: "object",
+      properties: {
+        meal: {
+          type: "object",
+          properties: {
+            meal_time_pt: { type: "string" },
+            description_pt: { type: "string" },
+            main_ingredients_pt: { type: "string" },
+            recipe_pt: { type: "string" },
+            calories: { type: "integer" },
+            protein_g: { type: "number" },
+            carbs_g: { type: "number" },
+            fat_g: { type: "number" },
+            ingredients: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  name_pt: { type: "string" },
+                  quantity: { type: "string" },
+                  calories: { type: "integer" },
+                  protein_g: { type: "number" },
+                  carbs_g: { type: "number" },
+                  fat_g: { type: "number" }
+                },
+                required: ["name_pt", "quantity", "calories", "protein_g", "carbs_g", "fat_g"],
+                additionalProperties: false
+              }
+            }
+          },
+          required: ["meal_time_pt", "description_pt", "main_ingredients_pt", "recipe_pt", "calories", "protein_g", "carbs_g", "fat_g", "ingredients"],
+          additionalProperties: false
+        }
+      },
+      required: ["meal"],
+      additionalProperties: false
+    }
+  };
+
+  try {
+    const apiVersion = config.apiVersion || "2024-08-01-preview";
+    const url = `${config.endpoint}openai/deployments/${config.deployment}/chat/completions?api-version=${apiVersion}`;
+    
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "api-key": config.apiKey,
+      },
+      body: JSON.stringify({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        response_format: { 
+          type: "json_schema",
+          json_schema: jsonSchema
+        },
+        temperature: 0.8,
+        max_completion_tokens: 2000,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Azure OpenAI API error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices[0]?.message?.content;
+
+    if (!content) {
+      throw new Error("No content in Azure OpenAI response");
+    }
+
+    return JSON.parse(content);
+  } catch (error) {
+    console.error("Error generating meal from ingredients:", error);
+    throw error;
+  }
+}
