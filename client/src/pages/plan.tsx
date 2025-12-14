@@ -429,6 +429,8 @@ export default function Plan() {
 
       <WorkoutTimer
         exercises={todaysPlan.exercises}
+        exerciseLibrary={exerciseLibrary}
+        userDifficulty={planData?.user_difficulty || "medium"}
         open={showTimer}
         onClose={() => setShowTimer(false)}
         onComplete={handleWorkoutComplete}
