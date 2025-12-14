@@ -1,6 +1,46 @@
-import { pgTable, text, integer, serial, jsonb, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, serial, jsonb, timestamp, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
+
+// Exercise Library - Local database of exercises with media assets
+export const exerciseLibrary = pgTable("exercise_library", {
+  id: text("id").primaryKey(), // Unique exercise ID (e.g., "squat_barbell", "pushup_standard")
+  name: text("name").notNull(), // Display name
+  namePt: text("name_pt").notNull(), // Portuguese name
+  primaryMuscles: text("primary_muscles").array().notNull(), // e.g., ["quadriceps", "glutes"]
+  secondaryMuscles: text("secondary_muscles").array(), // e.g., ["hamstrings", "core"]
+  equipment: text("equipment").notNull(), // "barbell", "dumbbell", "bodyweight", etc.
+  difficulty: text("difficulty").notNull(), // "beginner", "intermediate", "advanced"
+  imageUrl: text("image_url"), // URL to exercise image/GIF
+  videoUrl: text("video_url"), // YouTube video link
+  instructions: text("instructions"), // Brief exercise instructions in English
+  instructionsPt: text("instructions_pt"), // Brief exercise instructions in Portuguese
+});
+
+// Notification Settings - User preferences for reminders
+export const notificationSettings = pgTable("notification_settings", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => userProfiles.id).unique(),
+  waterRemindersEnabled: boolean("water_reminders_enabled").default(true).notNull(),
+  waterReminderIntervalMinutes: integer("water_reminder_interval_minutes").default(90).notNull(),
+  mealRemindersEnabled: boolean("meal_reminders_enabled").default(true).notNull(),
+  workoutRemindersEnabled: boolean("workout_reminders_enabled").default(true).notNull(),
+  sleepStartHour: integer("sleep_start_hour").default(23).notNull(), // 11 PM
+  sleepEndHour: integer("sleep_end_hour").default(7).notNull(), // 7 AM
+  waterTargetMl: integer("water_target_ml").default(2500).notNull(), // Daily water target
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Notification Log - Track sent notifications
+export const notificationLog = pgTable("notification_log", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => userProfiles.id),
+  type: text("type").notNull(), // "water", "meal", "workout"
+  message: text("message").notNull(),
+  sentAt: timestamp("sent_at").defaultNow().notNull(),
+  read: boolean("read").default(false).notNull(),
+});
 
 // User Profile Table
 export const userProfiles = pgTable("user_profiles", {
@@ -57,6 +97,15 @@ export type InsertFitnessPlan = z.infer<typeof insertFitnessPlanSchema>;
 export type ExerciseProgress = typeof exerciseProgress.$inferSelect;
 export type InsertExerciseProgress = z.infer<typeof insertExerciseProgressSchema>;
 
+export type ExerciseLibraryItem = typeof exerciseLibrary.$inferSelect;
+export type InsertExerciseLibraryItem = z.infer<typeof insertExerciseLibrarySchema>;
+
+export type NotificationSettingsType = typeof notificationSettings.$inferSelect;
+export type InsertNotificationSettings = z.infer<typeof insertNotificationSettingsSchema>;
+
+export type NotificationLogType = typeof notificationLog.$inferSelect;
+export type InsertNotificationLog = z.infer<typeof insertNotificationLogSchema>;
+
 // Insert Schemas
 export const insertUserProfileSchema = createInsertSchema(userProfiles).omit({
   id: true,
@@ -72,4 +121,17 @@ export const insertFitnessPlanSchema = createInsertSchema(fitnessPlans).omit({
 export const insertExerciseProgressSchema = createInsertSchema(exerciseProgress).omit({
   id: true,
   createdAt: true,
+});
+
+export const insertExerciseLibrarySchema = createInsertSchema(exerciseLibrary);
+
+export const insertNotificationSettingsSchema = createInsertSchema(notificationSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertNotificationLogSchema = createInsertSchema(notificationLog).omit({
+  id: true,
+  sentAt: true,
 });
