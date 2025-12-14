@@ -1,25 +1,27 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
+import { useTranslation } from "@/lib/i18n";
 import heroImage from "@assets/generated_images/futuristic_gym_atmosphere_with_neon_lighting.png";
 import abstractImage from "@assets/generated_images/abstract_digital_health_interface_concept.png";
 
 export default function Home() {
+  const { t } = useTranslation();
+
   return (
     <div className="min-h-screen bg-background text-foreground overflow-hidden font-sans">
-      {/* Navigation */}
       <nav className="absolute top-0 w-full p-4 sm:p-6 flex justify-between items-center z-50">
         <h1 className="text-xl sm:text-2xl font-heading font-bold text-primary tracking-tighter">
             AI<span className="text-foreground">FITNESS</span>
         </h1>
         <Link href="/login">
-          <Button variant="ghost" className="text-foreground hover:text-primary text-sm sm:text-base">Login</Button>
+          <Button variant="ghost" className="text-foreground hover:text-primary text-sm sm:text-base" data-testid="button-login">
+            {t("home", "login")}
+          </Button>
         </Link>
       </nav>
 
-      {/* Hero Section */}
       <section className="relative min-h-screen flex items-center py-20 sm:py-0">
-        {/* Background Image with Overlay */}
         <div className="absolute inset-0 z-0">
           <img 
             src={heroImage} 
@@ -37,26 +39,26 @@ export default function Home() {
             className="space-y-4 sm:space-y-6 text-center sm:text-left"
           >
             <div className="inline-block px-3 py-1 border border-primary/50 rounded-full bg-primary/10 text-primary text-xs sm:text-sm font-medium tracking-wide uppercase">
-              Powered by Azure OpenAI
+              {t("home", "poweredBy")}
             </div>
-            <h1 className="text-4xl sm:text-5xl md:text-7xl font-heading font-bold leading-tight uppercase">
-              Train Smarter,<br />
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-heading font-bold leading-tight uppercase" data-testid="text-hero-title">
+              {t("home", "trainSmarter")}<br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-teal-400">
-                Not Harder.
+                {t("home", "notHarder")}
               </span>
             </h1>
-            <p className="text-base sm:text-lg text-muted-foreground max-w-md mx-auto sm:mx-0 leading-relaxed">
-              Your personalized AI coach. Generates 30-day fitness and nutrition plans tailored exactly to your body type, goals, and equipment.
+            <p className="text-base sm:text-lg text-muted-foreground max-w-md mx-auto sm:mx-0 leading-relaxed" data-testid="text-hero-description">
+              {t("home", "description")}
             </p>
             
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4">
               <Link href="/onboarding">
-                <Button size="lg" className="w-full sm:w-auto h-14 px-8 text-base sm:text-lg font-bold bg-primary hover:bg-primary/90 text-primary-foreground rounded-full shadow-[0_0_20px_rgba(16,185,129,0.3)] active:scale-95 transition-all touch-manipulation">
-                  Start Your Journey
+                <Button size="lg" className="w-full sm:w-auto h-14 px-8 text-base sm:text-lg font-bold bg-primary hover:bg-primary/90 text-primary-foreground rounded-full shadow-[0_0_20px_rgba(16,185,129,0.3)] active:scale-95 transition-all touch-manipulation" data-testid="button-start-journey">
+                  {t("home", "startJourney")}
                 </Button>
               </Link>
-              <Button size="lg" variant="outline" className="w-full sm:w-auto h-14 px-8 text-base sm:text-lg font-bold rounded-full border-muted-foreground/30 hover:bg-white/5 active:scale-95 transition-all touch-manipulation">
-                Learn More
+              <Button size="lg" variant="outline" className="w-full sm:w-auto h-14 px-8 text-base sm:text-lg font-bold rounded-full border-muted-foreground/30 hover:bg-white/5 active:scale-95 transition-all touch-manipulation" data-testid="button-learn-more">
+                {t("home", "learnMore")}
               </Button>
             </div>
           </motion.div>
@@ -70,12 +72,11 @@ export default function Home() {
             <div className="relative z-10 bg-card/10 backdrop-blur-md border border-white/10 rounded-2xl p-6 shadow-2xl transform rotate-3 hover:rotate-0 transition-transform duration-500">
               <img src={abstractImage} alt="Interface" className="rounded-lg shadow-inner opacity-90" />
               
-              {/* Floating Cards */}
               <div className="absolute -bottom-6 -left-6 bg-card p-4 rounded-xl border border-border shadow-lg flex items-center gap-3 animate-bounce duration-3000">
                  <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center text-green-500 font-bold">✓</div>
                  <div>
-                   <div className="text-xs text-muted-foreground uppercase">Daily Goal</div>
-                   <div className="font-bold">Completed</div>
+                   <div className="text-xs text-muted-foreground uppercase">{t("home", "dailyGoal")}</div>
+                   <div className="font-bold">{t("home", "completed")}</div>
                  </div>
               </div>
             </div>

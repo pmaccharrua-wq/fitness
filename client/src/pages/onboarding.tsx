@@ -195,7 +195,10 @@ export default function Onboarding() {
                     </Label>
                     <RadioGroup 
                       defaultValue="pt" 
-                      onValueChange={(v) => form.setValue("language", v as "pt" | "en")}
+                      onValueChange={(v) => {
+                        form.setValue("language", v as "pt" | "en");
+                        localStorage.setItem("language", v);
+                      }}
                       className="grid grid-cols-2 gap-4"
                     >
                       <div className={`flex items-center space-x-3 border p-4 rounded-lg cursor-pointer transition-all ${

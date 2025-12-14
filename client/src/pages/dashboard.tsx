@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlayCircle, Flame, Clock, Trophy, Loader2 } from "lucide-react";
 import healthyMealImage from "@assets/generated_images/healthy_meal_prep_with_vibrant_vegetables.png";
 import { getUserPlan, getUserId, recordProgress } from "@/lib/api";
+import { useTranslation } from "@/lib/i18n";
 import { toast } from "sonner";
 
 export default function Dashboard() {
@@ -17,6 +18,7 @@ export default function Dashboard() {
   const [planId, setPlanId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [progress, setProgress] = useState<any[]>([]);
+  const { t } = useTranslation();
 
   useEffect(() => {
     const userId = getUserId();
@@ -37,12 +39,12 @@ export default function Dashboard() {
         setPlanId(response.planId);
         setProgress(response.progress || []);
       } else {
-        toast.error("Failed to load your plan");
+        toast.error(t("dashboard", "loadFailed"));
         setLocation("/onboarding");
       }
     } catch (error) {
       console.error("Error loading plan:", error);
-      toast.error("An error occurred loading your plan");
+      toast.error(t("dashboard", "errorLoading"));
     } finally {
       setIsLoading(false);
     }
@@ -54,7 +56,7 @@ export default function Dashboard() {
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="text-center space-y-4">
             <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
-            <p className="text-muted-foreground">Loading your personalized plan...</p>
+            <p className="text-muted-foreground" data-testid="text-loading">{t("dashboard", "loading")}</p>
           </div>
         </div>
       </Layout>
@@ -65,8 +67,8 @@ export default function Dashboard() {
     return (
       <Layout>
         <div className="text-center space-y-4 py-12">
-          <h2 className="text-2xl font-bold">No plan found</h2>
-          <Button onClick={() => setLocation("/onboarding")}>Create Your Plan</Button>
+          <h2 className="text-2xl font-bold" data-testid="text-no-plan">{t("dashboard", "noPlan")}</h2>
+          <Button onClick={() => setLocation("/onboarding")} data-testid="button-create-plan">{t("dashboard", "createPlan")}</Button>
         </div>
       </Layout>
     );
@@ -78,18 +80,18 @@ export default function Dashboard() {
   return (
     <Layout>
       <div className="space-y-8">
-        {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
           <div>
-            <h1 className="text-4xl font-heading font-bold uppercase">Today's Focus</h1>
-            <p className="text-muted-foreground mt-2">Day {currentDay} of 30 • {todaysPlan.workout_name}</p>
+            <h1 className="text-4xl font-heading font-bold uppercase" data-testid="text-todays-focus">{t("dashboard", "todaysFocus")}</h1>
+            <p className="text-muted-foreground mt-2" data-testid="text-day-info">
+              {t("dashboard", "dayOf", { current: String(currentDay), total: "30" })} • {todaysPlan.workout_name}
+            </p>
           </div>
-          <Button size="lg" className="bg-primary text-primary-foreground font-bold text-lg px-8">
-            <PlayCircle className="w-6 h-6 mr-2" /> Start Workout
+          <Button size="lg" className="bg-primary text-primary-foreground font-bold text-lg px-8" data-testid="button-start-workout">
+            <PlayCircle className="w-6 h-6 mr-2" /> {t("dashboard", "startWorkout")}
           </Button>
         </div>
 
-        {/* Stats Row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card className="bg-card/50 border-primary/20">
             <CardContent className="p-6 flex items-center gap-4">
@@ -97,8 +99,8 @@ export default function Dashboard() {
                 <Flame className="w-6 h-6 text-orange-500" />
               </div>
               <div>
-                <div className="text-2xl font-bold">{todaysPlan.estimated_calories_burnt}</div>
-                <div className="text-xs text-muted-foreground uppercase">Kcal Target</div>
+                <div className="text-2xl font-bold" data-testid="text-calories">{todaysPlan.estimated_calories_burnt}</div>
+                <div className="text-xs text-muted-foreground uppercase">{t("dashboard", "kcalTarget")}</div>
               </div>
             </CardContent>
           </Card>
@@ -109,7 +111,7 @@ export default function Dashboard() {
               </div>
               <div>
                 <div className="text-2xl font-bold">45m</div>
-                <div className="text-xs text-muted-foreground uppercase">Duration</div>
+                <div className="text-xs text-muted-foreground uppercase">{t("dashboard", "duration")}</div>
               </div>
             </CardContent>
           </Card>
@@ -119,40 +121,39 @@ export default function Dashboard() {
                 <Trophy className="w-6 h-6 text-green-500" />
               </div>
               <div>
-                <div className="text-2xl font-bold">{progress.length}/30</div>
-                <div className="text-xs text-muted-foreground uppercase">Days Complete</div>
+                <div className="text-2xl font-bold" data-testid="text-progress">{progress.length}/30</div>
+                <div className="text-xs text-muted-foreground uppercase">{t("dashboard", "daysComplete")}</div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Main Content Tabs */}
         <Tabs defaultValue="workout" className="space-y-6">
           <TabsList className="bg-card border border-border">
-            <TabsTrigger value="workout">Today's Workout</TabsTrigger>
-            <TabsTrigger value="nutrition">Nutrition Plan</TabsTrigger>
-            <TabsTrigger value="schedule">Full 30-Day Schedule</TabsTrigger>
+            <TabsTrigger value="workout" data-testid="tab-workout">{t("dashboard", "todaysWorkout")}</TabsTrigger>
+            <TabsTrigger value="nutrition" data-testid="tab-nutrition">{t("dashboard", "nutritionPlan")}</TabsTrigger>
+            <TabsTrigger value="schedule" data-testid="tab-schedule">{t("dashboard", "fullSchedule")}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="workout" className="space-y-4">
              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {todaysPlan.exercises.map((ex: any, i: number) => (
-                  <Card key={i} className="hover:border-primary transition-colors">
+                  <Card key={i} className="hover:border-primary transition-colors" data-testid={`card-exercise-${i}`}>
                     <CardHeader>
                       <CardTitle className="text-lg">{ex.name}</CardTitle>
                       <div className="text-sm text-primary font-medium">{ex.focus}</div>
                     </CardHeader>
                     <CardContent>
                       <div className="flex justify-between text-sm mb-2">
-                        <span className="text-muted-foreground">Sets</span>
+                        <span className="text-muted-foreground">{t("dashboard", "sets")}</span>
                         <span className="font-bold">{ex.sets}</span>
                       </div>
                       <div className="flex justify-between text-sm mb-2">
-                        <span className="text-muted-foreground">Reps/Time</span>
+                        <span className="text-muted-foreground">{t("dashboard", "repsTime")}</span>
                         <span className="font-bold">{ex.reps_or_time}</span>
                       </div>
                       <div className="flex justify-between text-sm">
-                         <span className="text-muted-foreground">Equipment</span>
+                         <span className="text-muted-foreground">{t("dashboard", "equipment")}</span>
                          <span className="font-bold">{ex.equipment_used}</span>
                       </div>
                     </CardContent>
@@ -165,23 +166,23 @@ export default function Dashboard() {
             <div className="mb-6">
               <Card className="bg-card/50 border-primary/20">
                 <CardContent className="p-6">
-                  <h3 className="font-heading text-xl mb-4">Daily Targets</h3>
+                  <h3 className="font-heading text-xl mb-4" data-testid="text-daily-targets">{t("dashboard", "dailyTargets")}</h3>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
-                      <div className="text-2xl font-bold text-primary">{nutritionGuidelines.daily_calorie_target}</div>
-                      <div className="text-xs text-muted-foreground">Calories</div>
+                      <div className="text-2xl font-bold text-primary" data-testid="text-calorie-target">{nutritionGuidelines.daily_calorie_target}</div>
+                      <div className="text-xs text-muted-foreground">{t("dashboard", "calories")}</div>
                     </div>
                     <div>
                       <div className="text-2xl font-bold">{nutritionGuidelines.macros.protein_percentage}%</div>
-                      <div className="text-xs text-muted-foreground">Protein</div>
+                      <div className="text-xs text-muted-foreground">{t("dashboard", "protein")}</div>
                     </div>
                     <div>
                       <div className="text-2xl font-bold">{nutritionGuidelines.macros.carbs_percentage}%</div>
-                      <div className="text-xs text-muted-foreground">Carbs</div>
+                      <div className="text-xs text-muted-foreground">{t("dashboard", "carbs")}</div>
                     </div>
                     <div>
                       <div className="text-2xl font-bold">{nutritionGuidelines.macros.fat_percentage}%</div>
-                      <div className="text-xs text-muted-foreground">Fat</div>
+                      <div className="text-xs text-muted-foreground">{t("dashboard", "fat")}</div>
                     </div>
                   </div>
                 </CardContent>
@@ -189,7 +190,7 @@ export default function Dashboard() {
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                {nutritionGuidelines.sample_recipes.map((recipe: any, idx: number) => (
-                 <Card key={idx} className="overflow-hidden">
+                 <Card key={idx} className="overflow-hidden" data-testid={`card-recipe-${idx}`}>
                    <div className="h-32 bg-muted relative">
                      <img src={healthyMealImage} alt="Meal" className="w-full h-full object-cover" />
                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-4">
@@ -218,7 +219,7 @@ export default function Dashboard() {
                       </div>
 
                       <div>
-                        <h5 className="font-bold mb-1 text-xs uppercase text-muted-foreground">Ingredients</h5>
+                        <h5 className="font-bold mb-1 text-xs uppercase text-muted-foreground">{t("dashboard", "ingredients")}</h5>
                         <ul className="list-disc list-inside text-xs space-y-0.5">
                           {recipe.ingredients.map((ing: string) => (
                             <li key={ing}>{ing}</li>
