@@ -5,6 +5,10 @@ import { z } from "zod";
 // User Profile Table
 export const userProfiles = pgTable("user_profiles", {
   id: serial("id").primaryKey(),
+  firstName: text("first_name").notNull(), // Username / first name
+  phoneNumber: text("phone_number").notNull(), // Portuguese phone with +351 prefix
+  pin: text("pin").default("0000").notNull(), // 4-digit PIN for login
+  language: text("language").default("pt").notNull(), // "pt" for Portuguese, "en" for English
   sex: text("sex").notNull(),
   age: integer("age").notNull(),
   weight: integer("weight").notNull(), // in kg
