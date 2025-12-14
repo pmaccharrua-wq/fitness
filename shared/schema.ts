@@ -136,3 +136,24 @@ export const insertNotificationLogSchema = createInsertSchema(notificationLog).o
   id: true,
   sentAt: true,
 });
+
+// Custom Meals - User-replaced or AI-generated meals
+export const customMeals = pgTable("custom_meals", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => userProfiles.id),
+  planId: integer("plan_id").notNull().references(() => fitnessPlans.id),
+  dayIndex: integer("day_index").notNull(), // Which nutrition day (0-6)
+  mealSlot: integer("meal_slot").notNull(), // Which meal in the day (0, 1, 2, etc.)
+  source: text("source").notNull(), // "swap" or "ingredient_ai"
+  originalMeal: jsonb("original_meal"), // The original meal data
+  customMeal: jsonb("custom_meal").notNull(), // The replacement meal data
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type CustomMeal = typeof customMeals.$inferSelect;
+export type InsertCustomMeal = z.infer<typeof insertCustomMealSchema>;
+
+export const insertCustomMealSchema = createInsertSchema(customMeals).omit({
+  id: true,
+  createdAt: true,
+});
