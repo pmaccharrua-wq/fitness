@@ -65,6 +65,14 @@ export interface GeneratedPlan {
       protein_g: number;
       carbs_g: number;
       fat_g: number;
+      ingredients?: Array<{
+        name_pt: string;
+        quantity: string;
+        calories: number;
+        protein_g: number;
+        carbs_g: number;
+        fat_g: number;
+      }>;
     }>;
   }>;
   hydration_guidelines_pt: {
@@ -308,6 +316,7 @@ ${exerciseLibraryReference}
 4. Baseia-te em **alimentos integrais** e inclui opções típicas portuguesas (peixe, carne, ovos, verduras, carboidratos).
 5. **RECEITAS OBRIGATÓRIAS:** Para Almoço e Jantar, INCLUI receita detalhada no campo "recipe_pt" com: ingredientes com quantidades, passo-a-passo de preparação, tempo de cozedura. Para lanches e pequeno-almoço, inclui instruções simples de preparação.
 6. **SUPLEMENTAÇÃO DE WHEY PROTEIN:** Para objetivos de ganho de massa muscular ou ganho de peso, INCLUI Whey Protein Isolado de alta qualidade (ex: Prozis 100% Real Whey Isolate) em 1-2 refeições por dia (pós-treino e/ou lanche). Dose: 25-30g por porção.
+7. **INGREDIENTES DETALHADOS OBRIGATÓRIO:** Para Almoço e Jantar, INCLUI o campo "ingredients" com array detalhado de cada ingrediente contendo: nome (name_pt), quantidade exata (quantity), calorias, proteína, carboidratos e gordura de cada ingrediente individual. Exemplo: {"name_pt": "Peito de Frango", "quantity": "200g", "calories": 220, "protein_g": 46, "carbs_g": 0, "fat_g": 2.6}
 
 **C. DIRETRIZES DE HIDRATAÇÃO:**
 1. Meta de água: ${waterTarget} ml por dia
@@ -352,7 +361,13 @@ ${exerciseLibraryReference}
           "calories": 450,
           "protein_g": 40,
           "carbs_g": 45,
-          "fat_g": 10
+          "fat_g": 10,
+          "ingredients": [
+            {"name_pt": "Peito de Frango", "quantity": "200g", "calories": 220, "protein_g": 46, "carbs_g": 0, "fat_g": 2.6},
+            {"name_pt": "Arroz Integral", "quantity": "100g", "calories": 130, "protein_g": 2.7, "carbs_g": 27, "fat_g": 1},
+            {"name_pt": "Brócolos", "quantity": "80g", "calories": 27, "protein_g": 2.3, "carbs_g": 4.3, "fat_g": 0.3},
+            {"name_pt": "Cenoura", "quantity": "50g", "calories": 20, "protein_g": 0.5, "carbs_g": 4.5, "fat_g": 0.1}
+          ]
         }
       ]
     }
@@ -426,9 +441,25 @@ IMPORTANTE: O total calórico de cada dia de nutrição DEVE estar dentro de ±5
                     calories: { type: "integer" },
                     protein_g: { type: "number" },
                     carbs_g: { type: "number" },
-                    fat_g: { type: "number" }
+                    fat_g: { type: "number" },
+                    ingredients: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          name_pt: { type: "string" },
+                          quantity: { type: "string" },
+                          calories: { type: "integer" },
+                          protein_g: { type: "number" },
+                          carbs_g: { type: "number" },
+                          fat_g: { type: "number" }
+                        },
+                        required: ["name_pt", "quantity", "calories", "protein_g", "carbs_g", "fat_g"],
+                        additionalProperties: false
+                      }
+                    }
                   },
-                  required: ["meal_time_pt", "description_pt", "main_ingredients_pt", "recipe_pt", "calories", "protein_g", "carbs_g", "fat_g"],
+                  required: ["meal_time_pt", "description_pt", "main_ingredients_pt", "recipe_pt", "calories", "protein_g", "carbs_g", "fat_g", "ingredients"],
                   additionalProperties: false
                 }
               }

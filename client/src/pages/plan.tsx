@@ -8,7 +8,7 @@ import MealCard from "@/components/MealCard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlayCircle, Flame, Clock, Trophy, Loader2, Trash2, CheckCircle } from "lucide-react";
+import { PlayCircle, Flame, Clock, Trophy, Loader2, Trash2, CheckCircle, ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { getUserPlan, getUserId, recordProgress, matchExercises, getUserPlans, activatePlan, deletePlan } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
@@ -24,6 +24,7 @@ export default function Plan() {
   const [showTimer, setShowTimer] = useState(false);
   const [exerciseLibrary, setExerciseLibrary] = useState<Record<string, any>>({});
   const [allPlans, setAllPlans] = useState<any[]>([]);
+  const [nutritionDay, setNutritionDay] = useState(1);
   const latestDayRef = useRef<number>(1);
   const { t, language } = useTranslation();
 
@@ -329,13 +330,57 @@ export default function Plan() {
           <TabsContent value="nutrition">
             {nutritionPlan.length > 0 && (
               <>
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-5 h-5 text-primary" />
+                    <span className="font-heading text-lg">
+                      {language === "pt" ? `Dia ${nutritionDay} de ${nutritionPlan.length}` : `Day ${nutritionDay} of ${nutritionPlan.length}`}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="icon" 
+                      onClick={() => setNutritionDay(Math.max(1, nutritionDay - 1))}
+                      disabled={nutritionDay <= 1}
+                      data-testid="button-prev-nutrition-day"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+                    <div className="flex gap-1">
+                      {nutritionPlan.map((_: any, idx: number) => (
+                        <button
+                          key={idx}
+                          onClick={() => setNutritionDay(idx + 1)}
+                          className={`w-8 h-8 rounded-full text-sm font-medium transition-colors ${
+                            nutritionDay === idx + 1 
+                              ? "bg-primary text-primary-foreground" 
+                              : "bg-muted hover:bg-muted/80"
+                          }`}
+                          data-testid={`button-nutrition-day-${idx + 1}`}
+                        >
+                          {idx + 1}
+                        </button>
+                      ))}
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="icon" 
+                      onClick={() => setNutritionDay(Math.min(nutritionPlan.length, nutritionDay + 1))}
+                      disabled={nutritionDay >= nutritionPlan.length}
+                      data-testid="button-next-nutrition-day"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
                 <div className="mb-6">
                   <Card className="bg-card/50 border-primary/20">
                     <CardContent className="p-6">
                       <h3 className="font-heading text-xl mb-4" data-testid="text-daily-targets">{t("dashboard", "dailyTargets")}</h3>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div>
-                          <div className="text-2xl font-bold text-primary" data-testid="text-calorie-target">{nutritionPlan[0]?.total_daily_calories}</div>
+                          <div className="text-2xl font-bold text-primary" data-testid="text-calorie-target">{nutritionPlan[nutritionDay - 1]?.total_daily_calories}</div>
                           <div className="text-xs text-muted-foreground">{t("dashboard", "calories")}</div>
                         </div>
                         <div>
@@ -343,11 +388,11 @@ export default function Plan() {
                           <div className="text-xs text-muted-foreground">{language === "pt" ? "Água/dia" : "Water/day"}</div>
                         </div>
                         <div>
-                          <div className="text-lg font-bold">{nutritionPlan[0]?.total_daily_macros?.split(",")[0] || ""}</div>
+                          <div className="text-lg font-bold">{nutritionPlan[nutritionDay - 1]?.total_daily_macros?.split(",")[0] || ""}</div>
                           <div className="text-xs text-muted-foreground">{t("dashboard", "protein")}</div>
                         </div>
                         <div>
-                          <div className="text-lg font-bold">{nutritionPlan[0]?.total_daily_macros?.split(",")[1] || ""}</div>
+                          <div className="text-lg font-bold">{nutritionPlan[nutritionDay - 1]?.total_daily_macros?.split(",")[1] || ""}</div>
                           <div className="text-xs text-muted-foreground">{t("dashboard", "carbs")}</div>
                         </div>
                       </div>
@@ -355,8 +400,8 @@ export default function Plan() {
                   </Card>
                 </div>
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {nutritionPlan[0]?.meals?.map((meal: any, idx: number) => (
-                    <MealCard key={idx} meal={meal} index={idx} />
+                  {nutritionPlan[nutritionDay - 1]?.meals?.map((meal: any, idx: number) => (
+                    <MealCard key={`${nutritionDay}-${idx}`} meal={meal} index={idx} />
                   ))}
                 </div>
               </>
