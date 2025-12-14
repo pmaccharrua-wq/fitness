@@ -39,6 +39,7 @@ export interface IStorage {
   getUserPlans(userId: number): Promise<FitnessPlan[]>;
   updatePlanCurrentDay(planId: number, day: number): Promise<void>;
   setActivePlan(userId: number, planId: number): Promise<void>;
+  deactivatePlan(planId: number): Promise<void>;
   deletePlan(planId: number): Promise<void>;
   
   // Exercise Progress Operations
@@ -172,6 +173,13 @@ export class DatabaseStorage implements IStorage {
     await db
       .update(fitnessPlans)
       .set({ isActive: true, updatedAt: new Date() })
+      .where(eq(fitnessPlans.id, planId));
+  }
+
+  async deactivatePlan(planId: number): Promise<void> {
+    await db
+      .update(fitnessPlans)
+      .set({ isActive: false, updatedAt: new Date() })
       .where(eq(fitnessPlans.id, planId));
   }
 

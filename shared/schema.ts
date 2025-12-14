@@ -73,8 +73,11 @@ export const userProfiles = pgTable("user_profiles", {
 export const fitnessPlans = pgTable("fitness_plans", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => userProfiles.id),
-  planData: jsonb("plan_data").notNull(), // Stores the entire 30-day plan from Azure AI
+  planData: jsonb("plan_data").notNull(), // Stores the entire plan from Azure AI
   currentDay: integer("current_day").default(1).notNull(),
+  durationDays: integer("duration_days").default(30).notNull(), // Plan duration: 30, 60, or 90 days
+  startDate: timestamp("start_date").defaultNow().notNull(), // When the plan started
+  endDate: timestamp("end_date"), // When the plan ends (calculated from startDate + durationDays)
   isActive: boolean("is_active").default(true).notNull(), // Whether this is the active plan
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

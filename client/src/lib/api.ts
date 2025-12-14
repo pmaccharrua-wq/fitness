@@ -31,6 +31,10 @@ export interface PlanResponse {
   plan: any;
   currentDay: number;
   planId: number;
+  durationDays?: number;
+  startDate?: string;
+  endDate?: string;
+  isExpired?: boolean;
   progress: any[];
   error?: string;
 }
@@ -94,6 +98,15 @@ export async function activatePlan(planId: number, userId: number): Promise<any>
 export async function deletePlan(planId: number): Promise<any> {
   const response = await fetch(`/api/plan/${planId}`, {
     method: "DELETE",
+  });
+  return response.json();
+}
+
+export async function renewPlan(userId: number, durationDays: number = 30): Promise<any> {
+  const response = await fetch("/api/plan/renew", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId, durationDays }),
   });
   return response.json();
 }

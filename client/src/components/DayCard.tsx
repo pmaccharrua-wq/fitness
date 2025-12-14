@@ -7,9 +7,10 @@ import { cn } from "@/lib/utils";
 interface DayCardProps {
   day: DayPlan;
   isActive?: boolean;
+  isCompleted?: boolean;
 }
 
-export default function DayCard({ day, isActive }: DayCardProps) {
+export default function DayCard({ day, isActive, isCompleted }: DayCardProps) {
   return (
     <motion.div
       whileHover={{ y: -5 }}
@@ -17,17 +18,18 @@ export default function DayCard({ day, isActive }: DayCardProps) {
     >
       <Card className={cn(
         "h-full overflow-hidden border-2 transition-colors duration-300",
-        isActive ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary/50"
+        isActive ? "border-primary bg-primary/5" : isCompleted ? "border-green-500/50 bg-green-500/5" : "border-border bg-card hover:border-primary/50"
       )}>
         <CardHeader className="pb-2">
           <div className="flex justify-between items-start">
             <span className={cn(
               "text-xs font-bold px-2 py-1 rounded uppercase tracking-wider",
-              isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+              isActive ? "bg-primary text-primary-foreground" : isCompleted ? "bg-green-500 text-white" : "bg-muted text-muted-foreground"
             )}>
               Day {day.day}
             </span>
             {isActive && <CheckCircle2 className="w-5 h-5 text-primary animate-pulse" />}
+            {!isActive && isCompleted && <CheckCircle2 className="w-5 h-5 text-green-500" />}
           </div>
           <CardTitle className="text-lg leading-tight mt-2">{day.workout_name}</CardTitle>
         </CardHeader>

@@ -10,9 +10,10 @@ import AIMealBuilder from "@/components/AIMealBuilder";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlayCircle, Flame, Clock, Trophy, Loader2, Trash2, CheckCircle } from "lucide-react";
+import { PlayCircle, Flame, Clock, Trophy, Loader2, Trash2, CheckCircle, ChevronLeft, ChevronRight, RefreshCw, Calendar } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { getUserPlan, getUserId, recordProgress, matchExercises, getUserPlans, activatePlan, deletePlan, getCustomMeals, deleteCustomMeal } from "@/lib/api";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { getUserPlan, getUserId, recordProgress, matchExercises, getUserPlans, activatePlan, deletePlan, getCustomMeals, deleteCustomMeal, renewPlan } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
 import { toast } from "sonner";
 
@@ -35,6 +36,10 @@ export default function Dashboard() {
   const [exerciseLibrary, setExerciseLibrary] = useState<Record<string, any>>({});
   const [allPlans, setAllPlans] = useState<any[]>([]);
   const [customMeals, setCustomMeals] = useState<CustomMealRecord[]>([]);
+  const [durationDays, setDurationDays] = useState(30);
+  const [isExpired, setIsExpired] = useState(false);
+  const [isRenewing, setIsRenewing] = useState(false);
+  const [selectedDay, setSelectedDay] = useState(1);
   const latestDayRef = useRef<number>(1);
   const { t, language } = useTranslation();
 
@@ -51,10 +56,10 @@ export default function Dashboard() {
   useEffect(() => {
     const fitnessPlanData = planData?.fitness_plan_15_days || planData?.fitness_plan_7_days;
     if (fitnessPlanData) {
-      latestDayRef.current = currentDay;
-      loadExerciseMatches(currentDay);
+      latestDayRef.current = selectedDay;
+      loadExerciseMatches(selectedDay);
     }
-  }, [currentDay, planData]);
+  }, [selectedDay, planData]);
 
   async function loadExerciseMatches(day: number) {
     const fitnessPlanData = planData?.fitness_plan_15_days || planData?.fitness_plan_7_days;
@@ -83,8 +88,11 @@ export default function Dashboard() {
       if (planResponse.success) {
         setPlanData(planResponse.plan);
         setCurrentDay(planResponse.currentDay);
+        setSelectedDay(planResponse.currentDay);
         setPlanId(planResponse.planId);
         setProgress(planResponse.progress || []);
+        setDurationDays(planResponse.durationDays || 30);
+        setIsExpired(planResponse.isExpired || false);
         
         // Fetch custom meals for this plan
         const customMealsResponse = await getCustomMeals(userId, planResponse.planId);
@@ -166,6 +174,31 @@ export default function Dashboard() {
     }
   }
 
+  async function handleRenewPlan(newDuration: number = 30) {
+    const userId = getUserId();
+    if (!userId) return;
+    setIsRenewing(true);
+    try {
+      const response = await renewPlan(userId, newDuration);
+      if (response.success) {
+        await loadPlan(userId);
+        toast.success(language === "pt" ? "Novo plano criado!" : "New plan created!");
+      } else {
+        toast.error(response.error || (language === "pt" ? "Erro ao criar plano" : "Error creating plan"));
+      }
+    } catch (error) {
+      toast.error(language === "pt" ? "Erro ao criar plano" : "Error creating plan");
+    } finally {
+      setIsRenewing(false);
+    }
+  }
+
+  function handleDayChange(day: number) {
+    if (day >= 1 && day <= durationDays) {
+      setSelectedDay(day);
+    }
+  }
+
   async function handleWorkoutComplete() {
     setShowTimer(false);
     const userId = getUserId();
@@ -204,7 +237,8 @@ export default function Dashboard() {
   }
 
   const fitnessPlan = planData?.fitness_plan_15_days || planData?.fitness_plan_7_days;
-  const totalDays = fitnessPlan?.length || 15;
+  const planLength = fitnessPlan?.length || 15;
+  const totalDays = durationDays;
 
   if (!planData || !fitnessPlan) {
     return (
@@ -217,7 +251,7 @@ export default function Dashboard() {
     );
   }
 
-  const dayIndex = ((currentDay - 1) % totalDays);
+  const dayIndex = ((selectedDay - 1) % planLength);
   const todaysPlan = fitnessPlan[dayIndex] || fitnessPlan[0];
   const nutritionPlan = planData.nutrition_plan_7_days || planData.nutrition_plan_3_days || [];
   const hydrationGuidelines = planData.hydration_guidelines_pt;
@@ -225,6 +259,87 @@ export default function Dashboard() {
   return (
     <Layout>
       <div className="space-y-8">
+        {/* Expiry Banner */}
+        {isExpired && (
+          <Card className="bg-orange-500/20 border-orange-500/50">
+            <CardContent className="p-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="font-bold text-orange-600" data-testid="text-plan-expired">
+                    {language === "pt" ? "O seu plano terminou!" : "Your plan has ended!"}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {language === "pt" ? "Crie um novo plano para continuar a sua jornada fitness." : "Create a new plan to continue your fitness journey."}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Select defaultValue="30" onValueChange={(v) => handleRenewPlan(parseInt(v))}>
+                    <SelectTrigger className="w-32" data-testid="select-renew-duration" disabled={isRenewing}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="30">30 {language === "pt" ? "dias" : "days"}</SelectItem>
+                      <SelectItem value="60">60 {language === "pt" ? "dias" : "days"}</SelectItem>
+                      <SelectItem value="90">90 {language === "pt" ? "dias" : "days"}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button onClick={() => handleRenewPlan(30)} disabled={isRenewing} data-testid="button-renew-plan">
+                    {isRenewing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                    {language === "pt" ? "Novo Plano" : "New Plan"}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Day Picker */}
+        <Card className="bg-card/50 border-primary/20">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-primary" />
+                <span className="font-bold">{language === "pt" ? "Navegar Dias" : "Browse Days"}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={() => handleDayChange(selectedDay - 1)}
+                  disabled={selectedDay <= 1}
+                  data-testid="button-prev-day"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <Select value={String(selectedDay)} onValueChange={(v) => setSelectedDay(parseInt(v))}>
+                  <SelectTrigger className="w-24" data-testid="select-day">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {Array.from({ length: totalDays }, (_, i) => i + 1).map((day) => (
+                      <SelectItem key={day} value={String(day)}>
+                        {language === "pt" ? "Dia" : "Day"} {day}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={() => handleDayChange(selectedDay + 1)}
+                  disabled={selectedDay >= totalDays}
+                  data-testid="button-next-day"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+                <span className="text-sm text-muted-foreground ml-2">
+                  / {totalDays} {language === "pt" ? "dias" : "days"}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {allPlans && allPlans.length > 1 && (
           <Card className="bg-card/50 border-primary/20">
             <CardContent className="p-4">
@@ -277,9 +392,11 @@ export default function Dashboard() {
 
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
           <div>
-            <h1 className="text-4xl font-heading font-bold uppercase" data-testid="text-todays-focus">{t("dashboard", "todaysFocus")}</h1>
+            <h1 className="text-4xl font-heading font-bold uppercase" data-testid="text-todays-focus">
+              {selectedDay === currentDay ? t("dashboard", "todaysFocus") : (language === "pt" ? `Dia ${selectedDay}` : `Day ${selectedDay}`)}
+            </h1>
             <p className="text-muted-foreground mt-2" data-testid="text-day-info">
-              {t("dashboard", "dayOf", { current: String(currentDay), total: String(totalDays) })} • {todaysPlan.workout_name_pt}
+              {t("dashboard", "dayOf", { current: String(selectedDay), total: String(totalDays) })} • {todaysPlan.workout_name_pt}
             </p>
           </div>
           <Button 
@@ -457,16 +574,30 @@ export default function Dashboard() {
 
           <TabsContent value="schedule">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-              {fitnessPlan.map((day: any) => {
+              {Array.from({ length: totalDays }, (_, i) => {
+                const dayNum = i + 1;
+                const dayIdx = i % planLength;
+                const dayPlan = fitnessPlan[dayIdx];
                 const dayData = {
-                  day: day.day,
-                  workout_name: day.workout_name_pt,
-                  estimated_calories_burnt: day.estimated_calories_burnt,
-                  exercises: day.exercises,
+                  day: dayNum,
+                  workout_name: dayPlan?.workout_name_pt || "",
+                  estimated_calories_burnt: dayPlan?.estimated_calories_burnt || 0,
+                  exercises: dayPlan?.exercises || [],
                   meals: nutritionPlan[0]?.meals || [],
                 };
+                const isCompleted = progress.some(p => p.day === dayNum);
                 return (
-                  <DayCard key={day.day} day={dayData} isActive={day.day === currentDay} />
+                  <div 
+                    key={dayNum} 
+                    className="cursor-pointer" 
+                    onClick={() => setSelectedDay(dayNum)}
+                  >
+                    <DayCard 
+                      day={dayData} 
+                      isActive={dayNum === selectedDay}
+                      isCompleted={isCompleted}
+                    />
+                  </div>
                 );
               })}
             </div>

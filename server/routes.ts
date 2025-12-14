@@ -129,11 +129,21 @@ export async function registerRoutes(
       // Get user progress
       const progress = await storage.getUserProgress(userId, plan.id);
 
+      // Calculate if plan is expired
+      const durationDays = plan.durationDays || 30;
+      const startDate = plan.startDate || plan.createdAt;
+      const endDate = plan.endDate || new Date(new Date(startDate).getTime() + durationDays * 24 * 60 * 60 * 1000);
+      const isExpired = new Date() > endDate;
+
       res.json({
         success: true,
         plan: plan.planData,
         currentDay: plan.currentDay,
         planId: plan.id,
+        durationDays,
+        startDate,
+        endDate,
+        isExpired,
         progress,
       });
     } catch (error) {
@@ -188,6 +198,68 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting plan:", error);
       res.status(500).json({ success: false, error: "Failed to delete plan" });
+    }
+  });
+
+  // Renew/Create a new plan for the user (when current plan expires or user wants a new one)
+  app.post("/api/plan/renew", async (req: Request, res: Response) => {
+    try {
+      const schema = z.object({
+        userId: z.number(),
+        durationDays: z.number().min(30).max(90).default(30),
+      });
+
+      const { userId, durationDays } = schema.parse(req.body);
+
+      // Get user profile
+      const userProfile = await storage.getUserProfile(userId);
+      if (!userProfile) {
+        return res.status(404).json({ success: false, error: "User profile not found" });
+      }
+
+      // Deactivate current active plan
+      const currentPlan = await storage.getUserActivePlan(userId);
+      if (currentPlan) {
+        await storage.deactivatePlan(currentPlan.id);
+      }
+
+      // Generate new AI fitness plan
+      console.log("Generating new AI plan for user:", userId);
+      const aiPlan = await generateFitnessPlan(userProfile);
+
+      // Calculate end date
+      const startDate = new Date();
+      const endDate = new Date(startDate.getTime() + durationDays * 24 * 60 * 60 * 1000);
+
+      // Store the generated plan with duration metadata
+      const fitnessPlan = await storage.createFitnessPlan({
+        userId: userProfile.id,
+        planData: aiPlan as any,
+        currentDay: 1,
+        durationDays,
+        startDate,
+        endDate,
+      });
+
+      res.json({
+        success: true,
+        planId: fitnessPlan.id,
+        plan: aiPlan,
+        durationDays,
+        startDate,
+        endDate,
+      });
+    } catch (error) {
+      console.error("Error renewing plan:", error);
+      
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, error: fromZodError(error).toString() });
+      }
+
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to renew plan",
+      });
     }
   });
 
