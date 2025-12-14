@@ -5,7 +5,7 @@ import { generateFitnessPlan, AVAILABLE_EQUIPMENT } from "./services/azure-ai";
 import { insertUserProfileSchema } from "@shared/schema";
 import { exerciseLibrary as exerciseData } from "./exerciseData";
 import { checkWaterReminder, createWaterReminder, getUnreadNotifications } from "./services/notifications";
-import { testImageLookup, getExerciseImage } from "./services/image-generation";
+import { testImageGeneration, getExerciseImage } from "./services/image-generation";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 
@@ -512,20 +512,20 @@ export async function registerRoutes(
     }
   });
 
-  // Test stock image lookup
+  // Test Gemini image generation
   app.get("/api/images/test", async (req: Request, res: Response) => {
     try {
-      const result = await testImageLookup();
+      const result = await testImageGeneration();
       res.json(result);
     } catch (error) {
       res.status(500).json({ 
         success: false, 
-        error: error instanceof Error ? error.message : "Failed to test image lookup" 
+        error: error instanceof Error ? error.message : "Failed to test image generation" 
       });
     }
   });
 
-  // Get stock image for a specific exercise
+  // Generate image for a specific exercise using Gemini
   app.post("/api/images/exercise", async (req: Request, res: Response) => {
     try {
       const { exerciseName, exerciseNamePt, equipment, primaryMuscles } = req.body;
@@ -548,7 +548,7 @@ export async function registerRoutes(
     } catch (error) {
       res.status(500).json({ 
         success: false, 
-        error: error instanceof Error ? error.message : "Failed to get image" 
+        error: error instanceof Error ? error.message : "Failed to generate image" 
       });
     }
   });

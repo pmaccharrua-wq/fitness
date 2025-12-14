@@ -2,9 +2,13 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import path from "path";
 
 const app = express();
 const httpServer = createServer(app);
+
+// Serve generated exercise images
+app.use("/exercise-images", express.static(path.join(process.cwd(), "public", "exercise-images")));
 
 declare module "http" {
   interface IncomingMessage {
