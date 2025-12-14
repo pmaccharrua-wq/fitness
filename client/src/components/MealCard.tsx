@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ChefHat, ChevronDown, ChevronUp, RefreshCw, Loader2, Check, Undo2 } from "lucide-react";
+import { ChefHat, ChevronDown, ChevronUp, RefreshCw, Loader2, Check, Undo2, Plus, X } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
 
 const DEFAULT_MEAL_IMAGE = "https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=800";
@@ -56,9 +57,11 @@ export default function MealCard({
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isRecipeOpen, setIsRecipeOpen] = useState(false);
   const [isSwapDialogOpen, setIsSwapDialogOpen] = useState(false);
-  const [isLoadingAlternatives, setIsLoadingAlternatives] = useState(false);
-  const [alternatives, setAlternatives] = useState<MealData[]>([]);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedMeal, setGeneratedMeal] = useState<MealData | null>(null);
   const [swapError, setSwapError] = useState<string | null>(null);
+  const [ingredients, setIngredients] = useState<string[]>([]);
+  const [newIngredient, setNewIngredient] = useState("");
   const { t, language } = useTranslation();
   
   const isMainMeal = meal.meal_time_pt?.toLowerCase().includes("almoço") || 
@@ -93,18 +96,42 @@ export default function MealCard({
     fetchMealImage();
   }, [meal.description_pt, meal.meal_time_pt]);
 
-  const handleSwapClick = async () => {
+  const handleSwapClick = () => {
     setIsSwapDialogOpen(true);
-    setIsLoadingAlternatives(true);
     setSwapError(null);
-    setAlternatives([]);
+    setGeneratedMeal(null);
+    setIngredients([]);
+    setNewIngredient("");
+  };
+
+  const addIngredient = () => {
+    const trimmed = newIngredient.trim();
+    if (trimmed && !ingredients.includes(trimmed)) {
+      setIngredients([...ingredients, trimmed]);
+      setNewIngredient("");
+    }
+  };
+
+  const removeIngredient = (ing: string) => {
+    setIngredients(ingredients.filter(i => i !== ing));
+  };
+
+  const handleGenerateMeal = async () => {
+    if (ingredients.length === 0) {
+      setSwapError(language === "pt" ? "Adicione pelo menos um ingrediente" : "Add at least one ingredient");
+      return;
+    }
+
+    setIsGenerating(true);
+    setSwapError(null);
+    setGeneratedMeal(null);
 
     try {
-      const response = await fetch("/api/nutrition/meal-swap", {
+      const response = await fetch("/api/nutrition/meal-from-ingredients", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          originalMeal: meal,
+          ingredients,
           targetCalories: meal.calories,
           targetProtein: meal.protein_g,
           targetCarbs: meal.carbs_g,
@@ -115,15 +142,15 @@ export default function MealCard({
       });
 
       const data = await response.json();
-      if (data.success && data.alternatives) {
-        setAlternatives(data.alternatives);
+      if (data.success && data.meal) {
+        setGeneratedMeal(data.meal);
       } else {
-        setSwapError(data.error || (language === "pt" ? "Erro ao gerar alternativas" : "Error generating alternatives"));
+        setSwapError(data.error || (language === "pt" ? "Erro ao criar refeição" : "Error creating meal"));
       }
     } catch (error) {
       setSwapError(language === "pt" ? "Erro de conexão" : "Connection error");
     } finally {
-      setIsLoadingAlternatives(false);
+      setIsGenerating(false);
     }
   };
 
@@ -317,56 +344,147 @@ export default function MealCard({
         <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {language === "pt" ? "Trocar Refeição" : "Swap Meal"}
+              {language === "pt" ? "Criar Refeição com os Meus Ingredientes" : "Create Meal with My Ingredients"}
             </DialogTitle>
             <DialogDescription>
               {language === "pt" 
-                ? "Escolha uma alternativa com valores nutricionais semelhantes" 
-                : "Choose an alternative with similar nutritional values"}
+                ? `Diga-me o que tem disponível e crio uma refeição com ~${meal.calories} kcal` 
+                : `Tell me what you have available and I'll create a meal with ~${meal.calories} kcal`}
             </DialogDescription>
           </DialogHeader>
 
-          {isLoadingAlternatives ? (
-            <div className="flex flex-col items-center justify-center py-8 gap-3">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">
-                {language === "pt" ? "A gerar alternativas..." : "Generating alternatives..."}
-              </p>
-            </div>
-          ) : swapError ? (
-            <div className="py-4 text-center text-destructive">
-              <p>{swapError}</p>
-              <Button variant="outline" className="mt-4" onClick={handleSwapClick}>
-                {language === "pt" ? "Tentar novamente" : "Try again"}
+          {!generatedMeal ? (
+            <div className="space-y-4">
+              <div className="bg-muted/50 p-3 rounded-lg text-xs">
+                <div className="font-medium mb-1">{language === "pt" ? "Alvos nutricionais:" : "Nutritional targets:"}</div>
+                <div className="flex gap-4">
+                  <span>{meal.calories} kcal</span>
+                  <span>P: {meal.protein_g}g</span>
+                  <span>C: {meal.carbs_g}g</span>
+                  <span>G: {meal.fat_g}g</span>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Input
+                  value={newIngredient}
+                  onChange={(e) => setNewIngredient(e.target.value)}
+                  onKeyPress={(e) => e.key === "Enter" && addIngredient()}
+                  placeholder={language === "pt" ? "Ex: frango, arroz, brócolos..." : "E.g: chicken, rice, broccoli..."}
+                  data-testid="input-ingredient"
+                />
+                <Button onClick={addIngredient} size="icon" variant="outline" data-testid="button-add-ingredient">
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+
+              {ingredients.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {ingredients.map((ing, idx) => (
+                    <span 
+                      key={idx} 
+                      className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm flex items-center gap-1"
+                    >
+                      {ing}
+                      <button onClick={() => removeIngredient(ing)} className="hover:text-destructive">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {swapError && (
+                <p className="text-sm text-destructive text-center">{swapError}</p>
+              )}
+
+              <Button 
+                onClick={handleGenerateMeal} 
+                disabled={ingredients.length === 0 || isGenerating}
+                className="w-full gap-2"
+                data-testid="button-generate-meal"
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    {language === "pt" ? "A criar refeição..." : "Creating meal..."}
+                  </>
+                ) : (
+                  <>
+                    <ChefHat className="w-4 h-4" />
+                    {language === "pt" ? "Criar Refeição" : "Create Meal"}
+                  </>
+                )}
               </Button>
             </div>
           ) : (
-            <div className="space-y-3">
-              {alternatives.map((alt, altIdx) => (
-                <Card 
-                  key={altIdx} 
-                  className="p-3 cursor-pointer hover:bg-muted/50 transition-colors"
-                  onClick={() => handleSelectAlternative(alt)}
-                  data-testid={`card-alternative-${altIdx}`}
+            <div className="space-y-4">
+              <Card className="p-4">
+                <div className="flex justify-between items-start mb-2">
+                  <h4 className="font-bold">{generatedMeal.description_pt}</h4>
+                  <span className="text-primary font-bold">{generatedMeal.calories} kcal</span>
+                </div>
+                <p className="text-sm text-muted-foreground mb-3">{generatedMeal.main_ingredients_pt}</p>
+                
+                <div className="grid grid-cols-3 gap-2 text-center mb-3">
+                  <div className="bg-muted p-2 rounded">
+                    <div className="text-xs text-muted-foreground">PRO</div>
+                    <div className="font-bold text-sm">{generatedMeal.protein_g}g</div>
+                  </div>
+                  <div className="bg-muted p-2 rounded">
+                    <div className="text-xs text-muted-foreground">CARB</div>
+                    <div className="font-bold text-sm">{generatedMeal.carbs_g}g</div>
+                  </div>
+                  <div className="bg-muted p-2 rounded">
+                    <div className="text-xs text-muted-foreground">FAT</div>
+                    <div className="font-bold text-sm">{generatedMeal.fat_g}g</div>
+                  </div>
+                </div>
+
+                {generatedMeal.ingredients && generatedMeal.ingredients.length > 0 && (
+                  <div className="border-t pt-3 mt-3">
+                    <h5 className="font-medium text-sm mb-2">
+                      {language === "pt" ? "Ingredientes com quantidades:" : "Ingredients with quantities:"}
+                    </h5>
+                    <div className="space-y-1 text-xs">
+                      {generatedMeal.ingredients.map((ing, idx) => (
+                        <div key={idx} className="flex justify-between">
+                          <span>{ing.name_pt} ({ing.quantity})</span>
+                          <span className="text-muted-foreground">{ing.calories} kcal</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {generatedMeal.recipe_pt && (
+                  <div className="border-t pt-3 mt-3">
+                    <h5 className="font-medium text-sm mb-2 flex items-center gap-1">
+                      <ChefHat className="w-4 h-4" />
+                      {language === "pt" ? "Preparação:" : "Preparation:"}
+                    </h5>
+                    <p className="text-xs text-muted-foreground whitespace-pre-line">{generatedMeal.recipe_pt}</p>
+                  </div>
+                )}
+              </Card>
+
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => setGeneratedMeal(null)}
                 >
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-bold text-sm flex-1">{alt.description_pt}</h4>
-                    <span className="text-primary font-bold text-sm ml-2">{alt.calories} kcal</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mb-2">{alt.main_ingredients_pt}</p>
-                  <div className="flex gap-3 text-xs">
-                    <span>P: {alt.protein_g}g</span>
-                    <span>C: {alt.carbs_g}g</span>
-                    <span>G: {alt.fat_g}g</span>
-                  </div>
-                  <div className="mt-2 flex justify-end">
-                    <Button size="sm" variant="ghost" className="gap-1">
-                      <Check className="w-4 h-4" />
-                      {language === "pt" ? "Selecionar" : "Select"}
-                    </Button>
-                  </div>
-                </Card>
-              ))}
+                  {language === "pt" ? "Tentar outros ingredientes" : "Try other ingredients"}
+                </Button>
+                <Button 
+                  className="flex-1 gap-2"
+                  onClick={() => handleSelectAlternative(generatedMeal)}
+                  data-testid="button-use-meal"
+                >
+                  <Check className="w-4 h-4" />
+                  {language === "pt" ? "Usar esta refeição" : "Use this meal"}
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>
