@@ -173,7 +173,7 @@ export default function Dashboard() {
   return (
     <Layout>
       <div className="space-y-8">
-        {allPlans.length > 1 && (
+        {allPlans && allPlans.length > 1 && (
           <Card className="bg-card/50 border-primary/20">
             <CardContent className="p-4">
               <h3 className="font-heading text-lg mb-3">{language === "pt" ? "Seus Planos" : "Your Plans"}</h3>
