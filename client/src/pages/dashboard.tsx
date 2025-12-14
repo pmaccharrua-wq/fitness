@@ -606,6 +606,7 @@ export default function Dashboard() {
 
       <WorkoutTimer
         exercises={todaysPlan.exercises}
+        exerciseLibrary={exerciseLibrary}
         open={showTimer}
         onClose={() => setShowTimer(false)}
         onComplete={handleWorkoutComplete}

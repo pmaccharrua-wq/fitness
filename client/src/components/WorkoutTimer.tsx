@@ -16,6 +16,7 @@ interface Exercise {
 
 interface LibraryMatch {
   imageUrl?: string;
+  pexelsImage?: string;
   videoUrl?: string;
   instructionsPt?: string;
   instructions?: string;
@@ -66,6 +67,7 @@ export default function WorkoutTimer({
   
   const exerciseKey = currentExercise?.name || currentExercise?.name_pt || "";
   const libraryData = exerciseLibrary[exerciseKey] || {};
+  const exerciseImage = libraryData.imageUrl || libraryData.pexelsImage;
 
   const getRepSpeed = () => {
     switch (userDifficulty) {
@@ -470,7 +472,7 @@ export default function WorkoutTimer({
                 </div>
               </div>
 
-              {libraryData.imageUrl && (
+              {exerciseImage && (
                 <div className="relative aspect-video bg-muted rounded-lg overflow-hidden">
                   {!imageLoaded && (
                     <div className="absolute inset-0 bg-muted animate-pulse flex items-center justify-center">
@@ -478,7 +480,7 @@ export default function WorkoutTimer({
                     </div>
                   )}
                   <img
-                    src={libraryData.imageUrl}
+                    src={exerciseImage}
                     alt={currentExercise.name}
                     className={`w-full h-full object-cover transition-opacity ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
                     onLoad={() => setImageLoaded(true)}
@@ -573,11 +575,11 @@ export default function WorkoutTimer({
 
           {phase === "exercise" && (
             <>
-              {(libraryData.imageUrl || videoEmbedUrl) && (
+              {(exerciseImage || videoEmbedUrl) && (
                 <div className="relative aspect-video bg-muted rounded-lg overflow-hidden max-h-48">
-                  {libraryData.imageUrl && !videoEmbedUrl && (
+                  {exerciseImage && !videoEmbedUrl && (
                     <img
-                      src={libraryData.imageUrl}
+                      src={exerciseImage}
                       alt={currentExercise.name}
                       className="w-full h-full object-cover"
                     />
