@@ -682,7 +682,7 @@ Generate 3 different alternatives in JSON format.`;
           type: "json_schema",
           json_schema: jsonSchema
         },
-        temperature: 0.9,
+        temperature: 1,
         max_completion_tokens: 4000,
       }),
     });
@@ -820,7 +820,7 @@ Create a meal using these ingredients in JSON format.`;
           type: "json_schema",
           json_schema: jsonSchema
         },
-        temperature: 0.8,
+        temperature: 1,
         max_completion_tokens: 2000,
       }),
     });
