@@ -7,7 +7,8 @@ import { useTranslation } from "@/lib/i18n";
 
 interface ExerciseData {
   name: string;
-  focus: string;
+  name_pt?: string;
+  focus?: string;
   sets: number;
   reps_or_time: string;
   equipment_used: string;
@@ -40,7 +41,7 @@ export default function ExerciseCard({ exercise, libraryMatch, index }: Exercise
   const hasMedia = libraryMatch?.imageUrl || libraryMatch?.videoUrl;
   const displayName = libraryMatch 
     ? (language === "pt" ? libraryMatch.namePt : libraryMatch.name) 
-    : exercise.name;
+    : (language === "pt" && exercise.name_pt ? exercise.name_pt : exercise.name);
   const instructions = libraryMatch 
     ? (language === "pt" ? libraryMatch.instructionsPt : libraryMatch.instructions) 
     : null;
@@ -76,7 +77,7 @@ export default function ExerciseCard({ exercise, libraryMatch, index }: Exercise
         )}
         <CardHeader className="pb-2">
           <CardTitle className="text-lg">{displayName}</CardTitle>
-          <div className="text-sm text-primary font-medium">{exercise.focus}</div>
+          {exercise.focus && <div className="text-sm text-primary font-medium">{exercise.focus}</div>}
         </CardHeader>
         <CardContent>
           <div className="flex justify-between text-sm mb-2">

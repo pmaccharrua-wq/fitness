@@ -37,17 +37,17 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    if (planData?.fitness_plan_7_days) {
+    if (planData?.fitness_plan_15_days) {
       latestDayRef.current = currentDay;
       loadExerciseMatches(currentDay);
     }
   }, [currentDay, planData]);
 
   async function loadExerciseMatches(day: number) {
-    const dayIndex = ((day - 1) % 7);
-    const todaysPlan = planData?.fitness_plan_7_days[dayIndex] || planData?.fitness_plan_7_days[0];
+    const dayIndex = ((day - 1) % 15);
+    const todaysPlan = planData?.fitness_plan_15_days[dayIndex] || planData?.fitness_plan_15_days[0];
     if (todaysPlan?.exercises) {
-      const exerciseNames = todaysPlan.exercises.map((ex: any) => ex.name);
+      const exerciseNames = todaysPlan.exercises.map((ex: any) => ex.name || ex.name_pt);
       try {
         const matchResult = await matchExercises(exerciseNames);
         if (matchResult.success && day === latestDayRef.current) {
@@ -92,7 +92,7 @@ export default function Dashboard() {
         });
         setProgress([...progress, { day: currentDay }]);
         toast.success(language === "pt" ? "Treino concluído! Excelente trabalho!" : "Workout complete! Great job!");
-        if (currentDay < 7) {
+        if (currentDay < 15) {
           setCurrentDay(currentDay + 1);
         }
       } catch (error) {
@@ -114,7 +114,7 @@ export default function Dashboard() {
     );
   }
 
-  if (!planData || !planData.fitness_plan_7_days) {
+  if (!planData || !planData.fitness_plan_15_days) {
     return (
       <Layout>
         <div className="text-center space-y-4 py-12">
@@ -125,9 +125,9 @@ export default function Dashboard() {
     );
   }
 
-  const dayIndex = ((currentDay - 1) % 7);
-  const todaysPlan = planData.fitness_plan_7_days[dayIndex] || planData.fitness_plan_7_days[0];
-  const nutritionPlan = planData.nutrition_plan_3_days || [];
+  const dayIndex = ((currentDay - 1) % 15);
+  const todaysPlan = planData.fitness_plan_15_days[dayIndex] || planData.fitness_plan_15_days[0];
+  const nutritionPlan = planData.nutrition_plan_7_days || [];
   const hydrationGuidelines = planData.hydration_guidelines_pt;
 
   return (
@@ -137,7 +137,7 @@ export default function Dashboard() {
           <div>
             <h1 className="text-4xl font-heading font-bold uppercase" data-testid="text-todays-focus">{t("dashboard", "todaysFocus")}</h1>
             <p className="text-muted-foreground mt-2" data-testid="text-day-info">
-              {t("dashboard", "dayOf", { current: String(currentDay), total: "7" })} • {todaysPlan.workout_name_pt}
+              {t("dashboard", "dayOf", { current: String(currentDay), total: "15" })} • {todaysPlan.workout_name_pt}
             </p>
           </div>
           <Button 
@@ -179,7 +179,7 @@ export default function Dashboard() {
                 <Trophy className="w-6 h-6 text-green-500" />
               </div>
               <div>
-                <div className="text-2xl font-bold" data-testid="text-progress">{progress.length}/7</div>
+                <div className="text-2xl font-bold" data-testid="text-progress">{progress.length}/15</div>
                 <div className="text-xs text-muted-foreground uppercase">{t("dashboard", "daysComplete")}</div>
               </div>
             </CardContent>
@@ -203,16 +203,37 @@ export default function Dashboard() {
                  </CardContent>
                </Card>
              ) : (
-               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {(todaysPlan.exercises || []).map((ex: any, i: number) => (
-                    <ExerciseCard 
-                      key={i} 
-                      exercise={ex} 
-                      libraryMatch={exerciseLibrary[ex.name]} 
-                      index={i} 
-                    />
-                  ))}
-               </div>
+               <>
+                 {todaysPlan.warmup_pt && (
+                   <Card className="bg-green-500/10 border-green-500/30" data-testid="card-warmup">
+                     <CardContent className="p-4">
+                       <h4 className="font-bold text-green-600 mb-2">{language === "pt" ? "Aquecimento" : "Warm-up"}</h4>
+                       <p className="text-sm text-muted-foreground">{todaysPlan.warmup_pt}</p>
+                     </CardContent>
+                   </Card>
+                 )}
+                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {(todaysPlan.exercises || []).map((ex: any, i: number) => {
+                      const exerciseKey = ex.name || ex.name_pt;
+                      return (
+                        <ExerciseCard 
+                          key={i} 
+                          exercise={{ ...ex, focus: todaysPlan.focus_pt }} 
+                          libraryMatch={exerciseLibrary[exerciseKey]} 
+                          index={i} 
+                        />
+                      );
+                    })}
+                 </div>
+                 {todaysPlan.cooldown_pt && (
+                   <Card className="bg-blue-500/10 border-blue-500/30" data-testid="card-cooldown">
+                     <CardContent className="p-4">
+                       <h4 className="font-bold text-blue-600 mb-2">{language === "pt" ? "Arrefecimento" : "Cool-down"}</h4>
+                       <p className="text-sm text-muted-foreground">{todaysPlan.cooldown_pt}</p>
+                     </CardContent>
+                   </Card>
+                 )}
+               </>
              )}
           </TabsContent>
 
@@ -295,8 +316,8 @@ export default function Dashboard() {
           </TabsContent>
 
           <TabsContent value="schedule">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
-              {planData.fitness_plan_7_days.map((day: any) => {
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              {planData.fitness_plan_15_days.map((day: any) => {
                 const dayData = {
                   day: day.day,
                   workout_name: day.workout_name_pt,
