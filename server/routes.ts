@@ -5,6 +5,7 @@ import { generateFitnessPlan, AVAILABLE_EQUIPMENT } from "./services/azure-ai";
 import { insertUserProfileSchema } from "@shared/schema";
 import { exerciseLibrary as exerciseData } from "./exerciseData";
 import { checkWaterReminder, createWaterReminder, getUnreadNotifications } from "./services/notifications";
+import { testImageGeneration, generateExerciseImage } from "./services/image-generation";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 
@@ -508,6 +509,47 @@ export async function registerRoutes(
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ success: false, error: "Failed to mark notification as read" });
+    }
+  });
+
+  // Test DALL-E image generation
+  app.get("/api/images/test", async (req: Request, res: Response) => {
+    try {
+      const result = await testImageGeneration();
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ 
+        success: false, 
+        error: error instanceof Error ? error.message : "Failed to test image generation" 
+      });
+    }
+  });
+
+  // Generate image for a specific exercise
+  app.post("/api/images/generate", async (req: Request, res: Response) => {
+    try {
+      const { exerciseName, exerciseNamePt, equipment, primaryMuscles } = req.body;
+      
+      if (!exerciseName || !equipment || !primaryMuscles) {
+        return res.status(400).json({ 
+          success: false, 
+          error: "exerciseName, equipment, and primaryMuscles are required" 
+        });
+      }
+
+      const image = await generateExerciseImage(
+        exerciseName,
+        exerciseNamePt || exerciseName,
+        equipment,
+        primaryMuscles
+      );
+
+      res.json({ success: true, image });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false, 
+        error: error instanceof Error ? error.message : "Failed to generate image" 
+      });
     }
   });
 
