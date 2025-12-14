@@ -1,4 +1,8 @@
 export interface OnboardingData {
+  firstName: string;
+  phoneNumber: string;
+  pin: string;
+  language: string;
   sex: string;
   age: number;
   weight: number;
@@ -7,6 +11,11 @@ export interface OnboardingData {
   activityLevel: string;
   equipment?: string[];
   impediments?: string;
+  somatotype?: string;
+  currentBodyComp?: string;
+  targetBodyComp?: string;
+  timePerDay?: number;
+  difficulty?: string;
 }
 
 export interface OnboardingResponse {
@@ -40,6 +49,10 @@ export async function submitOnboarding(data: OnboardingData): Promise<Onboarding
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
+      firstName: data.firstName,
+      phoneNumber: data.phoneNumber,
+      pin: data.pin,
+      language: data.language,
       sex: data.sex,
       age: parseInt(data.age.toString()),
       weight: parseInt(data.weight.toString()),
@@ -48,6 +61,11 @@ export async function submitOnboarding(data: OnboardingData): Promise<Onboarding
       activityLevel: data.activityLevel,
       equipment: data.equipment,
       impediments: data.impediments,
+      somatotype: data.somatotype,
+      currentBodyComp: data.currentBodyComp,
+      targetBodyComp: data.targetBodyComp,
+      timePerDay: data.timePerDay,
+      difficulty: data.difficulty,
     }),
   });
 
@@ -76,7 +94,6 @@ export async function getUserProfile(userId: number): Promise<any> {
   return response.json();
 }
 
-// Local storage helpers
 export function saveUserId(userId: number) {
   localStorage.setItem("userId", userId.toString());
 }
