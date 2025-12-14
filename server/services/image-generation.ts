@@ -19,7 +19,7 @@ function getSearchTerms(exerciseName: string, primaryMuscles: string[]): string 
   if (exerciseLower.includes("curl") || exerciseLower.includes("rosca")) return "dumbbell curl";
   if (exerciseLower.includes("crunch") || exerciseLower.includes("abdominal")) return "ab workout";
   if (exerciseLower.includes("dip") || exerciseLower.includes("mergulho")) return "tricep dips";
-  if (exerciseLower.includes("calf") || exerciseLower.includes("gémeos") || exerciseLower.includes("gemeos")) return "calf raise";
+  if (exerciseLower.includes("calf") || exerciseLower.includes("gémeos") || exerciseLower.includes("gemeos")) return "leg workout gym";
   if (exerciseLower.includes("jump") || exerciseLower.includes("salto")) return "jump exercise";
   if (exerciseLower.includes("mountain") || exerciseLower.includes("escalador")) return "mountain climber";
   if (exerciseLower.includes("russian") || exerciseLower.includes("rotação")) return "core exercise";
@@ -36,7 +36,7 @@ function getSearchTerms(exerciseName: string, primaryMuscles: string[]): string 
     quadriceps: "leg workout",
     glutes: "glutes workout",
     core: "core workout",
-    calves: "calf workout",
+    calves: "leg workout gym",
   };
   
   const primaryMuscle = primaryMuscles[0]?.toLowerCase();
