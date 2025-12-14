@@ -32,24 +32,25 @@ const AVAILABLE_EQUIPMENT = [
 
 export interface GeneratedPlan {
   plan_summary_pt: string;
-  fitness_plan_7_days: Array<{
+  fitness_plan_15_days: Array<{
     day: number;
     is_rest_day: boolean;
     workout_name_pt: string;
     duration_minutes: number;
     estimated_calories_burnt: number;
     focus_pt: string;
+    warmup_pt: string;
+    cooldown_pt: string;
     exercises: Array<{
+      name: string;
       name_pt: string;
       sequence_order: number;
       sets: number;
-      reps_or_time_pt: string;
-      equipment_used_pt: string;
-      image_link: string;
-      video_link: string;
+      reps_or_time: string;
+      equipment_used: string;
     }>;
   }>;
-  nutrition_plan_3_days: Array<{
+  nutrition_plan_7_days: Array<{
     day: number;
     total_daily_calories: number;
     total_daily_macros: string;
@@ -57,6 +58,7 @@ export interface GeneratedPlan {
       meal_time_pt: string;
       description_pt: string;
       main_ingredients_pt: string;
+      recipe_pt: string;
       calories: number;
       protein_g: number;
       carbs_g: number;
@@ -279,25 +281,25 @@ ${exerciseLibraryReference}
 
 **TAREFA:**
 
-**A. PLANO DE TREINO (Primeiros 7 Dias do Plano de 30 Dias):**
-1. Desenvolve os primeiros 7 dias usando o modelo de Periodização Ondulatória (para variar estímulos) ou o Modelo OPT do NASM (para iniciantes).
+**A. PLANO DE TREINO (15 Dias Completos):**
+1. Desenvolve 15 dias completos usando o modelo de Periodização Ondulatória (para variar estímulos) ou o Modelo OPT do NASM (para iniciantes).
 2. **OBRIGATÓRIO:** Usa APENAS exercícios da BIBLIOTECA DE EXERCÍCIOS acima. Usa o nome em português exatamente como listado.
-3. Cada sessão DEVE incluir Aquecimento (5 min) e Alongamento (5 min) dentro do tempo total de ${workoutTimePerDay} minutos.
-4. Inclui pelo menos 1-2 dias de descanso ativo ou completo nos 7 dias para recuperação adequada.
+3. Cada sessão DEVE incluir descrição do Aquecimento (5 min) no campo "warmup_pt" e Alongamento/Arrefecimento (5 min) no campo "cooldown_pt".
+4. Inclui pelo menos 4-5 dias de descanso ativo ou completo nos 15 dias para recuperação adequada.
 5. Para cada exercício, estima as calorias queimadas para a sessão completa baseado na intensidade e peso do utilizador (${userProfile.weight}kg).
-6. Usa "placeholder" para 'video_link' e 'image_link' - a aplicação substituirá automaticamente pelos links reais.
-7. Ajusta a intensidade baseado na dificuldade desejada: ${workoutDifficulty}.
-8. Se houver último feedback (${lastFeedback}), ajusta a intensidade conforme necessário.
-9. **PRIORIZA** equipamentos que o utilizador possui: ${userEquipment}.
-10. **EXIGÊNCIA DE DIVERSIDADE:** O plano de 7 dias DEVE utilizar a Máquina Multifuncional (Home Gym) em pelo menos 2 sessões e a Bola de Ginástica para Core ou Estabilidade em pelo menos 3 sessões, para maximizar o uso do equipamento e variar o estímulo.
+6. Ajusta a intensidade baseado na dificuldade desejada: ${workoutDifficulty}.
+7. Se houver último feedback (${lastFeedback}), ajusta a intensidade conforme necessário.
+8. **PRIORIZA** equipamentos que o utilizador possui: ${userEquipment}.
+9. **EXIGÊNCIA DE DIVERSIDADE:** O plano de 15 dias DEVE utilizar a Máquina Multifuncional (Home Gym) em pelo menos 4 sessões e a Bola de Ginástica para Core ou Estabilidade em pelo menos 5 sessões.
 
-**B. PLANO DE NUTRIÇÃO (3 Dias Completos):**
-1. Cria 3 dias de plano de refeições com 6 refeições/dia:
+**B. PLANO DE NUTRIÇÃO (7 Dias Completos com Receitas):**
+1. Cria 7 dias de plano de refeições com 6 refeições/dia:
    - Pequeno Almoço, Lanche Manhã, Almoço, Lanche Tarde, Jantar, Ceia
 2. O total calórico diário DEVE estar dentro de ±50 kcal da meta (${targetCalories} kcal).
 3. Respeita estritamente os alvos de macros (P:${macroTargets.protein}%, C:${macroTargets.carbs}%, G:${macroTargets.fat}%).
 4. Baseia-te em **alimentos integrais** e inclui opções típicas portuguesas (peixe, carne, ovos, verduras, carboidratos).
-5. **SUPLEMENTAÇÃO DE WHEY PROTEIN:** Para objetivos de ganho de massa muscular ou ganho de peso, INCLUI Whey Protein Isolado de alta qualidade (ex: Prozis 100% Real Whey Isolate ou marcas equivalentes de qualidade certificada) em 1-2 refeições por dia (preferencialmente pós-treino e/ou lanche). Dose recomendada: 25-30g por porção. Benefícios: absorção rápida, alto valor biológico, baixo teor de lactose/gordura. **Nota de segurança:** Whey Protein Isolado é seguro para adultos saudáveis quando consumido dentro das recomendações diárias de proteína (1.6-2.2g/kg para hipertrofia).
+5. **RECEITAS OBRIGATÓRIAS:** Para Almoço e Jantar, INCLUI receita detalhada no campo "recipe_pt" com: ingredientes com quantidades, passo-a-passo de preparação, tempo de cozedura. Para lanches e pequeno-almoço, inclui instruções simples de preparação.
+6. **SUPLEMENTAÇÃO DE WHEY PROTEIN:** Para objetivos de ganho de massa muscular ou ganho de peso, INCLUI Whey Protein Isolado de alta qualidade (ex: Prozis 100% Real Whey Isolate) em 1-2 refeições por dia (pós-treino e/ou lanche). Dose: 25-30g por porção.
 
 **C. DIRETRIZES DE HIDRATAÇÃO:**
 1. Meta de água: ${waterTarget} ml por dia
@@ -305,49 +307,51 @@ ${exerciseLibraryReference}
 
 **OUTPUT JSON REQUERIDO (Segue este schema EXATAMENTE):**
 {
-  "plan_summary_pt": "Resumo breve da estratégia geral do plano (ex: 'Foco em ${userGoalPt} com ${workoutTimePerDay} minutos diários, combinando cardio e força')",
-  "fitness_plan_7_days": [
+  "plan_summary_pt": "Resumo breve da estratégia geral do plano",
+  "fitness_plan_15_days": [
     {
       "day": 1,
       "is_rest_day": false,
-      "workout_name_pt": "Nome do treino em português (ex: 'Treino de Força - Corpo Inteiro')",
+      "workout_name_pt": "Nome do treino em português",
       "duration_minutes": ${workoutTimePerDay},
       "estimated_calories_burnt": 300,
       "focus_pt": "Cardio/Força/Full Body/Descanso Ativo",
+      "warmup_pt": "5 minutos de aquecimento: marcha no lugar, rotações de braços, agachamentos leves sem peso",
+      "cooldown_pt": "5 minutos de alongamento: alongamento de quadríceps, isquiotibiais, peito e costas",
       "exercises": [
         {
+          "name": "Nome em inglês do exercício",
           "name_pt": "Nome do exercício em português",
           "sequence_order": 1,
           "sets": 3,
-          "reps_or_time_pt": "12 repetições ou 30 segundos",
-          "equipment_used_pt": "Equipamento da lista DISPONÍVEL",
-          "image_link": "placeholder/image/exercicio.jpg",
-          "video_link": "placeholder/video/exercicio.mp4"
+          "reps_or_time": "12 repetições",
+          "equipment_used": "Halteres de 4kg"
         }
       ]
     }
   ],
-  "nutrition_plan_3_days": [
+  "nutrition_plan_7_days": [
     {
       "day": 1,
       "total_daily_calories": ${targetCalories},
       "total_daily_macros": "Proteína: Xg, Carboidratos: Xg, Gordura: Xg",
       "meals": [
         {
-          "meal_time_pt": "Pequeno Almoço",
-          "description_pt": "Descrição completa da refeição",
-          "main_ingredients_pt": "Lista de ingredientes principais (peixe, ovos, verduras, etc.)",
-          "calories": 400,
-          "protein_g": 30,
-          "carbs_g": 40,
-          "fat_g": 15
+          "meal_time_pt": "Almoço",
+          "description_pt": "Frango grelhado com arroz integral e legumes",
+          "main_ingredients_pt": "200g peito de frango, 100g arroz integral, brócolos, cenoura",
+          "recipe_pt": "1. Temperar o frango com sal, pimenta e ervas. 2. Grelhar o frango 6-7 min de cada lado. 3. Cozer o arroz conforme instruções. 4. Cozer os legumes a vapor 5 min. 5. Servir tudo junto.",
+          "calories": 450,
+          "protein_g": 40,
+          "carbs_g": 45,
+          "fat_g": 10
         }
       ]
     }
   ],
   "hydration_guidelines_pt": {
     "water_target_ml": ${waterTarget},
-    "notification_schedule_pt": "A cada 90 minutos entre as 8h e as 20h, aumentando em dias de treino"
+    "notification_schedule_pt": "A cada 90 minutos entre as 8h e as 20h"
   }
 }
 
@@ -360,7 +364,7 @@ IMPORTANTE: O total calórico de cada dia de nutrição DEVE estar dentro de ±5
       type: "object",
       properties: {
         plan_summary_pt: { type: "string" },
-        fitness_plan_7_days: {
+        fitness_plan_15_days: {
           type: "array",
           items: {
             type: "object",
@@ -371,29 +375,30 @@ IMPORTANTE: O total calórico de cada dia de nutrição DEVE estar dentro de ±5
               duration_minutes: { type: "integer" },
               estimated_calories_burnt: { type: "integer" },
               focus_pt: { type: "string" },
+              warmup_pt: { type: "string" },
+              cooldown_pt: { type: "string" },
               exercises: {
                 type: "array",
                 items: {
                   type: "object",
                   properties: {
+                    name: { type: "string" },
                     name_pt: { type: "string" },
                     sequence_order: { type: "integer" },
                     sets: { type: "integer" },
-                    reps_or_time_pt: { type: "string" },
-                    equipment_used_pt: { type: "string" },
-                    image_link: { type: "string" },
-                    video_link: { type: "string" }
+                    reps_or_time: { type: "string" },
+                    equipment_used: { type: "string" }
                   },
-                  required: ["name_pt", "sequence_order", "sets", "reps_or_time_pt", "equipment_used_pt", "image_link", "video_link"],
+                  required: ["name", "name_pt", "sequence_order", "sets", "reps_or_time", "equipment_used"],
                   additionalProperties: false
                 }
               }
             },
-            required: ["day", "is_rest_day", "workout_name_pt", "duration_minutes", "estimated_calories_burnt", "focus_pt", "exercises"],
+            required: ["day", "is_rest_day", "workout_name_pt", "duration_minutes", "estimated_calories_burnt", "focus_pt", "warmup_pt", "cooldown_pt", "exercises"],
             additionalProperties: false
           }
         },
-        nutrition_plan_3_days: {
+        nutrition_plan_7_days: {
           type: "array",
           items: {
             type: "object",
@@ -409,12 +414,13 @@ IMPORTANTE: O total calórico de cada dia de nutrição DEVE estar dentro de ±5
                     meal_time_pt: { type: "string" },
                     description_pt: { type: "string" },
                     main_ingredients_pt: { type: "string" },
+                    recipe_pt: { type: "string" },
                     calories: { type: "integer" },
                     protein_g: { type: "number" },
                     carbs_g: { type: "number" },
                     fat_g: { type: "number" }
                   },
-                  required: ["meal_time_pt", "description_pt", "main_ingredients_pt", "calories", "protein_g", "carbs_g", "fat_g"],
+                  required: ["meal_time_pt", "description_pt", "main_ingredients_pt", "recipe_pt", "calories", "protein_g", "carbs_g", "fat_g"],
                   additionalProperties: false
                 }
               }
@@ -433,7 +439,7 @@ IMPORTANTE: O total calórico de cada dia de nutrição DEVE estar dentro de ±5
           additionalProperties: false
         }
       },
-      required: ["plan_summary_pt", "fitness_plan_7_days", "nutrition_plan_3_days", "hydration_guidelines_pt"],
+      required: ["plan_summary_pt", "fitness_plan_15_days", "nutrition_plan_7_days", "hydration_guidelines_pt"],
       additionalProperties: false
     }
   };
@@ -458,7 +464,7 @@ IMPORTANTE: O total calórico de cada dia de nutrição DEVE estar dentro de ±5
           json_schema: jsonSchema
         },
         temperature: 1,
-        max_completion_tokens: 16000,
+        max_completion_tokens: 32000,
       }),
     });
 
