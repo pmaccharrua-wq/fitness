@@ -12,9 +12,16 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Check, ChevronRight, ChevronLeft, Loader2, Globe } from "lucide-react";
+import { Check, ChevronRight, ChevronLeft, Loader2, Globe, AlertTriangle, CheckCircle, Info } from "lucide-react";
 import { submitOnboarding, saveUserId } from "@/lib/api";
 import { toast } from "sonner";
+
+interface GoalValidation {
+  isRealistic: boolean;
+  feedback: string;
+  recommendedWeeks?: number;
+  healthRisk: "none" | "low" | "medium" | "high";
+}
 
 const formSchema = z.object({
   language: z.enum(["pt", "en"]),
@@ -25,6 +32,8 @@ const formSchema = z.object({
   age: z.string().min(1, "Idade é obrigatória").refine(val => parseInt(val) >= 18, "Deve ter 18 anos ou mais"),
   weight: z.string().min(1, "Peso é obrigatório"),
   height: z.string().min(1, "Altura é obrigatória"),
+  targetWeight: z.string().optional(),
+  weightGoalWeeks: z.string().optional(),
   somatotype: z.string().optional(),
   currentBodyComp: z.string().optional(),
   targetBodyComp: z.string().optional(),
@@ -53,6 +62,8 @@ export default function Onboarding() {
   const [currentStep, setCurrentStep] = useState(1);
   const [direction, setDirection] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [goalValidation, setGoalValidation] = useState<GoalValidation | null>(null);
+  const [isValidatingGoal, setIsValidatingGoal] = useState(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -65,6 +76,8 @@ export default function Onboarding() {
       age: "",
       weight: "",
       height: "",
+      targetWeight: "",
+      weightGoalWeeks: "12",
       somatotype: "",
       currentBodyComp: "",
       targetBodyComp: "",
@@ -80,6 +93,50 @@ export default function Onboarding() {
 
   const lang = form.watch("language");
   const t = (pt: string, en: string) => lang === "pt" ? pt : en;
+
+  const validateGoal = async () => {
+    const formData = form.getValues();
+    const currentWeight = parseInt(formData.weight);
+    const targetWeight = parseInt(formData.targetWeight || formData.weight);
+    const weeks = parseInt(formData.weightGoalWeeks || "12");
+    
+    if (!currentWeight || !targetWeight || currentWeight === targetWeight) {
+      setGoalValidation(null);
+      return;
+    }
+    
+    setIsValidatingGoal(true);
+    try {
+      const response = await fetch("/api/validate-weight-goal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentWeight,
+          targetWeight,
+          weeks,
+          sex: formData.sex,
+          age: parseInt(formData.age),
+          height: parseInt(formData.height),
+          goal: targetWeight < currentWeight ? "loss" : "gain",
+          activityLevel: formData.activityLevel,
+          language: formData.language,
+        }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setGoalValidation({
+          isRealistic: data.isRealistic,
+          feedback: data.feedback,
+          recommendedWeeks: data.recommendedWeeks,
+          healthRisk: data.healthRisk,
+        });
+      }
+    } catch (error) {
+      console.error("Error validating goal:", error);
+    } finally {
+      setIsValidatingGoal(false);
+    }
+  };
 
   const nextStep = async () => {
     if (currentStep < steps.length) {
@@ -104,6 +161,10 @@ export default function Onboarding() {
           somatotype: formData.somatotype || undefined,
           currentBodyComp: formData.currentBodyComp || undefined,
           targetBodyComp: formData.targetBodyComp || undefined,
+          targetWeight: formData.targetWeight ? parseInt(formData.targetWeight) : undefined,
+          weightGoalWeeks: formData.weightGoalWeeks ? parseInt(formData.weightGoalWeeks) : undefined,
+          goalRealistic: goalValidation?.isRealistic,
+          goalFeedback: goalValidation?.feedback,
           timePerDay: parseInt(formData.timePerDay),
           difficulty: formData.difficulty,
         });
@@ -361,6 +422,95 @@ export default function Onboarding() {
                         ))}
                       </div>
                     </div>
+
+                    {(form.watch("goal") === "loss" || form.watch("goal") === "muscle") && (
+                      <div className="space-y-3 p-4 bg-muted/50 rounded-lg border border-border">
+                        <Label className="font-bold">{t("Objetivo de Peso", "Weight Goal")}</Label>
+                        <p className="text-xs text-muted-foreground">
+                          {t("Defina o seu peso objetivo e prazo para a IA avaliar se é realista", "Set your target weight and timeframe for AI to evaluate if it's realistic")}
+                        </p>
+                        
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs">{t("Peso Objetivo (kg)", "Target Weight (kg)")}</Label>
+                            <Input 
+                              type="number" 
+                              placeholder={form.watch("weight") || "70"} 
+                              className="h-10" 
+                              inputMode="numeric"
+                              data-testid="input-targetWeight"
+                              {...form.register("targetWeight", {
+                                onBlur: () => validateGoal()
+                              })}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">{t("Prazo (semanas)", "Timeframe (weeks)")}</Label>
+                            <Select 
+                              defaultValue="12" 
+                              onValueChange={async (v) => {
+                                form.setValue("weightGoalWeeks", v, { shouldDirty: true });
+                                await form.trigger(["weight", "targetWeight", "weightGoalWeeks"]);
+                                validateGoal();
+                              }}
+                            >
+                              <SelectTrigger data-testid="select-weightGoalWeeks" className="h-10">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="4">4 {t("semanas", "weeks")}</SelectItem>
+                                <SelectItem value="8">8 {t("semanas", "weeks")}</SelectItem>
+                                <SelectItem value="12">12 {t("semanas", "weeks")}</SelectItem>
+                                <SelectItem value="16">16 {t("semanas", "weeks")}</SelectItem>
+                                <SelectItem value="24">24 {t("semanas", "weeks")}</SelectItem>
+                                <SelectItem value="36">36 {t("semanas", "weeks")}</SelectItem>
+                                <SelectItem value="52">52 {t("semanas", "weeks")} (1 {t("ano", "year")})</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        {isValidatingGoal && (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            {t("A analisar objetivo...", "Analyzing goal...")}
+                          </div>
+                        )}
+
+                        {goalValidation && !isValidatingGoal && (
+                          <div className={`p-3 rounded-lg border ${
+                            goalValidation.healthRisk === "high" 
+                              ? "bg-red-500/10 border-red-500/30" 
+                              : goalValidation.healthRisk === "medium"
+                              ? "bg-yellow-500/10 border-yellow-500/30"
+                              : "bg-green-500/10 border-green-500/30"
+                          }`}>
+                            <div className="flex items-start gap-2">
+                              {goalValidation.isRealistic ? (
+                                <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                              ) : goalValidation.healthRisk === "high" ? (
+                                <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                              ) : (
+                                <Info className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+                              )}
+                              <div className="space-y-1">
+                                <p className="text-sm font-medium">
+                                  {goalValidation.isRealistic 
+                                    ? t("Objetivo Realista", "Realistic Goal") 
+                                    : t("Objetivo Desafiador", "Challenging Goal")}
+                                </p>
+                                <p className="text-xs text-muted-foreground">{goalValidation.feedback}</p>
+                                {!goalValidation.isRealistic && goalValidation.recommendedWeeks && (
+                                  <p className="text-xs font-medium mt-1">
+                                    {t("Prazo recomendado:", "Recommended timeframe:")} {goalValidation.recommendedWeeks} {t("semanas", "weeks")}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
