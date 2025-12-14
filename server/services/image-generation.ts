@@ -1,17 +1,3 @@
-interface AzureImageConfig {
-  apiKey: string;
-  endpoint: string;
-  deployment: string;
-  apiVersion: string;
-}
-
-const config: AzureImageConfig = {
-  apiKey: process.env.AZURE_OPENAI_API_KEY || "",
-  endpoint: process.env.AZURE_OPENAI_ENDPOINT || "",
-  deployment: process.env.AZURE_DALLE_DEPLOYMENT || "dall-e-3",
-  apiVersion: process.env.AZURE_OPENAI_API_VERSION || "2024-02-01",
-};
-
 export interface GeneratedImage {
   url: string;
   revisedPrompt?: string;
@@ -23,6 +9,11 @@ export async function generateExerciseImage(
   equipment: string,
   primaryMuscles: string[]
 ): Promise<GeneratedImage> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY is not configured");
+  }
+
   const muscleString = primaryMuscles.join(" and ");
   
   const prompt = `Professional fitness instructional illustration showing a person performing "${exerciseName}" exercise. 
@@ -33,15 +24,14 @@ Athletic person in workout clothes demonstrating the movement.
 Educational diagram style, high quality, professional fitness app illustration.`;
 
   try {
-    const url = `${config.endpoint}openai/deployments/${config.deployment}/images/generations?api-version=${config.apiVersion}`;
-    
-    const response = await fetch(url, {
+    const response = await fetch("https://api.openai.com/v1/images/generations", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "api-key": config.apiKey,
+        "Authorization": `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
+        model: "dall-e-3",
         prompt: prompt,
         n: 1,
         size: "1024x1024",
@@ -52,7 +42,7 @@ Educational diagram style, high quality, professional fitness app illustration.`
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Azure DALL-E API error: ${response.status} - ${errorText}`);
+      throw new Error(`OpenAI DALL-E API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
