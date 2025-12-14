@@ -10,6 +10,9 @@ import Home from "@/pages/home";
 import Login from "@/pages/login";
 import Onboarding from "@/pages/onboarding";
 import Dashboard from "@/pages/dashboard";
+import Plan from "@/pages/plan";
+import Progress from "@/pages/progress";
+import Profile from "@/pages/profile";
 
 function Router() {
   return (
@@ -18,6 +21,9 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/onboarding" component={Onboarding} />
       <Route path="/dashboard" component={Dashboard} />
+      <Route path="/plan" component={Plan} />
+      <Route path="/progress" component={Progress} />
+      <Route path="/profile" component={Profile} />
       <Route component={NotFound} />
     </Switch>
   );
