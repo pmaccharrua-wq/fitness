@@ -32,6 +32,12 @@ const AVAILABLE_EQUIPMENT = [
 
 export { AVAILABLE_EQUIPMENT };
 
+interface WarmupCooldownExercise {
+  name_pt: string;
+  duration_seconds: number;
+  description_pt: string;
+}
+
 export interface GeneratedPlan {
   plan_summary_pt: string;
   fitness_plan_15_days: Array<{
@@ -42,7 +48,9 @@ export interface GeneratedPlan {
     estimated_calories_burnt: number;
     focus_pt: string;
     warmup_pt: string;
+    warmup_exercises: WarmupCooldownExercise[];
     cooldown_pt: string;
+    cooldown_exercises: WarmupCooldownExercise[];
     exercises: Array<{
       name: string;
       name_pt: string;
@@ -293,7 +301,7 @@ ${exerciseLibraryReference}
 **A. PLANO DE TREINO (15 Dias Completos):**
 1. Desenvolve 15 dias completos usando o modelo de Periodização Ondulatória (para variar estímulos) ou o Modelo OPT do NASM (para iniciantes).
 2. **OBRIGATÓRIO:** Usa APENAS exercícios da BIBLIOTECA DE EXERCÍCIOS acima. Usa o nome em português exatamente como listado.
-3. Cada sessão DEVE incluir descrição do Aquecimento (5 min) no campo "warmup_pt" e Alongamento/Arrefecimento (5 min) no campo "cooldown_pt".
+3. Cada sessão DEVE incluir exercícios individuais de Aquecimento (total ~5 min) no array "warmup_exercises" e Alongamento/Arrefecimento (total ~5 min) no array "cooldown_exercises". Cada exercício deve ter nome, duração em segundos, e descrição.
 4. Inclui pelo menos 4-5 dias de descanso ativo ou completo nos 15 dias para recuperação adequada.
 5. Para cada exercício, estima as calorias queimadas para a sessão completa baseado na intensidade e peso do utilizador (${userProfile.weight}kg).
 6. Ajusta a intensidade baseado na dificuldade desejada: ${workoutDifficulty}.
@@ -333,8 +341,22 @@ ${exerciseLibraryReference}
       "duration_minutes": ${workoutTimePerDay},
       "estimated_calories_burnt": 300,
       "focus_pt": "Cardio/Força/Full Body/Descanso Ativo",
-      "warmup_pt": "5 minutos de aquecimento: marcha no lugar, rotações de braços, agachamentos leves sem peso",
-      "cooldown_pt": "5 minutos de alongamento: alongamento de quadríceps, isquiotibiais, peito e costas",
+      "warmup_pt": "5 minutos de aquecimento dinâmico",
+      "warmup_exercises": [
+        {"name_pt": "Marcha no Lugar", "duration_seconds": 60, "description_pt": "Marchar no lugar com joelhos altos"},
+        {"name_pt": "Rotações de Braços", "duration_seconds": 45, "description_pt": "Rotações circulares com os braços"},
+        {"name_pt": "Agachamentos Leves", "duration_seconds": 60, "description_pt": "Agachamentos sem peso, movimento controlado"},
+        {"name_pt": "Jumping Jacks", "duration_seconds": 45, "description_pt": "Polichinelos para aumentar ritmo cardíaco"},
+        {"name_pt": "Rotações de Anca", "duration_seconds": 45, "description_pt": "Rotações circulares das ancas"}
+      ],
+      "cooldown_pt": "5 minutos de alongamento estático",
+      "cooldown_exercises": [
+        {"name_pt": "Alongamento de Quadríceps", "duration_seconds": 45, "description_pt": "Puxar pé para trás, alongando coxa"},
+        {"name_pt": "Alongamento de Isquiotibiais", "duration_seconds": 45, "description_pt": "Inclinar tronco para tocar nos pés"},
+        {"name_pt": "Alongamento de Peito", "duration_seconds": 45, "description_pt": "Braços para trás, abrir o peito"},
+        {"name_pt": "Alongamento de Costas", "duration_seconds": 45, "description_pt": "Abraçar os joelhos ao peito"},
+        {"name_pt": "Respiração Profunda", "duration_seconds": 60, "description_pt": "Inspirar e expirar profundamente"}
+      ],
       "exercises": [
         {
           "name": "Nome em inglês do exercício",
@@ -399,7 +421,33 @@ IMPORTANTE: O total calórico de cada dia de nutrição DEVE estar dentro de ±5
               estimated_calories_burnt: { type: "integer" },
               focus_pt: { type: "string" },
               warmup_pt: { type: "string" },
+              warmup_exercises: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    name_pt: { type: "string" },
+                    duration_seconds: { type: "integer" },
+                    description_pt: { type: "string" }
+                  },
+                  required: ["name_pt", "duration_seconds", "description_pt"],
+                  additionalProperties: false
+                }
+              },
               cooldown_pt: { type: "string" },
+              cooldown_exercises: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    name_pt: { type: "string" },
+                    duration_seconds: { type: "integer" },
+                    description_pt: { type: "string" }
+                  },
+                  required: ["name_pt", "duration_seconds", "description_pt"],
+                  additionalProperties: false
+                }
+              },
               exercises: {
                 type: "array",
                 items: {
@@ -417,7 +465,7 @@ IMPORTANTE: O total calórico de cada dia de nutrição DEVE estar dentro de ±5
                 }
               }
             },
-            required: ["day", "is_rest_day", "workout_name_pt", "duration_minutes", "estimated_calories_burnt", "focus_pt", "warmup_pt", "cooldown_pt", "exercises"],
+            required: ["day", "is_rest_day", "workout_name_pt", "duration_minutes", "estimated_calories_burnt", "focus_pt", "warmup_pt", "warmup_exercises", "cooldown_pt", "cooldown_exercises", "exercises"],
             additionalProperties: false
           }
         },

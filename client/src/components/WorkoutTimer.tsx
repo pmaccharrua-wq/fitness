@@ -14,6 +14,12 @@ interface Exercise {
   equipment_used: string;
 }
 
+interface WarmupCooldownExercise {
+  name_pt: string;
+  duration_seconds: number;
+  description_pt: string;
+}
+
 interface LibraryMatch {
   imageUrl?: string;
   pexelsImage?: { url: string; source?: string; photographer?: string };
@@ -26,8 +32,8 @@ interface WorkoutTimerProps {
   exercises: Exercise[];
   exerciseLibrary?: Record<string, LibraryMatch>;
   userDifficulty?: string;
-  warmup?: string;
-  cooldown?: string;
+  warmupExercises?: WarmupCooldownExercise[];
+  cooldownExercises?: WarmupCooldownExercise[];
   open: boolean;
   onClose: () => void;
   onComplete: () => void;
@@ -39,8 +45,8 @@ export default function WorkoutTimer({
   exercises, 
   exerciseLibrary = {}, 
   userDifficulty = "medium",
-  warmup,
-  cooldown,
+  warmupExercises = [],
+  cooldownExercises = [],
   open, 
   onClose, 
   onComplete 
@@ -65,24 +71,21 @@ export default function WorkoutTimer({
   
   const txt = (pt: string, en: string) => language === "pt" ? pt : en;
   
+  const convertWarmupCooldownToExercises = (items: WarmupCooldownExercise[], isWarmup: boolean): Exercise[] => {
+    return items.map((item) => ({
+      name: isWarmup ? "Warm-up" : "Cool-down",
+      name_pt: item.name_pt,
+      sets: 1,
+      reps_or_time: `${item.duration_seconds} segundos`,
+      focus: item.description_pt,
+      equipment_used: txt("Peso corporal", "Bodyweight"),
+    }));
+  };
+  
   const allExercises: Exercise[] = [
-    ...(warmup ? [{
-      name: "Warm-up",
-      name_pt: "Aquecimento",
-      sets: 1,
-      reps_or_time: "5 minutos",
-      focus: warmup,
-      equipment_used: txt("Nenhum", "None"),
-    }] : []),
+    ...convertWarmupCooldownToExercises(warmupExercises, true),
     ...exercises,
-    ...(cooldown ? [{
-      name: "Cool-down",
-      name_pt: "Arrefecimento",
-      sets: 1,
-      reps_or_time: "5 minutos",
-      focus: cooldown,
-      equipment_used: txt("Nenhum", "None"),
-    }] : []),
+    ...convertWarmupCooldownToExercises(cooldownExercises, false),
   ];
   
   const currentExercise = allExercises?.[currentExerciseIndex];
@@ -143,11 +146,11 @@ export default function WorkoutTimer({
     if (currentSet < currentExercise?.sets) {
       return `${currentExercise.name_pt || currentExercise.name} - ${txt("Série", "Set")} ${currentSet + 1}`;
     } else if (currentExerciseIndex < totalExercises - 1) {
-      const next = exercises[currentExerciseIndex + 1];
+      const next = allExercises[currentExerciseIndex + 1];
       return next?.name_pt || next?.name || "";
     }
     return txt("Treino completo!", "Workout complete!");
-  }, [currentSet, currentExercise, currentExerciseIndex, totalExercises, exercises, txt]);
+  }, [currentSet, currentExercise, currentExerciseIndex, totalExercises, allExercises, txt]);
 
   const advanceToNextSet = useCallback(() => {
     setIsRunning(false);
@@ -168,21 +171,21 @@ export default function WorkoutTimer({
       speak(txt(`Descanso. 60 segundos. Próximo: ${nextName}`, `Rest. 60 seconds. Next: ${nextName}`));
     } else {
       if (currentExerciseIndex < totalExercises - 1) {
-        const nextExercise = exercises[currentExerciseIndex + 1];
+        const nextExercise = allExercises[currentExerciseIndex + 1];
         const nextName = nextExercise?.name_pt || nextExercise?.name || "";
         setCurrentExerciseIndex((i) => i + 1);
         setCurrentSet(1);
         setSeconds(0);
         setPhase("resting");
-        setRestSeconds(90);
+        setRestSeconds(30);
         setImageLoaded(false);
-        speak(txt(`Próximo exercício: ${nextName}. Descanso de 90 segundos.`, `Next exercise: ${nextName}. 90 seconds rest.`));
+        speak(txt(`Próximo exercício: ${nextName}. Descanso de 30 segundos.`, `Next exercise: ${nextName}. 30 seconds rest.`));
       } else {
         speak(txt("Treino concluído! Excelente trabalho!", "Workout complete! Great job!"));
         onComplete();
       }
     }
-  }, [currentSet, currentExercise, currentExerciseIndex, totalExercises, exercises, onComplete, speak, txt, getNextExerciseName]);
+  }, [currentSet, currentExercise, currentExerciseIndex, totalExercises, allExercises, onComplete, speak, txt, getNextExerciseName]);
 
   const startRepCountdown = useCallback(() => {
     const reps = parseReps(currentExercise?.reps_or_time || "");
@@ -744,7 +747,7 @@ export default function WorkoutTimer({
                 <p className="font-heading font-bold text-lg" data-testid="text-next-exercise">
                   {currentSet <= currentExercise.sets 
                     ? `${currentExercise.name_pt || currentExercise.name} - ${txt("Série", "Set")} ${currentSet}`
-                    : exercises[currentExerciseIndex + 1]?.name_pt || exercises[currentExerciseIndex + 1]?.name || txt("Concluído!", "Complete!")
+                    : allExercises[currentExerciseIndex + 1]?.name_pt || allExercises[currentExerciseIndex + 1]?.name || txt("Concluído!", "Complete!")
                   }
                 </p>
               </div>

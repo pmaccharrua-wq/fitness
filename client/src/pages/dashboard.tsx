@@ -611,8 +611,8 @@ export default function Dashboard() {
       <WorkoutTimer
         exercises={todaysPlan.exercises}
         exerciseLibrary={exerciseLibrary}
-        warmup={todaysPlan.warmup_pt}
-        cooldown={todaysPlan.cooldown_pt}
+        warmupExercises={todaysPlan.warmup_exercises || []}
+        cooldownExercises={todaysPlan.cooldown_exercises || []}
         open={showTimer}
         onClose={() => setShowTimer(false)}
         onComplete={handleWorkoutComplete}
