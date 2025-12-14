@@ -77,6 +77,27 @@ export async function getUserPlan(userId: number): Promise<PlanResponse> {
   return response.json();
 }
 
+export async function getUserPlans(userId: number): Promise<any> {
+  const response = await fetch(`/api/plans/${userId}`);
+  return response.json();
+}
+
+export async function activatePlan(planId: number, userId: number): Promise<any> {
+  const response = await fetch(`/api/plan/${planId}/activate`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId }),
+  });
+  return response.json();
+}
+
+export async function deletePlan(planId: number): Promise<any> {
+  const response = await fetch(`/api/plan/${planId}`, {
+    method: "DELETE",
+  });
+  return response.json();
+}
+
 export async function recordProgress(data: ProgressData): Promise<any> {
   const response = await fetch("/api/progress", {
     method: "POST",

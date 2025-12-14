@@ -110,7 +110,10 @@ export async function registerRoutes(
         });
       }
 
-      const plan = await storage.getUserLatestPlan(userId);
+      let plan = await storage.getUserActivePlan(userId);
+      if (!plan) {
+        plan = await storage.getUserLatestPlan(userId);
+      }
 
       if (!plan) {
         return res.status(404).json({

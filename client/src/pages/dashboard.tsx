@@ -8,9 +8,10 @@ import ExerciseCard from "@/components/ExerciseCard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlayCircle, Flame, Clock, Trophy, Loader2 } from "lucide-react";
+import { PlayCircle, Flame, Clock, Trophy, Loader2, Trash2, CheckCircle } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import healthyMealImage from "@assets/generated_images/healthy_meal_prep_with_vibrant_vegetables.png";
-import { getUserPlan, getUserId, recordProgress, matchExercises } from "@/lib/api";
+import { getUserPlan, getUserId, recordProgress, matchExercises, getUserPlans, activatePlan, deletePlan } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
 import { toast } from "sonner";
 
@@ -23,6 +24,7 @@ export default function Dashboard() {
   const [progress, setProgress] = useState<any[]>([]);
   const [showTimer, setShowTimer] = useState(false);
   const [exerciseLibrary, setExerciseLibrary] = useState<Record<string, any>>({});
+  const [allPlans, setAllPlans] = useState<any[]>([]);
   const latestDayRef = useRef<number>(1);
   const { t, language } = useTranslation();
 
@@ -64,21 +66,51 @@ export default function Dashboard() {
 
   async function loadPlan(userId: number) {
     try {
-      const response = await getUserPlan(userId);
-      if (response.success) {
-        setPlanData(response.plan);
-        setCurrentDay(response.currentDay);
-        setPlanId(response.planId);
-        setProgress(response.progress || []);
+      const [planResponse, plansResponse] = await Promise.all([
+        getUserPlan(userId),
+        getUserPlans(userId)
+      ]);
+      if (planResponse.success) {
+        setPlanData(planResponse.plan);
+        setCurrentDay(planResponse.currentDay);
+        setPlanId(planResponse.planId);
+        setProgress(planResponse.progress || []);
       } else {
         toast.error(t("dashboard", "loadFailed"));
         setLocation("/onboarding");
+      }
+      if (plansResponse.success) {
+        setAllPlans(plansResponse.plans || []);
       }
     } catch (error) {
       console.error("Error loading plan:", error);
       toast.error(t("dashboard", "errorLoading"));
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function handleActivatePlan(targetPlanId: number) {
+    const userId = getUserId();
+    if (!userId) return;
+    try {
+      await activatePlan(targetPlanId, userId);
+      await loadPlan(userId);
+      toast.success(language === "pt" ? "Plano ativado!" : "Plan activated!");
+    } catch (error) {
+      toast.error(language === "pt" ? "Erro ao ativar plano" : "Error activating plan");
+    }
+  }
+
+  async function handleDeletePlan(targetPlanId: number) {
+    const userId = getUserId();
+    if (!userId) return;
+    try {
+      await deletePlan(targetPlanId);
+      await loadPlan(userId);
+      toast.success(language === "pt" ? "Plano eliminado!" : "Plan deleted!");
+    } catch (error) {
+      toast.error(language === "pt" ? "Erro ao eliminar plano" : "Error deleting plan");
     }
   }
 
@@ -141,6 +173,56 @@ export default function Dashboard() {
   return (
     <Layout>
       <div className="space-y-8">
+        {allPlans.length > 1 && (
+          <Card className="bg-card/50 border-primary/20">
+            <CardContent className="p-4">
+              <h3 className="font-heading text-lg mb-3">{language === "pt" ? "Seus Planos" : "Your Plans"}</h3>
+              <div className="flex flex-wrap gap-3">
+                {allPlans.map((plan: any) => (
+                  <div key={plan.id} className={`flex items-center gap-2 p-3 rounded-lg border ${plan.id === planId ? "border-primary bg-primary/10" : "border-border"}`} data-testid={`plan-card-${plan.id}`}>
+                    <div className="flex-1">
+                      <div className="text-sm font-medium">
+                        {new Date(plan.createdAt).toLocaleDateString(language === "pt" ? "pt-PT" : "en-US")}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {language === "pt" ? "Dia" : "Day"} {plan.currentDay}
+                      </div>
+                    </div>
+                    {plan.id === planId ? (
+                      <CheckCircle className="w-5 h-5 text-primary" />
+                    ) : (
+                      <Button size="sm" variant="outline" onClick={() => handleActivatePlan(plan.id)} data-testid={`button-activate-${plan.id}`}>
+                        {language === "pt" ? "Ativar" : "Activate"}
+                      </Button>
+                    )}
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" data-testid={`button-delete-${plan.id}`}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>{language === "pt" ? "Eliminar Plano?" : "Delete Plan?"}</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {language === "pt" ? "Esta ação não pode ser revertida. Todo o progresso deste plano será perdido." : "This action cannot be undone. All progress for this plan will be lost."}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>{language === "pt" ? "Cancelar" : "Cancel"}</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDeletePlan(plan.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            {language === "pt" ? "Eliminar" : "Delete"}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
           <div>
             <h1 className="text-4xl font-heading font-bold uppercase" data-testid="text-todays-focus">{t("dashboard", "todaysFocus")}</h1>
