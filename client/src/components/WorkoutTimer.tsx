@@ -65,9 +65,10 @@ export default function WorkoutTimer({
   
   const txt = (pt: string, en: string) => language === "pt" ? pt : en;
   
-  const exerciseKey = currentExercise?.name || currentExercise?.name_pt || "";
-  const libraryData = exerciseLibrary[exerciseKey] || {};
-  const exerciseImage = libraryData.imageUrl || libraryData.pexelsImage?.url;
+  const exerciseName = currentExercise?.name || currentExercise?.name_pt || "";
+  const exerciseNamePt = currentExercise?.name_pt || currentExercise?.name || "";
+  const libraryData = exerciseLibrary[exerciseName] || exerciseLibrary[exerciseNamePt] || {};
+  const exerciseImage = libraryData.pexelsImage?.url || libraryData.imageUrl;
 
   const getRepSpeed = () => {
     switch (userDifficulty) {
