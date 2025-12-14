@@ -55,8 +55,12 @@ export default function ExerciseCard({ exercise, libraryMatch, index }: Exercise
   const instructions = libraryMatch 
     ? (language === "pt" ? libraryMatch.instructionsPt : libraryMatch.instructions) 
     : null;
-  const repsOrTime = exercise.reps_or_time || exercise.reps_or_time_pt || "";
-  const equipmentUsed = exercise.equipment_used || exercise.equipment_used_pt || "";
+  const repsOrTime = language === "pt" 
+    ? (exercise.reps_or_time_pt || exercise.reps_or_time || "")
+    : (exercise.reps_or_time || exercise.reps_or_time_pt || "");
+  const equipmentUsed = language === "pt"
+    ? (exercise.equipment_used_pt || exercise.equipment_used || "")
+    : (exercise.equipment_used || exercise.equipment_used_pt || "");
   
   const imageUrl = libraryMatch?.pexelsImage?.url || libraryMatch?.imageUrl || DEFAULT_FITNESS_IMAGE;
 
