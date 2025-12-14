@@ -5,42 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { PlayCircle, ExternalLink, Dumbbell } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
 
-function getStockImageUrl(exerciseName: string, primaryMuscles?: string[]): string {
-  const exerciseLower = exerciseName.toLowerCase();
-  let searchTerm = "fitness workout gym";
-  
-  if (exerciseLower.includes("squat")) searchTerm = "squat exercise gym";
-  else if (exerciseLower.includes("deadlift")) searchTerm = "deadlift exercise gym";
-  else if (exerciseLower.includes("press") && exerciseLower.includes("bench")) searchTerm = "bench press gym";
-  else if (exerciseLower.includes("push-up") || exerciseLower.includes("pushup") || exerciseLower.includes("flexão")) searchTerm = "pushup exercise fitness";
-  else if (exerciseLower.includes("pull-up") || exerciseLower.includes("pullup")) searchTerm = "pullup exercise gym";
-  else if (exerciseLower.includes("plank") || exerciseLower.includes("prancha")) searchTerm = "plank exercise fitness";
-  else if (exerciseLower.includes("lunge") || exerciseLower.includes("afundo")) searchTerm = "lunge exercise gym";
-  else if (exerciseLower.includes("row") || exerciseLower.includes("remada")) searchTerm = "rowing exercise gym";
-  else if (exerciseLower.includes("curl") || exerciseLower.includes("rosca")) searchTerm = "dumbbell curl gym";
-  else if (exerciseLower.includes("crunch") || exerciseLower.includes("abdominal")) searchTerm = "ab crunch exercise";
-  else if (exerciseLower.includes("leg press")) searchTerm = "leg press machine gym";
-  else if (exerciseLower.includes("shoulder") || exerciseLower.includes("ombro")) searchTerm = "shoulder press gym";
-  else if (exerciseLower.includes("chest") || exerciseLower.includes("peito")) searchTerm = "chest workout gym";
-  else if (exerciseLower.includes("back") || exerciseLower.includes("costas")) searchTerm = "back workout gym";
-  else if (primaryMuscles?.[0]) {
-    const muscleMap: Record<string, string> = {
-      chest: "chest workout gym",
-      back: "back workout gym",
-      shoulders: "shoulder press gym",
-      biceps: "biceps curl gym",
-      triceps: "triceps workout gym",
-      quadriceps: "leg workout squat",
-      hamstrings: "leg workout gym",
-      glutes: "glutes workout gym",
-      core: "core workout gym",
-      abs: "abs workout gym",
-    };
-    searchTerm = muscleMap[primaryMuscles[0].toLowerCase()] || "fitness workout gym";
-  }
-  
-  return `https://source.unsplash.com/800x600/?${encodeURIComponent(searchTerm)}`;
-}
+const DEFAULT_FITNESS_IMAGE = "https://images.pexels.com/photos/841130/pexels-photo-841130.jpeg?auto=compress&cs=tinysrgb&w=800";
 
 interface ExerciseData {
   name?: string;
@@ -51,6 +16,12 @@ interface ExerciseData {
   reps_or_time_pt?: string;
   equipment_used?: string;
   equipment_used_pt?: string;
+}
+
+interface PexelsImage {
+  url: string;
+  source: string;
+  photographer?: string;
 }
 
 interface LibraryExercise {
@@ -65,6 +36,7 @@ interface LibraryExercise {
   videoUrl?: string;
   instructions?: string;
   instructionsPt?: string;
+  pexelsImage?: PexelsImage;
 }
 
 interface ExerciseCardProps {
@@ -86,10 +58,7 @@ export default function ExerciseCard({ exercise, libraryMatch, index }: Exercise
   const repsOrTime = exercise.reps_or_time || exercise.reps_or_time_pt || "";
   const equipmentUsed = exercise.equipment_used || exercise.equipment_used_pt || "";
   
-  const imageUrl = getStockImageUrl(
-    displayName || exercise.name || exercise.name_pt || "",
-    libraryMatch?.primaryMuscles
-  );
+  const imageUrl = libraryMatch?.pexelsImage?.url || libraryMatch?.imageUrl || DEFAULT_FITNESS_IMAGE;
 
   return (
     <>

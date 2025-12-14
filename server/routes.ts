@@ -573,7 +573,18 @@ export async function registerRoutes(
           normalizedName.includes(ex.namePt.toLowerCase())
         );
         if (match) {
-          matched[name] = match;
+          // Fetch Pexels image for this exercise
+          try {
+            const image = await getExerciseImage(
+              match.name,
+              match.namePt,
+              match.equipment,
+              match.primaryMuscles || []
+            );
+            matched[name] = { ...match, pexelsImage: image };
+          } catch (imgError) {
+            matched[name] = match;
+          }
         }
       }
       
