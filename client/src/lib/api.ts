@@ -106,3 +106,47 @@ export function getUserId(): number | null {
 export function clearUserId() {
   localStorage.removeItem("userId");
 }
+
+export async function getNotificationSettings(userId: number): Promise<any> {
+  const response = await fetch(`/api/notifications/settings/${userId}`);
+  return response.json();
+}
+
+export async function updateNotificationSettings(userId: number, settings: any): Promise<any> {
+  const response = await fetch(`/api/notifications/settings/${userId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(settings),
+  });
+  return response.json();
+}
+
+export async function pollNotifications(userId: number, language: string = "en"): Promise<any> {
+  const response = await fetch(`/api/notifications/poll/${userId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ language }),
+  });
+  return response.json();
+}
+
+export async function markNotificationRead(id: number): Promise<any> {
+  const response = await fetch(`/api/notifications/${id}/read`, {
+    method: "PATCH",
+  });
+  return response.json();
+}
+
+export async function matchExercises(exerciseNames: string[]): Promise<any> {
+  const response = await fetch("/api/exercises/match", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ exerciseNames }),
+  });
+  return response.json();
+}
+
+export async function getAllExercises(): Promise<any> {
+  const response = await fetch("/api/exercises");
+  return response.json();
+}

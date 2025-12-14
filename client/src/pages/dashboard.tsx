@@ -1,15 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useLocation } from "wouter";
 import Layout from "@/components/Layout";
 import DayCard from "@/components/DayCard";
 import WorkoutTimer from "@/components/WorkoutTimer";
 import ProgressCharts from "@/components/ProgressCharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import ExerciseCard from "@/components/ExerciseCard";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlayCircle, Flame, Clock, Trophy, Loader2 } from "lucide-react";
 import healthyMealImage from "@assets/generated_images/healthy_meal_prep_with_vibrant_vegetables.png";
-import { getUserPlan, getUserId, recordProgress } from "@/lib/api";
+import { getUserPlan, getUserId, recordProgress, matchExercises } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
 import { toast } from "sonner";
 
@@ -21,6 +22,8 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [progress, setProgress] = useState<any[]>([]);
   const [showTimer, setShowTimer] = useState(false);
+  const [exerciseLibrary, setExerciseLibrary] = useState<Record<string, any>>({});
+  const latestDayRef = useRef<number>(1);
   const { t, language } = useTranslation();
 
   useEffect(() => {
@@ -32,6 +35,28 @@ export default function Dashboard() {
 
     loadPlan(userId);
   }, []);
+
+  useEffect(() => {
+    if (planData?.fitness_plan_30_days) {
+      latestDayRef.current = currentDay;
+      loadExerciseMatches(currentDay);
+    }
+  }, [currentDay, planData]);
+
+  async function loadExerciseMatches(day: number) {
+    const todaysPlan = planData?.fitness_plan_30_days[day - 1] || planData?.fitness_plan_30_days[0];
+    if (todaysPlan?.exercises) {
+      const exerciseNames = todaysPlan.exercises.map((ex: any) => ex.name);
+      try {
+        const matchResult = await matchExercises(exerciseNames);
+        if (matchResult.success && day === latestDayRef.current) {
+          setExerciseLibrary(matchResult.exercises);
+        }
+      } catch (e) {
+        console.error("Error matching exercises:", e);
+      }
+    }
+  }
 
   async function loadPlan(userId: number) {
     try {
@@ -169,26 +194,12 @@ export default function Dashboard() {
           <TabsContent value="workout" className="space-y-4">
              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {todaysPlan.exercises.map((ex: any, i: number) => (
-                  <Card key={i} className="hover:border-primary transition-colors" data-testid={`card-exercise-${i}`}>
-                    <CardHeader>
-                      <CardTitle className="text-lg">{ex.name}</CardTitle>
-                      <div className="text-sm text-primary font-medium">{ex.focus}</div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex justify-between text-sm mb-2">
-                        <span className="text-muted-foreground">{t("dashboard", "sets")}</span>
-                        <span className="font-bold">{ex.sets}</span>
-                      </div>
-                      <div className="flex justify-between text-sm mb-2">
-                        <span className="text-muted-foreground">{t("dashboard", "repsTime")}</span>
-                        <span className="font-bold">{ex.reps_or_time}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                         <span className="text-muted-foreground">{t("dashboard", "equipment")}</span>
-                         <span className="font-bold">{ex.equipment_used}</span>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <ExerciseCard 
+                    key={i} 
+                    exercise={ex} 
+                    libraryMatch={exerciseLibrary[ex.name]} 
+                    index={i} 
+                  />
                 ))}
              </div>
           </TabsContent>

@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { LayoutDashboard, User, Activity, Calendar, LogOut, Home } from "lucide-react";
+import NotificationBell from "@/components/NotificationBell";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -16,10 +17,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-background text-foreground flex flex-col md:flex-row">
       {/* Sidebar - Desktop Only */}
       <aside className="w-64 border-r border-border hidden md:flex flex-col bg-card/50 backdrop-blur-sm fixed h-full">
-        <div className="p-6">
+        <div className="p-6 flex items-center justify-between">
           <h1 className="text-2xl font-heading font-bold text-primary tracking-tighter">
             AI<span className="text-foreground">FITNESS</span>
           </h1>
+          <NotificationBell />
         </div>
         
         <nav className="flex-1 px-4 space-y-2">
@@ -49,10 +51,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto relative md:ml-64 pb-20 md:pb-0">
         {/* Mobile Header */}
-        <div className="md:hidden h-14 border-b border-border flex items-center justify-center px-4 bg-card/80 backdrop-blur-md sticky top-0 z-50">
+        <div className="md:hidden h-14 border-b border-border flex items-center justify-between px-4 bg-card/80 backdrop-blur-md sticky top-0 z-50">
            <h1 className="text-lg font-heading font-bold text-primary">
             AI<span className="text-foreground">FITNESS</span>
           </h1>
+          <NotificationBell />
         </div>
 
         <div className="p-3 sm:p-4 md:p-8 max-w-7xl mx-auto">

@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { generateFitnessPlan } from "./services/azure-ai";
 import { insertUserProfileSchema } from "@shared/schema";
 import { exerciseLibrary as exerciseData } from "./exerciseData";
+import { checkWaterReminder, createWaterReminder, getUnreadNotifications } from "./services/notifications";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 
@@ -301,6 +302,63 @@ export async function registerRoutes(
       res.json({ success: true, notifications });
     } catch (error) {
       res.status(500).json({ success: false, error: "Failed to fetch notifications" });
+    }
+  });
+
+  // Poll for new notifications (checks if water reminder is due)
+  app.post("/api/notifications/poll/:userId", async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const language = req.body.language || "en";
+      
+      await createWaterReminder(userId, language);
+      const unread = await getUnreadNotifications(userId);
+      
+      res.json({ success: true, notifications: unread });
+    } catch (error) {
+      console.error("Error polling notifications:", error);
+      res.status(500).json({ success: false, error: "Failed to poll notifications" });
+    }
+  });
+
+  // Mark notification as read
+  app.patch("/api/notifications/:id/read", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.markNotificationRead(id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ success: false, error: "Failed to mark notification as read" });
+    }
+  });
+
+  // Get exercises by IDs (for matching workout exercises)
+  app.post("/api/exercises/match", async (req: Request, res: Response) => {
+    try {
+      const { exerciseNames } = req.body;
+      if (!exerciseNames || !Array.isArray(exerciseNames)) {
+        return res.status(400).json({ success: false, error: "exerciseNames array required" });
+      }
+      
+      const allExercises = await storage.getAllExercises();
+      const matched: Record<string, any> = {};
+      
+      for (const name of exerciseNames) {
+        const normalizedName = name.toLowerCase().trim();
+        const match = allExercises.find(ex => 
+          ex.name.toLowerCase().includes(normalizedName) ||
+          normalizedName.includes(ex.name.toLowerCase()) ||
+          ex.namePt.toLowerCase().includes(normalizedName) ||
+          normalizedName.includes(ex.namePt.toLowerCase())
+        );
+        if (match) {
+          matched[name] = match;
+        }
+      }
+      
+      res.json({ success: true, exercises: matched });
+    } catch (error) {
+      res.status(500).json({ success: false, error: "Failed to match exercises" });
     }
   });
 
