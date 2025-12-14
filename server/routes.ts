@@ -63,6 +63,41 @@ export async function registerRoutes(
     }
   });
 
+  // Login with phone number and PIN
+  app.post("/api/login", async (req: Request, res: Response) => {
+    try {
+      const { phoneNumber, pin } = req.body;
+
+      if (!phoneNumber || !pin) {
+        return res.status(400).json({
+          success: false,
+          error: "Phone number and PIN are required",
+        });
+      }
+
+      const user = await storage.getUserByPhoneAndPin(phoneNumber, pin);
+
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+          error: "Invalid phone number or PIN",
+        });
+      }
+
+      res.json({
+        success: true,
+        userId: user.id,
+        language: user.language,
+      });
+    } catch (error) {
+      console.error("Error in login:", error);
+      res.status(500).json({
+        success: false,
+        error: "Login failed",
+      });
+    }
+  });
+
   // Get user's latest fitness plan
   app.get("/api/plan/:userId", async (req: Request, res: Response) => {
     try {

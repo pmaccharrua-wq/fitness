@@ -25,6 +25,7 @@ export interface IStorage {
   // User Profile Operations
   createUserProfile(data: InsertUserProfile): Promise<UserProfile>;
   getUserProfile(id: number): Promise<UserProfile | undefined>;
+  getUserByPhoneAndPin(phoneNumber: string, pin: string): Promise<UserProfile | undefined>;
   
   // Fitness Plan Operations
   createFitnessPlan(data: InsertFitnessPlan): Promise<FitnessPlan>;
@@ -70,6 +71,19 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(userProfiles)
       .where(eq(userProfiles.id, id));
+    return profile;
+  }
+
+  async getUserByPhoneAndPin(phoneNumber: string, pin: string): Promise<UserProfile | undefined> {
+    const [profile] = await db
+      .select()
+      .from(userProfiles)
+      .where(
+        and(
+          eq(userProfiles.phoneNumber, phoneNumber),
+          eq(userProfiles.pin, pin)
+        )
+      );
     return profile;
   }
 
