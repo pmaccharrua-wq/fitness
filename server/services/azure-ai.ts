@@ -30,6 +30,8 @@ const AVAILABLE_EQUIPMENT = [
   "Peso corporal (sem equipamento)",
 ];
 
+export { AVAILABLE_EQUIPMENT };
+
 export interface GeneratedPlan {
   plan_summary_pt: string;
   fitness_plan_15_days: Array<{
@@ -178,9 +180,8 @@ export async function generateFitnessPlan(
     "Passadeira com elevação e velocidade ajustáveis": ["treadmill", "bodyweight"],
     "Bicicleta": ["stationary bike", "bodyweight"],
     "Máquina de step": ["step machine", "bodyweight"],
-    "Banco Adidas": ["bench", "dumbbell", "barbell", "bodyweight"],
+    "Banco Adidas": ["bench", "dumbbell", "bodyweight"],
     "Bola de ginástica": ["gym ball", "bodyweight"],
-    "Barra (10kg + Discos)": ["barbell", "bodyweight"],
     "Peso corporal (sem equipamento)": ["bodyweight"],
   };
 

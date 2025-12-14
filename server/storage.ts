@@ -26,6 +26,7 @@ export interface IStorage {
   createUserProfile(data: InsertUserProfile): Promise<UserProfile>;
   getUserProfile(id: number): Promise<UserProfile | undefined>;
   getUserByPhoneAndPin(phoneNumber: string, pin: string): Promise<UserProfile | undefined>;
+  updateUserProfile(id: number, data: Partial<InsertUserProfile>): Promise<UserProfile | undefined>;
   
   // Fitness Plan Operations
   createFitnessPlan(data: InsertFitnessPlan): Promise<FitnessPlan>;
@@ -90,6 +91,15 @@ export class DatabaseStorage implements IStorage {
       )
       .orderBy(desc(userProfiles.id))
       .limit(1);
+    return profile;
+  }
+
+  async updateUserProfile(id: number, data: Partial<InsertUserProfile>): Promise<UserProfile | undefined> {
+    const [profile] = await db
+      .update(userProfiles)
+      .set(data)
+      .where(eq(userProfiles.id, id))
+      .returning();
     return profile;
   }
 

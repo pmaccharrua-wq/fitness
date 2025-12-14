@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { generateFitnessPlan } from "./services/azure-ai";
+import { generateFitnessPlan, AVAILABLE_EQUIPMENT } from "./services/azure-ai";
 import { insertUserProfileSchema } from "@shared/schema";
 import { exerciseLibrary as exerciseData } from "./exerciseData";
 import { checkWaterReminder, createWaterReminder, getUnreadNotifications } from "./services/notifications";
@@ -25,6 +25,9 @@ export async function registerRoutes(
     try {
       // Validate request body
       const validatedData = insertUserProfileSchema.parse(req.body);
+
+      // Auto-set fixed gym equipment for all users
+      validatedData.equipment = AVAILABLE_EQUIPMENT;
 
       // Create user profile
       const userProfile = await storage.createUserProfile(validatedData);
@@ -304,6 +307,90 @@ export async function registerRoutes(
       res.status(500).json({
         success: false,
         error: "Failed to fetch profile",
+      });
+    }
+  });
+
+  // Update user profile and optionally regenerate plan
+  app.patch("/api/profile/:userId", async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+
+      if (isNaN(userId)) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid user ID",
+        });
+      }
+
+      const updateSchema = z.object({
+        weight: z.number().optional(),
+        height: z.number().optional(),
+        goal: z.string().optional(),
+        activityLevel: z.string().optional(),
+        impediments: z.string().optional(),
+        timePerDay: z.number().optional(),
+        difficulty: z.string().optional(),
+        regeneratePlan: z.boolean().optional(),
+      });
+
+      const { regeneratePlan, ...rawUpdateData } = updateSchema.parse(req.body);
+
+      // Filter out undefined values to prevent overwriting existing data with NULL
+      const updateData: Record<string, any> = {};
+      for (const [key, value] of Object.entries(rawUpdateData)) {
+        if (value !== undefined) {
+          updateData[key] = value;
+        }
+      }
+
+      // Only update if there are fields to update
+      let updatedProfile;
+      if (Object.keys(updateData).length > 0) {
+        updatedProfile = await storage.updateUserProfile(userId, updateData);
+      } else {
+        updatedProfile = await storage.getUserProfile(userId);
+      }
+
+      if (!updatedProfile) {
+        return res.status(404).json({
+          success: false,
+          error: "User profile not found",
+        });
+      }
+
+      let newPlan = null;
+
+      // Regenerate plan if requested
+      if (regeneratePlan) {
+        console.log("Regenerating AI plan for user:", userId);
+        const aiPlan = await generateFitnessPlan(updatedProfile);
+
+        newPlan = await storage.createFitnessPlan({
+          userId: updatedProfile.id,
+          planData: aiPlan as any,
+          currentDay: 1,
+        });
+      }
+
+      res.json({
+        success: true,
+        profile: updatedProfile,
+        newPlan: newPlan ? { id: newPlan.id, plan: newPlan.planData } : null,
+      });
+    } catch (error) {
+      console.error("Error updating profile:", error);
+
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          success: false,
+          error: fromZodError(error).toString(),
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to update profile",
       });
     }
   });

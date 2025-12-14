@@ -45,12 +45,7 @@ const steps = [
   { id: 3, title: "Corpo", titleEn: "Body", description: "Medidas e sexo", descriptionEn: "Measurements and sex" },
   { id: 4, title: "Composição", titleEn: "Composition", description: "Tipo corporal", descriptionEn: "Body type" },
   { id: 5, title: "Objetivos", titleEn: "Goals", description: "Metas e preferências", descriptionEn: "Goals and preferences" },
-  { id: 6, title: "Finalizar", titleEn: "Finish", description: "Equipamento e PIN", descriptionEn: "Equipment and PIN" },
-];
-
-const equipmentOptions = [
-  "Halteres", "Tapete de Yoga", "Barra de Flexões", "Banco", "Kettlebell", 
-  "Faixas Elásticas", "Corda de Saltar", "Bola de Pilates"
+  { id: 6, title: "Finalizar", titleEn: "Finish", description: "Criar PIN", descriptionEn: "Create PIN" },
 ];
 
 export default function Onboarding() {
@@ -58,7 +53,6 @@ export default function Onboarding() {
   const [currentStep, setCurrentStep] = useState(1);
   const [direction, setDirection] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -87,12 +81,6 @@ export default function Onboarding() {
   const lang = form.watch("language");
   const t = (pt: string, en: string) => lang === "pt" ? pt : en;
 
-  const toggleEquipment = (item: string) => {
-    setSelectedEquipment(prev => 
-      prev.includes(item) ? prev.filter(e => e !== item) : [...prev, item]
-    );
-  };
-
   const nextStep = async () => {
     if (currentStep < steps.length) {
       setDirection(1);
@@ -112,7 +100,6 @@ export default function Onboarding() {
           height: parseInt(formData.height),
           goal: formData.goal,
           activityLevel: formData.activityLevel,
-          equipment: selectedEquipment.length > 0 ? selectedEquipment : undefined,
           impediments: formData.impediments || undefined,
           somatotype: formData.somatotype || undefined,
           currentBodyComp: formData.currentBodyComp || undefined,
@@ -438,25 +425,6 @@ export default function Onboarding() {
 
                 {currentStep === 6 && (
                   <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>{t("Equipamento Disponível (Opcional)", "Available Equipment (Optional)")}</Label>
-                      <div className="grid grid-cols-2 gap-2">
-                        {equipmentOptions.map(item => (
-                          <div 
-                            key={item} 
-                            className={`flex items-center space-x-2 p-2 rounded-md border cursor-pointer transition-all ${
-                              selectedEquipment.includes(item) ? "border-primary bg-primary/10" : "border-input hover:bg-muted/50"
-                            }`}
-                            onClick={() => toggleEquipment(item)}
-                            data-testid={`checkbox-equipment-${item.toLowerCase().replace(/\s+/g, '-')}`}
-                          >
-                            <Checkbox checked={selectedEquipment.includes(item)} />
-                            <span className="text-sm">{item}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
                     <div className="space-y-2">
                       <Label>{t("Definir PIN de 4 dígitos", "Set 4-digit PIN")}</Label>
                       <p className="text-xs text-muted-foreground">{t("Este PIN será usado para aceder à sua conta", "This PIN will be used to access your account")}</p>

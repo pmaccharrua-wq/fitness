@@ -171,3 +171,23 @@ export async function getAllExercises(): Promise<any> {
   const response = await fetch("/api/exercises");
   return response.json();
 }
+
+export interface ProfileUpdateData {
+  weight?: number;
+  height?: number;
+  goal?: string;
+  activityLevel?: string;
+  impediments?: string;
+  timePerDay?: number;
+  difficulty?: string;
+  regeneratePlan?: boolean;
+}
+
+export async function updateUserProfile(userId: number, data: ProfileUpdateData): Promise<any> {
+  const response = await fetch(`/api/profile/${userId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  return response.json();
+}
