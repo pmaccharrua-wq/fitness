@@ -60,6 +60,10 @@ export const userProfiles = pgTable("user_profiles", {
   somatotype: text("somatotype"), // "ectomorph", "mesomorph", "endomorph"
   currentBodyComp: text("current_body_comp"), // Current body composition description
   targetBodyComp: text("target_body_comp"), // Target body composition description
+  targetWeight: integer("target_weight"), // Target weight in kg
+  weightGoalWeeks: integer("weight_goal_weeks"), // Timeframe to reach target weight in weeks
+  goalRealistic: boolean("goal_realistic"), // Whether AI determined goal is realistic
+  goalFeedback: text("goal_feedback"), // AI feedback on the goal
   timePerDay: integer("time_per_day").default(45), // Workout time in minutes
   difficulty: text("difficulty").default("medium"), // "very_easy", "easy", "medium", "hard", "very_hard"
   createdAt: timestamp("created_at").defaultNow().notNull(),
