@@ -740,22 +740,24 @@ export async function generateMealFromIngredients(
   const isPt = language === "pt";
   
   const systemPrompt = isPt
-    ? `Cria uma refeição SIMPLES e rápida do dia-a-dia.
+    ? `Cria uma refeição SIMPLES e realista do dia-a-dia.
 
-REGRAS:
-1. Usa apenas 2-4 ingredientes principais da lista
-2. Calorias aproximadas: ${targets.targetCalories} kcal (±100 está OK)
-3. Preparação em 2-3 passos curtos (máximo 1 frase cada)
-4. Refeição: ${targets.mealTime}
-5. Português (pt-PT)`
-    : `Create a SIMPLE, quick everyday meal.
+REGRAS IMPORTANTES:
+1. Usa 2-4 ingredientes da lista com QUANTIDADES REALISTAS (ex: 80-100g carne, 30-40g fiambre, 150g arroz cozido)
+2. Prioriza porções normais - ninguém come 120g de fiambre numa sandes!
+3. Calorias aproximadas: ${targets.targetCalories} kcal (±150 está OK - porções realistas são mais importantes)
+4. Preparação em 2-3 passos curtos
+5. Refeição: ${targets.mealTime}
+6. Português (pt-PT)`
+    : `Create a SIMPLE, realistic everyday meal.
 
 RULES:
-1. Use only 2-4 main ingredients from the list
-2. Approximate calories: ${targets.targetCalories} kcal (±100 is OK)
-3. Preparation in 2-3 short steps (max 1 sentence each)
-4. Meal time: ${targets.mealTime}
-5. English`;
+1. Use 2-4 ingredients with REALISTIC portions (e.g. 80-100g meat, 30-40g deli meat, 150g cooked rice)
+2. Prioritize normal portions - nobody eats 120g of ham in a sandwich!
+3. Approximate calories: ${targets.targetCalories} kcal (±150 is OK - realistic portions matter more)
+4. Preparation in 2-3 short steps
+5. Meal time: ${targets.mealTime}
+6. English`;
 
   const userPrompt = isPt
     ? `Ingredientes: ${ingredients.join(', ')}
