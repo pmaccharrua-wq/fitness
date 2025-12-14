@@ -297,6 +297,7 @@ ${exerciseLibraryReference}
 2. O total calórico diário DEVE estar dentro de ±50 kcal da meta (${targetCalories} kcal).
 3. Respeita estritamente os alvos de macros (P:${macroTargets.protein}%, C:${macroTargets.carbs}%, G:${macroTargets.fat}%).
 4. Baseia-te em **alimentos integrais** e inclui opções típicas portuguesas (peixe, carne, ovos, verduras, carboidratos).
+5. **SUPLEMENTAÇÃO DE WHEY PROTEIN:** Para objetivos de ganho de massa muscular ou ganho de peso, INCLUI Whey Protein Isolado de alta qualidade (ex: Prozis 100% Real Whey Isolate ou marcas equivalentes de qualidade certificada) em 1-2 refeições por dia (preferencialmente pós-treino e/ou lanche). Dose recomendada: 25-30g por porção. Benefícios: absorção rápida, alto valor biológico, baixo teor de lactose/gordura. **Nota de segurança:** Whey Protein Isolado é seguro para adultos saudáveis quando consumido dentro das recomendações diárias de proteína (1.6-2.2g/kg para hipertrofia).
 
 **C. DIRETRIZES DE HIDRATAÇÃO:**
 1. Meta de água: ${waterTarget} ml por dia
