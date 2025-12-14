@@ -2,15 +2,24 @@ import {
   userProfiles,
   fitnessPlans,
   exerciseProgress,
+  exerciseLibrary,
+  notificationSettings,
+  notificationLog,
   type UserProfile,
   type InsertUserProfile,
   type FitnessPlan,
   type InsertFitnessPlan,
   type ExerciseProgress,
   type InsertExerciseProgress,
+  type ExerciseLibraryItem,
+  type InsertExerciseLibraryItem,
+  type NotificationSettingsType,
+  type InsertNotificationSettings,
+  type NotificationLogType,
+  type InsertNotificationLog,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 
 export interface IStorage {
   // User Profile Operations
@@ -28,6 +37,22 @@ export interface IStorage {
   getExerciseProgress(userId: number, planId: number, day: number): Promise<ExerciseProgress | undefined>;
   getUserProgress(userId: number, planId: number): Promise<ExerciseProgress[]>;
   updateExerciseProgress(id: number, difficulty: string): Promise<void>;
+
+  // Exercise Library Operations
+  seedExerciseLibrary(exercises: InsertExerciseLibraryItem[]): Promise<void>;
+  getAllExercises(): Promise<ExerciseLibraryItem[]>;
+  getExerciseById(id: string): Promise<ExerciseLibraryItem | undefined>;
+  getExercisesByIds(ids: string[]): Promise<ExerciseLibraryItem[]>;
+
+  // Notification Settings Operations
+  createNotificationSettings(data: InsertNotificationSettings): Promise<NotificationSettingsType>;
+  getNotificationSettings(userId: number): Promise<NotificationSettingsType | undefined>;
+  updateNotificationSettings(userId: number, data: Partial<InsertNotificationSettings>): Promise<void>;
+
+  // Notification Log Operations
+  createNotificationLog(data: InsertNotificationLog): Promise<NotificationLogType>;
+  getUserNotifications(userId: number, limit?: number): Promise<NotificationLogType[]>;
+  markNotificationRead(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -131,6 +156,99 @@ export class DatabaseStorage implements IStorage {
         completedAt: new Date(),
       })
       .where(eq(exerciseProgress.id, id));
+  }
+
+  // Exercise Library Operations
+  async seedExerciseLibrary(exercises: InsertExerciseLibraryItem[]): Promise<void> {
+    for (const exercise of exercises) {
+      await db
+        .insert(exerciseLibrary)
+        .values(exercise)
+        .onConflictDoUpdate({
+          target: exerciseLibrary.id,
+          set: {
+            name: exercise.name,
+            namePt: exercise.namePt,
+            primaryMuscles: exercise.primaryMuscles,
+            secondaryMuscles: exercise.secondaryMuscles,
+            equipment: exercise.equipment,
+            difficulty: exercise.difficulty,
+            imageUrl: exercise.imageUrl,
+            videoUrl: exercise.videoUrl,
+            instructions: exercise.instructions,
+            instructionsPt: exercise.instructionsPt,
+          },
+        });
+    }
+  }
+
+  async getAllExercises(): Promise<ExerciseLibraryItem[]> {
+    return await db.select().from(exerciseLibrary);
+  }
+
+  async getExerciseById(id: string): Promise<ExerciseLibraryItem | undefined> {
+    const [exercise] = await db
+      .select()
+      .from(exerciseLibrary)
+      .where(eq(exerciseLibrary.id, id));
+    return exercise;
+  }
+
+  async getExercisesByIds(ids: string[]): Promise<ExerciseLibraryItem[]> {
+    if (ids.length === 0) return [];
+    return await db
+      .select()
+      .from(exerciseLibrary)
+      .where(inArray(exerciseLibrary.id, ids));
+  }
+
+  // Notification Settings Operations
+  async createNotificationSettings(data: InsertNotificationSettings): Promise<NotificationSettingsType> {
+    const [settings] = await db
+      .insert(notificationSettings)
+      .values(data)
+      .returning();
+    return settings;
+  }
+
+  async getNotificationSettings(userId: number): Promise<NotificationSettingsType | undefined> {
+    const [settings] = await db
+      .select()
+      .from(notificationSettings)
+      .where(eq(notificationSettings.userId, userId));
+    return settings;
+  }
+
+  async updateNotificationSettings(userId: number, data: Partial<InsertNotificationSettings>): Promise<void> {
+    await db
+      .update(notificationSettings)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(notificationSettings.userId, userId));
+  }
+
+  // Notification Log Operations
+  async createNotificationLog(data: InsertNotificationLog): Promise<NotificationLogType> {
+    const [log] = await db
+      .insert(notificationLog)
+      .values(data)
+      .returning();
+    return log;
+  }
+
+  async getUserNotifications(userId: number, limit: number = 50): Promise<NotificationLogType[]> {
+    return await db
+      .select()
+      .from(notificationLog)
+      .where(eq(notificationLog.userId, userId))
+      .orderBy(desc(notificationLog.sentAt))
+      .limit(limit);
+  }
+
+  async markNotificationRead(id: number): Promise<void> {
+    await db
+      .update(notificationLog)
+      .set({ read: true })
+      .where(eq(notificationLog.id, id));
   }
 }
 

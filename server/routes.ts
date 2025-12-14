@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { generateFitnessPlan } from "./services/azure-ai";
 import { insertUserProfileSchema } from "@shared/schema";
+import { exerciseLibrary as exerciseData } from "./exerciseData";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 
@@ -211,6 +212,95 @@ export async function registerRoutes(
         success: false,
         error: "Failed to fetch profile",
       });
+    }
+  });
+
+  // Seed exercise library
+  app.post("/api/exercises/seed", async (req: Request, res: Response) => {
+    try {
+      await storage.seedExerciseLibrary(exerciseData);
+      res.json({
+        success: true,
+        message: `Seeded ${exerciseData.length} exercises`,
+      });
+    } catch (error) {
+      console.error("Error seeding exercises:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to seed exercises",
+      });
+    }
+  });
+
+  // Get all exercises
+  app.get("/api/exercises", async (req: Request, res: Response) => {
+    try {
+      const exercises = await storage.getAllExercises();
+      res.json({ success: true, exercises });
+    } catch (error) {
+      res.status(500).json({ success: false, error: "Failed to fetch exercises" });
+    }
+  });
+
+  // Get exercise by ID
+  app.get("/api/exercises/:id", async (req: Request, res: Response) => {
+    try {
+      const exercise = await storage.getExerciseById(req.params.id);
+      if (!exercise) {
+        return res.status(404).json({ success: false, error: "Exercise not found" });
+      }
+      res.json({ success: true, exercise });
+    } catch (error) {
+      res.status(500).json({ success: false, error: "Failed to fetch exercise" });
+    }
+  });
+
+  // Get notification settings
+  app.get("/api/notifications/settings/:userId", async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      let settings = await storage.getNotificationSettings(userId);
+      if (!settings) {
+        settings = await storage.createNotificationSettings({ userId });
+      }
+      res.json({ success: true, settings });
+    } catch (error) {
+      res.status(500).json({ success: false, error: "Failed to fetch notification settings" });
+    }
+  });
+
+  // Update notification settings
+  app.patch("/api/notifications/settings/:userId", async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const schema = z.object({
+        waterRemindersEnabled: z.boolean().optional(),
+        waterReminderIntervalMinutes: z.number().min(30).max(180).optional(),
+        mealRemindersEnabled: z.boolean().optional(),
+        workoutRemindersEnabled: z.boolean().optional(),
+        sleepStartHour: z.number().min(0).max(23).optional(),
+        sleepEndHour: z.number().min(0).max(23).optional(),
+        waterTargetMl: z.number().min(1000).max(5000).optional(),
+      });
+      const data = schema.parse(req.body);
+      await storage.updateNotificationSettings(userId, data);
+      res.json({ success: true });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, error: fromZodError(error).toString() });
+      }
+      res.status(500).json({ success: false, error: "Failed to update settings" });
+    }
+  });
+
+  // Get user notifications
+  app.get("/api/notifications/:userId", async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const notifications = await storage.getUserNotifications(userId);
+      res.json({ success: true, notifications });
+    } catch (error) {
+      res.status(500).json({ success: false, error: "Failed to fetch notifications" });
     }
   });
 
