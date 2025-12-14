@@ -5,7 +5,7 @@ import { generateFitnessPlan, AVAILABLE_EQUIPMENT } from "./services/azure-ai";
 import { insertUserProfileSchema } from "@shared/schema";
 import { exerciseLibrary as exerciseData } from "./exerciseData";
 import { checkWaterReminder, createWaterReminder, getUnreadNotifications } from "./services/notifications";
-import { testImageGeneration, generateExerciseImage } from "./services/image-generation";
+import { testImageLookup, getExerciseImage } from "./services/image-generation";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 
@@ -512,21 +512,21 @@ export async function registerRoutes(
     }
   });
 
-  // Test DALL-E image generation
+  // Test stock image lookup
   app.get("/api/images/test", async (req: Request, res: Response) => {
     try {
-      const result = await testImageGeneration();
+      const result = await testImageLookup();
       res.json(result);
     } catch (error) {
       res.status(500).json({ 
         success: false, 
-        error: error instanceof Error ? error.message : "Failed to test image generation" 
+        error: error instanceof Error ? error.message : "Failed to test image lookup" 
       });
     }
   });
 
-  // Generate image for a specific exercise
-  app.post("/api/images/generate", async (req: Request, res: Response) => {
+  // Get stock image for a specific exercise
+  app.post("/api/images/exercise", async (req: Request, res: Response) => {
     try {
       const { exerciseName, exerciseNamePt, equipment, primaryMuscles } = req.body;
       
@@ -537,7 +537,7 @@ export async function registerRoutes(
         });
       }
 
-      const image = await generateExerciseImage(
+      const image = await getExerciseImage(
         exerciseName,
         exerciseNamePt || exerciseName,
         equipment,
@@ -548,7 +548,7 @@ export async function registerRoutes(
     } catch (error) {
       res.status(500).json({ 
         success: false, 
-        error: error instanceof Error ? error.message : "Failed to generate image" 
+        error: error instanceof Error ? error.message : "Failed to get image" 
       });
     }
   });
