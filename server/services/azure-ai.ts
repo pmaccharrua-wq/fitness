@@ -693,10 +693,35 @@ Generate 3 different alternatives in JSON format.`;
     }
 
     const data = await response.json();
-    const content = data.choices[0]?.message?.content;
+    
+    // Debug: Log the full response structure
+    console.log("Meal swap API response:", JSON.stringify({
+      finish_reason: data.choices?.[0]?.finish_reason,
+      refusal: data.choices?.[0]?.message?.refusal,
+      content_length: data.choices?.[0]?.message?.content?.length,
+      usage: data.usage
+    }));
+    
+    const choice = data.choices?.[0];
+    
+    // Check for content filter or refusal
+    if (choice?.finish_reason === "content_filter") {
+      throw new Error("Azure OpenAI content filter triggered - try rephrasing the meal request");
+    }
+    
+    if (choice?.finish_reason === "length") {
+      throw new Error("Response was truncated - meal alternatives too complex");
+    }
+    
+    if (choice?.message?.refusal) {
+      throw new Error(`Azure OpenAI refused: ${choice.message.refusal}`);
+    }
+    
+    const content = choice?.message?.content;
 
     if (!content) {
-      throw new Error("No content in Azure OpenAI response");
+      console.error("Full Azure response with no content:", JSON.stringify(data, null, 2));
+      throw new Error("No content in Azure OpenAI response - check server logs for details");
     }
 
     return JSON.parse(content);
@@ -831,10 +856,35 @@ Create a meal using these ingredients in JSON format.`;
     }
 
     const data = await response.json();
-    const content = data.choices[0]?.message?.content;
+    
+    // Debug: Log the full response structure
+    console.log("Meal from ingredients API response:", JSON.stringify({
+      finish_reason: data.choices?.[0]?.finish_reason,
+      refusal: data.choices?.[0]?.message?.refusal,
+      content_length: data.choices?.[0]?.message?.content?.length,
+      usage: data.usage
+    }));
+    
+    const choice = data.choices?.[0];
+    
+    // Check for content filter or refusal
+    if (choice?.finish_reason === "content_filter") {
+      throw new Error("Azure OpenAI content filter triggered - try different ingredients");
+    }
+    
+    if (choice?.finish_reason === "length") {
+      throw new Error("Response was truncated - meal too complex");
+    }
+    
+    if (choice?.message?.refusal) {
+      throw new Error(`Azure OpenAI refused: ${choice.message.refusal}`);
+    }
+    
+    const content = choice?.message?.content;
 
     if (!content) {
-      throw new Error("No content in Azure OpenAI response");
+      console.error("Full Azure response with no content:", JSON.stringify(data, null, 2));
+      throw new Error("No content in Azure OpenAI response - check server logs for details");
     }
 
     return JSON.parse(content);
