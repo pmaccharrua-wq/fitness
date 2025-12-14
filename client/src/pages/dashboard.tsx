@@ -37,14 +37,15 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    if (planData?.fitness_plan_30_days) {
+    if (planData?.fitness_plan_7_days) {
       latestDayRef.current = currentDay;
       loadExerciseMatches(currentDay);
     }
   }, [currentDay, planData]);
 
   async function loadExerciseMatches(day: number) {
-    const todaysPlan = planData?.fitness_plan_30_days[day - 1] || planData?.fitness_plan_30_days[0];
+    const dayIndex = ((day - 1) % 7);
+    const todaysPlan = planData?.fitness_plan_7_days[dayIndex] || planData?.fitness_plan_7_days[0];
     if (todaysPlan?.exercises) {
       const exerciseNames = todaysPlan.exercises.map((ex: any) => ex.name);
       try {
@@ -91,7 +92,7 @@ export default function Dashboard() {
         });
         setProgress([...progress, { day: currentDay }]);
         toast.success(language === "pt" ? "Treino concluído! Excelente trabalho!" : "Workout complete! Great job!");
-        if (currentDay < 30) {
+        if (currentDay < 7) {
           setCurrentDay(currentDay + 1);
         }
       } catch (error) {
@@ -113,7 +114,7 @@ export default function Dashboard() {
     );
   }
 
-  if (!planData || !planData.fitness_plan_30_days) {
+  if (!planData || !planData.fitness_plan_7_days) {
     return (
       <Layout>
         <div className="text-center space-y-4 py-12">
@@ -124,8 +125,10 @@ export default function Dashboard() {
     );
   }
 
-  const todaysPlan = planData.fitness_plan_30_days[currentDay - 1] || planData.fitness_plan_30_days[0];
-  const nutritionGuidelines = planData.nutrition_guidelines;
+  const dayIndex = ((currentDay - 1) % 7);
+  const todaysPlan = planData.fitness_plan_7_days[dayIndex] || planData.fitness_plan_7_days[0];
+  const nutritionPlan = planData.nutrition_plan_3_days || [];
+  const hydrationGuidelines = planData.hydration_guidelines_pt;
 
   return (
     <Layout>
@@ -134,7 +137,7 @@ export default function Dashboard() {
           <div>
             <h1 className="text-4xl font-heading font-bold uppercase" data-testid="text-todays-focus">{t("dashboard", "todaysFocus")}</h1>
             <p className="text-muted-foreground mt-2" data-testid="text-day-info">
-              {t("dashboard", "dayOf", { current: String(currentDay), total: "30" })} • {todaysPlan.workout_name}
+              {t("dashboard", "dayOf", { current: String(currentDay), total: "7" })} • {todaysPlan.workout_name_pt}
             </p>
           </div>
           <Button 
@@ -176,7 +179,7 @@ export default function Dashboard() {
                 <Trophy className="w-6 h-6 text-green-500" />
               </div>
               <div>
-                <div className="text-2xl font-bold" data-testid="text-progress">{progress.length}/30</div>
+                <div className="text-2xl font-bold" data-testid="text-progress">{progress.length}/7</div>
                 <div className="text-xs text-muted-foreground uppercase">{t("dashboard", "daysComplete")}</div>
               </div>
             </CardContent>
@@ -192,86 +195,95 @@ export default function Dashboard() {
           </TabsList>
 
           <TabsContent value="workout" className="space-y-4">
-             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {todaysPlan.exercises.map((ex: any, i: number) => (
-                  <ExerciseCard 
-                    key={i} 
-                    exercise={ex} 
-                    libraryMatch={exerciseLibrary[ex.name]} 
-                    index={i} 
-                  />
-                ))}
-             </div>
+             {todaysPlan.is_rest_day ? (
+               <Card className="bg-card/50 border-primary/20">
+                 <CardContent className="p-8 text-center">
+                   <h3 className="text-xl font-heading mb-2">{language === "pt" ? "Dia de Descanso" : "Rest Day"}</h3>
+                   <p className="text-muted-foreground">{language === "pt" ? "Recupere e prepare-se para o próximo treino!" : "Recover and prepare for your next workout!"}</p>
+                 </CardContent>
+               </Card>
+             ) : (
+               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {(todaysPlan.exercises || []).map((ex: any, i: number) => (
+                    <ExerciseCard 
+                      key={i} 
+                      exercise={ex} 
+                      libraryMatch={exerciseLibrary[ex.name]} 
+                      index={i} 
+                    />
+                  ))}
+               </div>
+             )}
           </TabsContent>
 
           <TabsContent value="nutrition">
-            <div className="mb-6">
-              <Card className="bg-card/50 border-primary/20">
-                <CardContent className="p-6">
-                  <h3 className="font-heading text-xl mb-4" data-testid="text-daily-targets">{t("dashboard", "dailyTargets")}</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div>
-                      <div className="text-2xl font-bold text-primary" data-testid="text-calorie-target">{nutritionGuidelines.daily_calorie_target}</div>
-                      <div className="text-xs text-muted-foreground">{t("dashboard", "calories")}</div>
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold">{nutritionGuidelines.macros.protein_percentage}%</div>
-                      <div className="text-xs text-muted-foreground">{t("dashboard", "protein")}</div>
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold">{nutritionGuidelines.macros.carbs_percentage}%</div>
-                      <div className="text-xs text-muted-foreground">{t("dashboard", "carbs")}</div>
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold">{nutritionGuidelines.macros.fat_percentage}%</div>
-                      <div className="text-xs text-muted-foreground">{t("dashboard", "fat")}</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-               {nutritionGuidelines.sample_recipes.map((recipe: any, idx: number) => (
-                 <Card key={idx} className="overflow-hidden" data-testid={`card-recipe-${idx}`}>
-                   <div className="h-32 bg-muted relative">
-                     <img src={healthyMealImage} alt="Meal" className="w-full h-full object-cover" />
-                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-4">
-                       <h3 className="text-lg font-heading font-bold text-white capitalize">{recipe.meal}</h3>
-                     </div>
-                   </div>
-                   <CardContent className="p-4 space-y-3">
-                      <div className="flex justify-between items-center">
-                        <h4 className="font-bold text-sm">{recipe.description}</h4>
-                        <span className="text-primary font-bold text-sm">{recipe.calories} kcal</span>
-                      </div>
-                      
-                      <div className="grid grid-cols-3 gap-2 text-center">
-                        <div className="bg-muted p-2 rounded">
-                          <div className="text-xs text-muted-foreground">PRO</div>
-                          <div className="font-bold text-sm">{recipe.macros.protein}</div>
+            {nutritionPlan.length > 0 && (
+              <>
+                <div className="mb-6">
+                  <Card className="bg-card/50 border-primary/20">
+                    <CardContent className="p-6">
+                      <h3 className="font-heading text-xl mb-4" data-testid="text-daily-targets">{t("dashboard", "dailyTargets")}</h3>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                          <div className="text-2xl font-bold text-primary" data-testid="text-calorie-target">{nutritionPlan[0]?.total_daily_calories}</div>
+                          <div className="text-xs text-muted-foreground">{t("dashboard", "calories")}</div>
                         </div>
-                         <div className="bg-muted p-2 rounded">
-                          <div className="text-xs text-muted-foreground">CARB</div>
-                          <div className="font-bold text-sm">{recipe.macros.carbs}</div>
+                        <div>
+                          <div className="text-2xl font-bold">{hydrationGuidelines?.water_target_ml || 2500} ml</div>
+                          <div className="text-xs text-muted-foreground">{language === "pt" ? "Água/dia" : "Water/day"}</div>
                         </div>
-                         <div className="bg-muted p-2 rounded">
-                          <div className="text-xs text-muted-foreground">FAT</div>
-                          <div className="font-bold text-sm">{recipe.macros.fat}</div>
+                        <div>
+                          <div className="text-lg font-bold">{nutritionPlan[0]?.total_daily_macros?.split(",")[0] || ""}</div>
+                          <div className="text-xs text-muted-foreground">{t("dashboard", "protein")}</div>
+                        </div>
+                        <div>
+                          <div className="text-lg font-bold">{nutritionPlan[0]?.total_daily_macros?.split(",")[1] || ""}</div>
+                          <div className="text-xs text-muted-foreground">{t("dashboard", "carbs")}</div>
                         </div>
                       </div>
+                    </CardContent>
+                  </Card>
+                </div>
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                   {nutritionPlan[0]?.meals?.map((meal: any, idx: number) => (
+                     <Card key={idx} className="overflow-hidden" data-testid={`card-recipe-${idx}`}>
+                       <div className="h-32 bg-muted relative">
+                         <img src={healthyMealImage} alt="Meal" className="w-full h-full object-cover" />
+                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-4">
+                           <h3 className="text-lg font-heading font-bold text-white capitalize">{meal.meal_time_pt}</h3>
+                         </div>
+                       </div>
+                       <CardContent className="p-4 space-y-3">
+                          <div className="flex justify-between items-center">
+                            <h4 className="font-bold text-sm">{meal.description_pt}</h4>
+                            <span className="text-primary font-bold text-sm">{meal.calories} kcal</span>
+                          </div>
+                          
+                          <div className="grid grid-cols-3 gap-2 text-center">
+                            <div className="bg-muted p-2 rounded">
+                              <div className="text-xs text-muted-foreground">PRO</div>
+                              <div className="font-bold text-sm">{meal.protein_g}g</div>
+                            </div>
+                             <div className="bg-muted p-2 rounded">
+                              <div className="text-xs text-muted-foreground">CARB</div>
+                              <div className="font-bold text-sm">{meal.carbs_g}g</div>
+                            </div>
+                             <div className="bg-muted p-2 rounded">
+                              <div className="text-xs text-muted-foreground">FAT</div>
+                              <div className="font-bold text-sm">{meal.fat_g}g</div>
+                            </div>
+                          </div>
 
-                      <div>
-                        <h5 className="font-bold mb-1 text-xs uppercase text-muted-foreground">{t("dashboard", "ingredients")}</h5>
-                        <ul className="list-disc list-inside text-xs space-y-0.5">
-                          {recipe.ingredients.map((ing: string) => (
-                            <li key={ing}>{ing}</li>
-                          ))}
-                        </ul>
-                      </div>
-                   </CardContent>
-                 </Card>
-               ))}
-            </div>
+                          <div>
+                            <h5 className="font-bold mb-1 text-xs uppercase text-muted-foreground">{t("dashboard", "ingredients")}</h5>
+                            <p className="text-xs">{meal.main_ingredients_pt}</p>
+                          </div>
+                       </CardContent>
+                     </Card>
+                   ))}
+                </div>
+              </>
+            )}
           </TabsContent>
 
           <TabsContent value="progress">
@@ -283,14 +295,14 @@ export default function Dashboard() {
           </TabsContent>
 
           <TabsContent value="schedule">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-              {planData.fitness_plan_30_days.map((day: any) => {
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
+              {planData.fitness_plan_7_days.map((day: any) => {
                 const dayData = {
                   day: day.day,
-                  workout_name: day.workout_name,
+                  workout_name: day.workout_name_pt,
                   estimated_calories_burnt: day.estimated_calories_burnt,
                   exercises: day.exercises,
-                  meals: nutritionGuidelines.sample_recipes,
+                  meals: nutritionPlan[0]?.meals || [],
                 };
                 return (
                   <DayCard key={day.day} day={dayData} isActive={day.day === currentDay} />
