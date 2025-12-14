@@ -212,10 +212,9 @@ export default function Dashboard() {
         });
         setProgress([...progress, { day: currentDay }]);
         toast.success(language === "pt" ? "Treino concluído! Excelente trabalho!" : "Workout complete! Great job!");
-        const fitnessPlanData = planData?.fitness_plan_15_days || planData?.fitness_plan_7_days;
-        const planLength = fitnessPlanData?.length || 15;
-        if (currentDay < planLength) {
+        if (currentDay < durationDays) {
           setCurrentDay(currentDay + 1);
+          setSelectedDay(currentDay + 1);
         }
       } catch (error) {
         toast.error(language === "pt" ? "Erro ao guardar progresso" : "Error saving progress");

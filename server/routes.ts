@@ -293,8 +293,14 @@ export async function registerRoutes(
         });
       }
 
-      // Update current day in plan if needed
-      await storage.updatePlanCurrentDay(planId, day + 1);
+      // Update current day in plan (allow +1 beyond durationDays to indicate completion)
+      const plan = await storage.getFitnessPlan(planId);
+      if (!plan) {
+        return res.status(404).json({ success: false, error: "Plan not found" });
+      }
+      const maxDay = plan.durationDays || 30;
+      const nextDay = Math.min(day + 1, maxDay + 1);
+      await storage.updatePlanCurrentDay(planId, nextDay);
 
       res.json({
         success: true,
@@ -322,10 +328,20 @@ export async function registerRoutes(
     try {
       const planId = parseInt(req.params.planId);
       const schema = z.object({
-        day: z.number().min(1).max(30),
+        day: z.number().min(1).max(91),
       });
 
       const { day } = schema.parse(req.body);
+
+      // Validate against plan's actual duration (allow +1 for completion state)
+      const plan = await storage.getFitnessPlan(planId);
+      if (!plan) {
+        return res.status(404).json({ success: false, error: "Plan not found" });
+      }
+      const maxDay = plan.durationDays || 30;
+      if (day > maxDay + 1) {
+        return res.status(400).json({ success: false, error: `Day cannot exceed plan duration (${maxDay} days)` });
+      }
 
       await storage.updatePlanCurrentDay(planId, day);
 
