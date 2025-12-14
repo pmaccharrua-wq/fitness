@@ -830,7 +830,7 @@ Create 1 simple meal.`;
           json_schema: jsonSchema
         },
         temperature: 1,
-        max_completion_tokens: 1500,
+        max_completion_tokens: 4000,
       }),
     });
 
