@@ -5,12 +5,12 @@ import DayCard from "@/components/DayCard";
 import WorkoutTimer from "@/components/WorkoutTimer";
 import ProgressCharts from "@/components/ProgressCharts";
 import ExerciseCard from "@/components/ExerciseCard";
+import MealCard from "@/components/MealCard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlayCircle, Flame, Clock, Trophy, Loader2, Trash2, CheckCircle } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import healthyMealImage from "@assets/generated_images/healthy_meal_prep_with_vibrant_vegetables.png";
 import { getUserPlan, getUserId, recordProgress, matchExercises, getUserPlans, activatePlan, deletePlan } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
 import { toast } from "sonner";
@@ -356,42 +356,9 @@ export default function Dashboard() {
                   </Card>
                 </div>
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                   {nutritionPlan[0]?.meals?.map((meal: any, idx: number) => (
-                     <Card key={idx} className="overflow-hidden" data-testid={`card-recipe-${idx}`}>
-                       <div className="h-32 bg-muted relative">
-                         <img src={healthyMealImage} alt="Meal" className="w-full h-full object-cover" />
-                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-4">
-                           <h3 className="text-lg font-heading font-bold text-white capitalize">{meal.meal_time_pt}</h3>
-                         </div>
-                       </div>
-                       <CardContent className="p-4 space-y-3">
-                          <div className="flex justify-between items-center">
-                            <h4 className="font-bold text-sm">{meal.description_pt}</h4>
-                            <span className="text-primary font-bold text-sm">{meal.calories} kcal</span>
-                          </div>
-                          
-                          <div className="grid grid-cols-3 gap-2 text-center">
-                            <div className="bg-muted p-2 rounded">
-                              <div className="text-xs text-muted-foreground">PRO</div>
-                              <div className="font-bold text-sm">{meal.protein_g}g</div>
-                            </div>
-                             <div className="bg-muted p-2 rounded">
-                              <div className="text-xs text-muted-foreground">CARB</div>
-                              <div className="font-bold text-sm">{meal.carbs_g}g</div>
-                            </div>
-                             <div className="bg-muted p-2 rounded">
-                              <div className="text-xs text-muted-foreground">FAT</div>
-                              <div className="font-bold text-sm">{meal.fat_g}g</div>
-                            </div>
-                          </div>
-
-                          <div>
-                            <h5 className="font-bold mb-1 text-xs uppercase text-muted-foreground">{t("dashboard", "ingredients")}</h5>
-                            <p className="text-xs">{meal.main_ingredients_pt}</p>
-                          </div>
-                       </CardContent>
-                     </Card>
-                   ))}
+                  {nutritionPlan[0]?.meals?.map((meal: any, idx: number) => (
+                    <MealCard key={idx} meal={meal} index={idx} />
+                  ))}
                 </div>
               </>
             )}
