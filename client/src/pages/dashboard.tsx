@@ -7,6 +7,7 @@ import ProgressCharts from "@/components/ProgressCharts";
 import ExerciseCard from "@/components/ExerciseCard";
 import MealCard, { type MealData } from "@/components/MealCard";
 import AIMealBuilder from "@/components/AIMealBuilder";
+import CoachingCard from "@/components/CoachingCard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -291,6 +292,9 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         )}
+
+        {/* Coaching Card */}
+        <CoachingCard />
 
         {/* Day Picker */}
         <Card className="bg-card/50 border-primary/20">

@@ -216,3 +216,20 @@ export async function deleteCustomMeal(customMealId: number): Promise<any> {
   });
   return response.json();
 }
+
+export interface CoachingTipsResponse {
+  success: boolean;
+  motivationalMessage: string;
+  coachingTip: string;
+  streakMessage: string | null;
+  progressPercentage: number;
+  daysCompleted: number;
+  totalDays: number;
+  currentStreak: number;
+  error?: string;
+}
+
+export async function getCoachingTips(userId: number): Promise<CoachingTipsResponse> {
+  const response = await fetch(`/api/coaching/${userId}`);
+  return response.json();
+}

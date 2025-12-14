@@ -1102,3 +1102,220 @@ Tell if it's realistic, give honest and constructive feedback, and suggest alter
     };
   }
 }
+
+export interface CoachingTipsInput {
+  daysCompleted: number;
+  totalDays: number;
+  currentStreak: number;
+  difficultyFeedback: { easy: number; justRight: number; hard: number };
+  lastWorkoutDate: Date | null;
+  goal: string;
+  firstName: string;
+  language: string;
+}
+
+export interface CoachingTipsResult {
+  motivationalMessage: string;
+  coachingTip: string;
+  streakMessage: string | null;
+  progressPercentage: number;
+}
+
+export async function generateCoachingTips(input: CoachingTipsInput): Promise<CoachingTipsResult> {
+  const isPt = input.language === "pt";
+  const progressPercentage = Math.min(100, Math.round((input.daysCompleted / input.totalDays) * 100));
+  
+  // Calculate days since last workout
+  let daysSinceLastWorkout = 0;
+  if (input.lastWorkoutDate) {
+    daysSinceLastWorkout = Math.floor((Date.now() - new Date(input.lastWorkoutDate).getTime()) / (1000 * 60 * 60 * 24));
+  }
+  
+  // Determine user state
+  let userState = "starting";
+  if (input.daysCompleted === 0) {
+    userState = "starting";
+  } else if (daysSinceLastWorkout > 3) {
+    userState = "returning";
+  } else if (progressPercentage >= 80) {
+    userState = "finishing";
+  } else if (progressPercentage >= 40) {
+    userState = "midway";
+  } else {
+    userState = "building";
+  }
+  
+  // Calculate difficulty trend
+  const totalFeedback = input.difficultyFeedback.easy + input.difficultyFeedback.justRight + input.difficultyFeedback.hard;
+  let difficultyTrend = "balanced";
+  if (totalFeedback > 0) {
+    if (input.difficultyFeedback.hard > totalFeedback * 0.5) {
+      difficultyTrend = "too_hard";
+    } else if (input.difficultyFeedback.easy > totalFeedback * 0.5) {
+      difficultyTrend = "too_easy";
+    }
+  }
+
+  const goalPt: Record<string, string> = {
+    loss: "perda de peso",
+    muscle: "ganho muscular",
+    gain: "ganho de peso",
+    endurance: "resistência"
+  };
+  const goalEn: Record<string, string> = {
+    loss: "weight loss",
+    muscle: "muscle gain",
+    gain: "weight gain",
+    endurance: "endurance"
+  };
+
+  const systemPrompt = isPt 
+    ? `És um coach de fitness motivacional e empático. A tua função é dar mensagens curtas, personalizadas e encorajadoras baseadas no progresso do utilizador. Responde SEMPRE em português europeu (pt-PT).`
+    : `You are a motivational and empathetic fitness coach. Your role is to give short, personalized, and encouraging messages based on user progress. Always respond in English.`;
+
+  const userPrompt = isPt
+    ? `Gera mensagens de coaching personalizadas para ${input.firstName}.
+
+DADOS DO PROGRESSO:
+- Dias completados: ${input.daysCompleted} de ${input.totalDays} (${progressPercentage}%)
+- Sequência atual (streak): ${input.currentStreak} dias consecutivos
+- Dias desde último treino: ${daysSinceLastWorkout}
+- Estado do utilizador: ${userState}
+- Objetivo: ${goalPt[input.goal] || input.goal}
+- Tendência de dificuldade: ${difficultyTrend === "too_hard" ? "treinos muito difíceis" : difficultyTrend === "too_easy" ? "treinos muito fáceis" : "equilibrado"}
+- Feedback de dificuldade: ${input.difficultyFeedback.easy} fáceis, ${input.difficultyFeedback.justRight} adequados, ${input.difficultyFeedback.hard} difíceis
+
+REGRAS:
+1. Mensagem motivacional: 1-2 frases curtas e energéticas, personalizadas para o estado atual
+2. Dica de coaching: 1 dica prática relacionada com o objetivo ou progresso
+3. Mensagem de streak: Só se tiver 3+ dias consecutivos, celebra a consistência (ou null)
+4. Adapta o tom: encorajador para quem começa, celebratório para progressos, compreensivo para quem volta
+
+OUTPUT JSON (sem explicações):
+{
+  "motivationalMessage": "...",
+  "coachingTip": "...",
+  "streakMessage": "..." ou null
+}`
+    : `Generate personalized coaching messages for ${input.firstName}.
+
+PROGRESS DATA:
+- Days completed: ${input.daysCompleted} of ${input.totalDays} (${progressPercentage}%)
+- Current streak: ${input.currentStreak} consecutive days
+- Days since last workout: ${daysSinceLastWorkout}
+- User state: ${userState}
+- Goal: ${goalEn[input.goal] || input.goal}
+- Difficulty trend: ${difficultyTrend === "too_hard" ? "workouts too hard" : difficultyTrend === "too_easy" ? "workouts too easy" : "balanced"}
+- Difficulty feedback: ${input.difficultyFeedback.easy} easy, ${input.difficultyFeedback.justRight} just right, ${input.difficultyFeedback.hard} hard
+
+RULES:
+1. Motivational message: 1-2 short, energetic sentences, personalized to current state
+2. Coaching tip: 1 practical tip related to goal or progress
+3. Streak message: Only if 3+ consecutive days, celebrate consistency (or null)
+4. Adapt tone: encouraging for starters, celebratory for progress, understanding for returners
+
+OUTPUT JSON (no explanations):
+{
+  "motivationalMessage": "...",
+  "coachingTip": "...",
+  "streakMessage": "..." or null
+}`;
+
+  try {
+    const apiVersion = config.apiVersion || "2024-08-01-preview";
+    const url = `${config.endpoint}openai/deployments/${config.deployment}/chat/completions?api-version=${apiVersion}`;
+    
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "api-key": config.apiKey,
+      },
+      body: JSON.stringify({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.8,
+        max_completion_tokens: 500,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Azure OpenAI API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+
+    if (!content) {
+      throw new Error("No content in Azure OpenAI response");
+    }
+
+    const result = JSON.parse(content);
+    return {
+      motivationalMessage: result.motivationalMessage,
+      coachingTip: result.coachingTip,
+      streakMessage: result.streakMessage,
+      progressPercentage
+    };
+  } catch (error) {
+    console.error("Error generating coaching tips:", error);
+    // Fallback messages
+    return generateFallbackCoachingTips(input, progressPercentage, isPt);
+  }
+}
+
+function generateFallbackCoachingTips(input: CoachingTipsInput, progressPercentage: number, isPt: boolean): CoachingTipsResult {
+  let motivationalMessage = "";
+  let coachingTip = "";
+  let streakMessage: string | null = null;
+
+  if (input.daysCompleted === 0) {
+    motivationalMessage = isPt 
+      ? `${input.firstName}, hoje é o dia perfeito para começar a tua transformação!`
+      : `${input.firstName}, today is the perfect day to start your transformation!`;
+    coachingTip = isPt
+      ? "Começa devagar e foca na consistência, não na intensidade."
+      : "Start slow and focus on consistency, not intensity.";
+  } else if (progressPercentage >= 80) {
+    motivationalMessage = isPt
+      ? `Estás quase lá, ${input.firstName}! ${progressPercentage}% do plano completado!`
+      : `Almost there, ${input.firstName}! ${progressPercentage}% of the plan completed!`;
+    coachingTip = isPt
+      ? "Mantém o foco na reta final. Os últimos dias fazem toda a diferença!"
+      : "Stay focused in the final stretch. The last days make all the difference!";
+  } else if (progressPercentage >= 40) {
+    motivationalMessage = isPt
+      ? `Excelente progresso, ${input.firstName}! Estás a meio caminho!`
+      : `Excellent progress, ${input.firstName}! You're halfway there!`;
+    coachingTip = isPt
+      ? "O teu corpo está a adaptar-se. Continua a desafiar-te!"
+      : "Your body is adapting. Keep challenging yourself!";
+  } else {
+    motivationalMessage = isPt
+      ? `Boa, ${input.firstName}! Cada treino conta. Continua assim!`
+      : `Great job, ${input.firstName}! Every workout counts. Keep it up!`;
+    coachingTip = isPt
+      ? "A consistência é a chave. Pequenos progressos levam a grandes resultados."
+      : "Consistency is key. Small progress leads to big results.";
+  }
+
+  if (input.currentStreak >= 7) {
+    streakMessage = isPt
+      ? `Impressionante! ${input.currentStreak} dias consecutivos de treino!`
+      : `Impressive! ${input.currentStreak} consecutive days of training!`;
+  } else if (input.currentStreak >= 3) {
+    streakMessage = isPt
+      ? `${input.currentStreak} dias seguidos! Estás a criar um hábito!`
+      : `${input.currentStreak} days in a row! You're building a habit!`;
+  }
+
+  return {
+    motivationalMessage,
+    coachingTip,
+    streakMessage,
+    progressPercentage
+  };
+}

@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { generateFitnessPlan, AVAILABLE_EQUIPMENT, generateMealSwapAlternatives, generateMealFromIngredients, validateWeightGoal } from "./services/azure-ai";
+import { generateFitnessPlan, AVAILABLE_EQUIPMENT, generateMealSwapAlternatives, generateMealFromIngredients, validateWeightGoal, generateCoachingTips } from "./services/azure-ai";
 import { insertUserProfileSchema, insertCustomMealSchema } from "@shared/schema";
 import { exerciseLibrary as exerciseData } from "./exerciseData";
 import { checkWaterReminder, createWaterReminder, getUnreadNotifications } from "./services/notifications";
@@ -872,6 +872,96 @@ export async function registerRoutes(
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ success: false, error: "Failed to delete custom meal" });
+    }
+  });
+
+  // Get personalized coaching tips based on user progress
+  app.get("/api/coaching/:userId", async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ success: false, error: "Invalid user ID" });
+      }
+
+      // Get user profile
+      const profile = await storage.getUserProfile(userId);
+      if (!profile) {
+        return res.status(404).json({ success: false, error: "User not found" });
+      }
+
+      // Get active plan
+      let plan = await storage.getUserActivePlan(userId);
+      if (!plan) {
+        plan = await storage.getUserLatestPlan(userId);
+      }
+
+      if (!plan) {
+        return res.status(404).json({ success: false, error: "No plan found" });
+      }
+
+      // Get all progress entries for this plan
+      const progress = await storage.getUserProgress(userId, plan.id);
+      const daysCompleted = progress.length;
+      const totalDays = plan.durationDays || 30;
+
+      // Calculate current streak (consecutive completed days)
+      let currentStreak = 0;
+      if (progress.length > 0) {
+        // Sort progress by day in ascending order and dedupe
+        const sortedDays = [...new Set(progress.map((p: any) => p.day))].sort((a, b) => a - b);
+        
+        // Count consecutive days from the end (most recent)
+        currentStreak = 1;
+        for (let i = sortedDays.length - 1; i > 0; i--) {
+          // Check if current day is exactly 1 more than the previous day
+          if (sortedDays[i] - sortedDays[i - 1] === 1) {
+            currentStreak++;
+          } else {
+            break;
+          }
+        }
+      }
+
+      // Calculate difficulty feedback distribution
+      const difficultyFeedback = { easy: 0, justRight: 0, hard: 0 };
+      progress.forEach((p: any) => {
+        if (p.difficulty === "easy") difficultyFeedback.easy++;
+        else if (p.difficulty === "just right") difficultyFeedback.justRight++;
+        else if (p.difficulty === "hard") difficultyFeedback.hard++;
+      });
+
+      // Get last workout date
+      const lastWorkoutDate = progress.length > 0
+        ? progress.reduce((latest: any, p: any) => {
+            const pDate = p.completedAt ? new Date(p.completedAt) : null;
+            if (!pDate) return latest;
+            if (!latest) return pDate;
+            return pDate > latest ? pDate : latest;
+          }, null)
+        : null;
+
+      // Generate coaching tips
+      const coachingTips = await generateCoachingTips({
+        daysCompleted,
+        totalDays,
+        currentStreak,
+        difficultyFeedback,
+        lastWorkoutDate,
+        goal: profile.goal,
+        firstName: profile.firstName,
+        language: profile.language
+      });
+
+      res.json({
+        success: true,
+        ...coachingTips,
+        daysCompleted,
+        totalDays,
+        currentStreak
+      });
+    } catch (error) {
+      console.error("Error getting coaching tips:", error);
+      res.status(500).json({ success: false, error: "Failed to get coaching tips" });
     }
   });
 
