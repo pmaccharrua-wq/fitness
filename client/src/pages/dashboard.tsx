@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import Layout from "@/components/Layout";
 import DayCard from "@/components/DayCard";
+import WorkoutTimer from "@/components/WorkoutTimer";
+import ProgressCharts from "@/components/ProgressCharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -18,7 +20,8 @@ export default function Dashboard() {
   const [planId, setPlanId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [progress, setProgress] = useState<any[]>([]);
-  const { t } = useTranslation();
+  const [showTimer, setShowTimer] = useState(false);
+  const { t, language } = useTranslation();
 
   useEffect(() => {
     const userId = getUserId();
@@ -47,6 +50,28 @@ export default function Dashboard() {
       toast.error(t("dashboard", "errorLoading"));
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function handleWorkoutComplete() {
+    setShowTimer(false);
+    const userId = getUserId();
+    if (userId && planId) {
+      try {
+        await recordProgress({
+          userId,
+          planId,
+          day: currentDay,
+          difficulty: "just right"
+        });
+        setProgress([...progress, { day: currentDay }]);
+        toast.success(language === "pt" ? "Treino concluído! Excelente trabalho!" : "Workout complete! Great job!");
+        if (currentDay < 30) {
+          setCurrentDay(currentDay + 1);
+        }
+      } catch (error) {
+        toast.error(language === "pt" ? "Erro ao guardar progresso" : "Error saving progress");
+      }
     }
   }
 
@@ -87,7 +112,12 @@ export default function Dashboard() {
               {t("dashboard", "dayOf", { current: String(currentDay), total: "30" })} • {todaysPlan.workout_name}
             </p>
           </div>
-          <Button size="lg" className="bg-primary text-primary-foreground font-bold text-lg px-8" data-testid="button-start-workout">
+          <Button 
+            size="lg" 
+            className="bg-primary text-primary-foreground font-bold text-lg px-8" 
+            data-testid="button-start-workout"
+            onClick={() => setShowTimer(true)}
+          >
             <PlayCircle className="w-6 h-6 mr-2" /> {t("dashboard", "startWorkout")}
           </Button>
         </div>
@@ -132,6 +162,7 @@ export default function Dashboard() {
           <TabsList className="bg-card border border-border">
             <TabsTrigger value="workout" data-testid="tab-workout">{t("dashboard", "todaysWorkout")}</TabsTrigger>
             <TabsTrigger value="nutrition" data-testid="tab-nutrition">{t("dashboard", "nutritionPlan")}</TabsTrigger>
+            <TabsTrigger value="progress" data-testid="tab-progress">{language === "pt" ? "Progresso" : "Progress"}</TabsTrigger>
             <TabsTrigger value="schedule" data-testid="tab-schedule">{t("dashboard", "fullSchedule")}</TabsTrigger>
           </TabsList>
 
@@ -232,6 +263,14 @@ export default function Dashboard() {
             </div>
           </TabsContent>
 
+          <TabsContent value="progress">
+            <ProgressCharts 
+              progress={progress}
+              planData={planData}
+              currentDay={currentDay}
+            />
+          </TabsContent>
+
           <TabsContent value="schedule">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
               {planData.fitness_plan_30_days.map((day: any) => {
@@ -250,6 +289,13 @@ export default function Dashboard() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <WorkoutTimer
+        exercises={todaysPlan.exercises}
+        open={showTimer}
+        onClose={() => setShowTimer(false)}
+        onComplete={handleWorkoutComplete}
+      />
     </Layout>
   );
 }
