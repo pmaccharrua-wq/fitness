@@ -116,11 +116,13 @@ export async function generateFitnessPlan(
   const waterTarget = Math.round(userProfile.weight * 35);
 
   // Map goal to Portuguese
-  const goalPt = userProfile.goal === "loss" 
-    ? "Perda de Peso" 
-    : userProfile.goal === "muscle" 
-    ? "Ganho de Massa Muscular e Hipertrofia" 
-    : "Resistência e Condicionamento Cardiovascular";
+  const goalPt: Record<string, string> = {
+    loss: "Perda de Peso",
+    muscle: "Ganho de Massa Muscular e Hipertrofia",
+    gain: "Ganho de Peso e Definição Corporal",
+    endurance: "Resistência e Condicionamento Cardiovascular",
+  };
+  const userGoalPt = goalPt[userProfile.goal] || "Melhoria Geral de Fitness";
 
   // Map activity level to Portuguese
   const activityLevelPt: Record<string, string> = {
@@ -129,6 +131,33 @@ export async function generateFitnessPlan(
     moderate: "Moderadamente Ativo (exercício moderado 3-5 dias/semana)",
     very: "Muito Ativo (exercício intenso 6-7 dias/semana)",
   };
+
+  // Map somatotype to Portuguese
+  const somatotypePt: Record<string, string> = {
+    ectomorph: "Ectomorfo (metabolismo rápido, dificuldade em ganhar peso)",
+    mesomorph: "Mesomorfo (facilidade em ganhar músculo, corpo atlético)",
+    endomorph: "Endomorfo (metabolismo lento, tendência a acumular gordura)",
+  };
+  const userSomatotypePt = userProfile.somatotype 
+    ? somatotypePt[userProfile.somatotype] || userProfile.somatotype 
+    : "Não especificado";
+
+  // Current and target body composition
+  const currentBodyCompPt = userProfile.currentBodyComp || "Não especificado";
+  const targetBodyCompPt = userProfile.targetBodyComp || "Não especificado";
+
+  // Time per day from profile or options
+  const workoutTimePerDay = userProfile.timePerDay || timePerDay;
+  
+  // Difficulty from profile or options
+  const difficultyMap: Record<string, string> = {
+    very_easy: "Muito Fácil",
+    easy: "Fácil", 
+    medium: "Médio",
+    hard: "Difícil",
+    very_hard: "Muito Difícil",
+  };
+  const workoutDifficulty = difficultyMap[userProfile.difficulty || ""] || difficulty;
 
   // Get user's equipment in Portuguese or default
   const userEquipment = userProfile.equipment?.length 
@@ -142,14 +171,23 @@ export async function generateFitnessPlan(
 - **Nutrição:** Diretrizes ISSN (Sociedade Internacional de Nutrição Desportiva) e DGA (Dietary Guidelines for Americans)
 - **Exercício:** Diretrizes ACSM (American College of Sports Medicine) e modelo OPT do NASM
 - **Hidratação:** ~35ml/kg de peso corporal, aumentando 125-150% em dias de treino intenso
+- **Somatotipos:** Adapta o plano baseado no tipo de corpo (Ectomorfo, Mesomorfo, Endomorfo)
 
 **REGRAS E CONSTRANGIMENTOS CRÍTICOS:**
-1. **Segurança Primeiro:** Os planos DEVEM respeitar todos os 'Impedimentos Físicos' e 'Condições de Saúde' fornecidos. NÃO recomende exercícios que conflitem com lesões declaradas.
+1. **Segurança Primeiro:** Os planos DEVEM respeitar todos os 'Impedimentos Físicos' e 'Condições de Saúde' fornecidos. NÃO recomende exercícios que conflitem com lesões declaradas (ex: se tiver dor no joelho, evita agachamentos pesados; se tiver problemas nas costas, evita exercícios de alto impacto).
 2. **Formato de Output Estrito:** DEVES retornar o output como um único objeto JSON válido que adere estritamente ao Schema JSON fornecido. NÃO incluas comentários, explicações ou texto introdutório fora do bloco JSON.
 3. **Aderir ao Tempo:** A duração total do plano de treino por dia deve alinhar-se estritamente com o parâmetro 'Tempo Diário Dedicado', incluindo aquecimento (5 min), arrefecimento (5 min) e períodos de descanso.
 4. **Gestão de Recursos:** Podes APENAS recomendar exercícios e equipamentos explicitamente listados na lista 'EQUIPAMENTO DISPONÍVEL'.
 5. **Idioma:** TODAS as descrições, nomes de exercícios, receitas e instruções DEVEM ser em **Português (pt-PT)**.
-6. **Nutrição Científica:** As receitas e distribuição calórica devem respeitar a Equação de Mifflin-St Jeor e as diretrizes ISSN/DGA para macros.`;
+6. **Nutrição Científica:** As receitas e distribuição calórica devem respeitar a Equação de Mifflin-St Jeor e as diretrizes ISSN/DGA para macros.
+
+**ADAPTAÇÃO BASEADA NA COMPOSIÇÃO CORPORAL:**
+- **Ectomorfo + Ganho de Massa:** Segue diretrizes de Bulking Limpo com treinos de força de alto volume, maiores períodos de descanso, e superávit calórico moderado.
+- **Endomorfo + Perda de Peso:** Prioriza déficit calórico com cardio HIIT intercalado, treino de força para manter massa muscular.
+- **Mesomorfo:** Pode seguir treinos híbridos de força e cardio com boa resposta.
+- **Descrição "Magro com Gordura" (Skinny Fat):** Prioriza Recomposição Corporal - manter calorias próximas da manutenção enquanto aumenta proteína e treino de resistência.
+- **Objetivo "Definição Muscular":** Fase de Cutting com déficit moderado, alto volume de treino, cardio estratégico.
+- **Objetivo "Ganho de Peso":** Superávit calórico controlado, foco em treino de hipertrofia com cargas progressivas.`;
 
   const userPrompt = `[INÍCIO DADOS DO CLIENTE]
 
@@ -159,19 +197,24 @@ export async function generateFitnessPlan(
 - Peso: ${userProfile.weight} kg
 - Altura: ${userProfile.height} cm
 - Nível de Atividade Atual: ${activityLevelPt[userProfile.activityLevel] || "Moderadamente Ativo"}
-- Objetivo Desejado: ${goalPt}
+- Objetivo Desejado: ${userGoalPt}
 - Impedimentos Físicos / Condições de Saúde: ${userProfile.impediments || "Nenhum reportado"}
-- Dificuldade Desejada do Plano: ${difficulty} (Opções: Muito Fácil, Fácil, Médio, Difícil, Muito Difícil)
+- Dificuldade Desejada do Plano: ${workoutDifficulty} (Opções: Muito Fácil, Fácil, Médio, Difícil, Muito Difícil)
+
+**PARÂMETROS DE COMPOSIÇÃO CORPORAL:**
+- **Somatotipo (Base Genética):** ${userSomatotypePt}
+- **Descrição Corporal Atual:** ${currentBodyCompPt}
+- **Objetivo Corporal Final:** ${targetBodyCompPt}
 
 **2. MÉTRICAS CIENTÍFICAS CALCULADAS (Linha Base - Mifflin-St Jeor):**
 - Taxa Metabólica Basal (BMR): ${Math.round(bmr)} kcal
 - TDEE Base (com fator de atividade): ${tdee} kcal
-- **Meta Calórica Diária (Ajustada para ${goalPt}):** ${targetCalories} kcal
+- **Meta Calórica Diária (Ajustada para ${userGoalPt}):** ${targetCalories} kcal
 - Alvos de Macronutrientes (ISSN/DGA): Proteína: ${macroTargets.protein}%, Carboidratos: ${macroTargets.carbs}%, Gordura: ${macroTargets.fat}%
 - Alvo de Hidratação Diária (35ml/kg): ${waterTarget} ml
 
 **3. CONSTRANGIMENTOS DE TREINO (ACSM/OPT):**
-- Tempo Diário Dedicado ABSOLUTO: ${timePerDay} minutos (inclui 5 min aquecimento + 5 min arrefecimento)
+- Tempo Diário Dedicado ABSOLUTO: ${workoutTimePerDay} minutos (inclui 5 min aquecimento + 5 min arrefecimento)
 - Equipamento Disponível: ${userEquipment}
 - Último Feedback de Sessão: ${lastFeedback}
 
@@ -181,11 +224,11 @@ export async function generateFitnessPlan(
 
 **A. PLANO DE TREINO (Primeiros 7 Dias do Plano de 30 Dias):**
 1. Desenvolve os primeiros 7 dias usando o modelo de Periodização Ondulatória (para variar estímulos) ou o Modelo OPT do NASM (para iniciantes).
-2. Cada sessão DEVE incluir Aquecimento (5 min) e Alongamento (5 min) dentro do tempo total de ${timePerDay} minutos.
+2. Cada sessão DEVE incluir Aquecimento (5 min) e Alongamento (5 min) dentro do tempo total de ${workoutTimePerDay} minutos.
 3. Inclui pelo menos 1-2 dias de descanso ativo ou completo nos 7 dias para recuperação adequada.
 4. Para cada exercício, estima as calorias queimadas para a sessão completa baseado na intensidade e peso do utilizador (${userProfile.weight}kg).
 5. Fornece placeholders para 'video_link' e 'image_link' (e.g., "placeholder/video/agachamento.mp4").
-6. Ajusta a intensidade baseado na dificuldade desejada: ${difficulty}.
+6. Ajusta a intensidade baseado na dificuldade desejada: ${workoutDifficulty}.
 7. Se houver último feedback (${lastFeedback}), ajusta a intensidade conforme necessário.
 
 **B. PLANO DE NUTRIÇÃO (3 Dias Completos):**
@@ -201,13 +244,13 @@ export async function generateFitnessPlan(
 
 **OUTPUT JSON REQUERIDO (Segue este schema EXATAMENTE):**
 {
-  "plan_summary_pt": "Resumo breve da estratégia geral do plano (ex: 'Foco em ${goalPt} com ${timePerDay} minutos diários, combinando cardio e força')",
+  "plan_summary_pt": "Resumo breve da estratégia geral do plano (ex: 'Foco em ${userGoalPt} com ${workoutTimePerDay} minutos diários, combinando cardio e força')",
   "fitness_plan_7_days": [
     {
       "day": 1,
       "is_rest_day": false,
       "workout_name_pt": "Nome do treino em português (ex: 'Treino de Força - Corpo Inteiro')",
-      "duration_minutes": ${timePerDay},
+      "duration_minutes": ${workoutTimePerDay},
       "estimated_calories_burnt": 300,
       "focus_pt": "Cardio/Força/Full Body/Descanso Ativo",
       "exercises": [

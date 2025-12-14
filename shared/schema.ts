@@ -9,10 +9,15 @@ export const userProfiles = pgTable("user_profiles", {
   age: integer("age").notNull(),
   weight: integer("weight").notNull(), // in kg
   height: integer("height").notNull(), // in cm
-  goal: text("goal").notNull(), // "loss", "muscle", "endurance"
+  goal: text("goal").notNull(), // "loss", "muscle", "endurance", "gain"
   activityLevel: text("activity_level").notNull(),
   equipment: text("equipment").array(),
   impediments: text("impediments"),
+  somatotype: text("somatotype"), // "ectomorph", "mesomorph", "endomorph"
+  currentBodyComp: text("current_body_comp"), // Current body composition description
+  targetBodyComp: text("target_body_comp"), // Target body composition description
+  timePerDay: integer("time_per_day").default(45), // Workout time in minutes
+  difficulty: text("difficulty").default("medium"), // "very_easy", "easy", "medium", "hard", "very_hard"
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

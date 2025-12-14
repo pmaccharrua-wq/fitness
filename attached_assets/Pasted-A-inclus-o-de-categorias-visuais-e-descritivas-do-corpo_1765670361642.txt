@@ -1,0 +1,36 @@
+A inclusão de categorias visuais e descritivas do corpo (em termos de composição corporal e somatotipo) torna o processo de profiling muito mais intuitivo para o utilizador e, crucialmente, fornece dados mais ricos para o LLM na Azure.Para responder a esta necessidade, devemos incorporar dois componentes-chave no modelo de perfil:Somatotipo Visual: Para classificar o tipo de corpo base (Ectomorfo, Mesomorfo, Endomorfo).Composição Corporal Descritiva: Para descrever o problema específico (gordura localizada, retenção, magro com gordura) e o objetivo final.Abaixo está a proposta de atualização para o seu objeto UserProfile e o impacto no User Prompt da Azure.🧍 Modelo de Definição de Corpo (Body Profiling Model)O seu formulário de setup inicial deve incluir as seguintes perguntas de seleção:1. Classificação do Somatotipo (Tipo de Corpo Base)O utilizador deve selecionar a opção que melhor o descreve, fornecendo ao LLM uma base genética e metabólica para o plano.CategoriaDescrição (para o Utilizador)Implicação para o LLMEctomorfoEstrutura magra, corpo delicado, dificuldade extrema em ganhar peso ou músculo.Priorizar alto excedente calórico, volume de treino focado em força/hipertrofia e cardio mínimo.MesomorfoCorpo atlético, ganha músculo e perde gordura facilmente, estrutura óssea e muscular natural.Plano balanceado; foco em dieta e treino alinhado diretamente com o objetivo (pode ser Bulking ou Cutting).EndomorfoEstrutura óssea robusta, facilidade em armazenar gordura, metabolismo lento.Priorizar déficit calórico e incluir sessões de cardio consistentes (e.g., HIIT/LISS) no plano de treino.2. Composição Corporal Atual (Problema/Descrição)Esta seleção permite que o utilizador seja específico sobre a sua condição atual, fornecendo a nuance necessária para o planeamento (além de apenas peso e altura).Opção de SeleçãoDescrição DetalhadaMagro com Gordura (Skinny Fat)Magro em termos de peso total, mas com pouca massa muscular e gordura corporal concentrada, tipicamente na área abdominal/cintura.Magro/Muito MagroPeso baixo para a altura, pouca gordura e pouca massa muscular (Ectomorfo).Com Barriga/Gordura AbdominalPeso normal ou excesso de peso, com gordura localizada principalmente na região do tronco.Com Excesso de Peso/Gordura GeneralizadaAlto peso/IMC, gordura distribuída uniformemente pelo corpo (Endomorfo/Sobrepeso).Muito Pesado/ObesidadeObesidade de grau elevado. (Neste caso, a IA deve priorizar segurança, saúde e perda de peso gradual).Atlético/DefinidoBoa massa muscular e percentagem de gordura corporal baixa. (Objetivo: Manutenção ou melhoria da performance).3. Objetivo Corporal Final (Visual e Funcional)O utilizador deve descrever o que pretende atingir. Exemplos:"Corpo atlético e tonificado.""Ganho de massa muscular notável e perda de gordura abdominal.""Apenas ficar mais ativo e perder peso de forma saudável."💻 Atualização do Modelo de Dados e Prompt da AzurePara implementar isto, atualizamos o UserProfile e o User Data Prompt.1. Atualização do models/user.pyAdicione novos campos à classe UserProfile:Python# --- models/user.py (Atualizado) ---
+
+class UserProfile:
+    def __init__(self, sex, weight_kg, height_cm, age_years,
+                 current_status, desired_status,
+                 difficulty, time_per_day_min, impediments=None,
+                 # NOVOS CAMPOS AQUI
+                 somatotype=None,
+                 current_body_comp_desc=None,
+                 target_body_comp_desc=None):
+        
+        # Parâmetros Existentes...
+        # ...
+
+        # NOVOS PARÂMETROS
+        self.somatotype = somatotype # Ectomorfo, Mesomorfo, Endomorfo
+        self.current_body_comp_desc = current_body_comp_desc # Magro com Gordura, etc.
+        self.target_body_comp_desc = target_body_comp_desc # Tonificado, Definido, etc.
+        
+        # ...
+2. Atualização do Prompt da Azure (Secção 'User Data Input')Estes novos dados tornam o prompt mais específico e profissional.Code snippet[INÍCIO DADOS DO CLIENTE]
+...
+**1. PERFIL INICIAL E OBJETIVOS:**
+- Sexo: {user.sex}
+...
+- Objetivo Desejado: {user.desired_status}
+- Impedimentos Físicos / Condições de Saúde: {user.impediments}
+- Dificuldade Desejada do Plano: {user.desired_difficulty}
+
+**NOVOS PARÂMETROS DE COMPOSIÇÃO CORPORAL:**
+- **Somatotipo (Base Genética):** {user.somatotype}
+- **Descrição Corporal Atual:** {user.current_body_comp_desc}
+- **Objetivo Corporal Final:** {user.target_body_comp_desc}
+...
+[FIM DADOS DO CLIENTE]
+3. Impacto na Lógica da IA (Instrução Adicional)Adicione uma instrução específica no System Prompt para garantir que a IA utiliza estes dados de forma inteligente:Adaptação Baseada na Composição Corporal: Se o Somatotipo for 'Ectomorfo' e o objetivo for 'Ganho de Massa Muscular', siga as diretrizes de Bulking Limpo e treinos de força de alto volume. Se a Descrição Corporal Atual for 'Magro com Gordura', a prioridade deve ser uma fase de Recomposição Corporal (manter calorias TDEE ou ligeiro défice) com alto teor proteico, em vez de um défice calórico acentuado.Esta abordagem combina dados quantitativos (peso, altura, TDEE) com dados qualitativos e visuais (somatotipo, descrição do corpo), resultando em planos muito mais precisos e personalizados.
