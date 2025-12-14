@@ -16,7 +16,7 @@ interface Exercise {
 
 interface LibraryMatch {
   imageUrl?: string;
-  pexelsImage?: string;
+  pexelsImage?: { url: string; source?: string; photographer?: string };
   videoUrl?: string;
   instructionsPt?: string;
   instructions?: string;
@@ -67,7 +67,7 @@ export default function WorkoutTimer({
   
   const exerciseKey = currentExercise?.name || currentExercise?.name_pt || "";
   const libraryData = exerciseLibrary[exerciseKey] || {};
-  const exerciseImage = libraryData.imageUrl || libraryData.pexelsImage;
+  const exerciseImage = libraryData.imageUrl || libraryData.pexelsImage?.url;
 
   const getRepSpeed = () => {
     switch (userDifficulty) {
