@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlayCircle, Flame, Clock, Trophy, Loader2, Trash2, CheckCircle, ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getUserPlan, getUserId, recordProgress, matchExercises, getUserPlans, activatePlan, deletePlan, getCustomMeals, deleteCustomMeal } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
 import { toast } from "sonner";
@@ -246,6 +247,52 @@ export default function Plan() {
             <PlayCircle className="w-6 h-6 mr-2" /> {t("dashboard", "startWorkout")}
           </Button>
         </div>
+
+        <Card className="bg-card/50 border-primary/20">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-primary" />
+                <span className="font-bold">{language === "pt" ? "Navegar Dias" : "Browse Days"}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={() => setCurrentDay(Math.max(1, currentDay - 1))}
+                  disabled={currentDay <= 1}
+                  data-testid="button-prev-day"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <Select value={String(currentDay)} onValueChange={(v) => setCurrentDay(parseInt(v))}>
+                  <SelectTrigger className="w-24" data-testid="select-day">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {Array.from({ length: totalDays }, (_, i) => i + 1).map((day) => (
+                      <SelectItem key={day} value={String(day)}>
+                        {language === "pt" ? "Dia" : "Day"} {day}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={() => setCurrentDay(Math.min(totalDays, currentDay + 1))}
+                  disabled={currentDay >= totalDays}
+                  data-testid="button-next-day"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+                <span className="text-sm text-muted-foreground ml-2">
+                  / {totalDays} {language === "pt" ? "dias" : "days"}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {allPlans && allPlans.length > 1 && (
           <Card className="bg-card/50 border-primary/20">
