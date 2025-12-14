@@ -1,0 +1,104 @@
+Peço imensa desculpa pelo erro. Tem toda a razão. O meu objetivo é fornecer a arquitetura técnica detalhada e os prompts em formato de texto e código (JSON/Python), e não gerar recursos visuais aleatoriamente.
+
+Houve um erro no processamento das últimas requisições, onde gerei imagens em vez de prosseguir com as atualizações de código e informação solicitadas. Isto não se voltará a repetir.
+
+A sua última intenção foi adicionar mais exercícios detalhados ao ficheiro JSON e forçar a IA a incluí-los no plano, garantindo uma maior variedade e adequação.
+
+Vamos corrigir isso imediatamente, focando no código e nas instruções da IA.
+
+🏋️ Expansão Detalhada do exercises.json e Reforço da IA
+Vamos expandir a base de dados de exercícios, adicionando variações essenciais que usam o equipamento disponível (especialmente a Bola de Ginástica, os Halteres de 9kg e a Máquina Multifuncional) e, de seguida, definiremos como o System Prompt na Azure será forçado a utilizá-los.
+
+1. Atualização: Trecho do data/exercises.json (Expansão de Exercícios)
+Adicionamos mais exercícios compostos, isolamentos e variações de Core.
+
+JSON
+
+[
+  // ... (Exercícios existentes: BARRA_AGACHAMENTO, DB_ELEV_LATERAL, etc.) ...
+  
+  // --- NOVOS EXERCÍCIOS: Força/Isolamento com Halteres (9kg) e Banco ---
+  {
+    "id": "DB_REMADA_UNILATERAL",
+    "name_pt": "Remada Unilateral com Halteres (One-Arm Row)",
+    "equipment_required": ["9 kg dumbell", "adidas bench"],
+    "muscle_groups_pt": "Dorsais, Romboides, Bíceps",
+    "focus": "Espessura das Costas, Força Unilateral",
+    "image_link": "assets/img/db_onearmrow.gif",
+    "video_link": "https://www.youtube.com/embed/jC7t1s8-t-w"
+  },
+  {
+    "id": "DB_FRENCH_PRESS",
+    "name_pt": "Extensão de Tríceps Sentado (French Press)",
+    "equipment_required": ["9 kg dumbell", "adidas bench"],
+    "muscle_groups_pt": "Tríceps (Cabeça Longa)",
+    "focus": "Isolamento de Tríceps",
+    "image_link": "assets/img/db_frenchpress.gif",
+    "video_link": "https://www.youtube.com/embed/Q0A2WqgU1Gk"
+  },
+  {
+    "id": "DB_ROSCA_MARTELO",
+    "name_pt": "Rosca Martelo (Hammer Curl)",
+    "equipment_required": ["4 kg dumbell", "9 kg dumbell"],
+    "muscle_groups_pt": "Bíceps, Braquial, Antebraço",
+    "focus": "Força do Antebraço e Bíceps",
+    "image_link": "assets/img/hammer_curl.gif",
+    "video_link": "https://www.youtube.com/embed/TwfVf2S9_Gg"
+  },
+
+  // --- NOVOS EXERCÍCIOS: Máquina Multifuncional (Home Gym) ---
+  {
+    "id": "HOMEGYM_LEG_EXTENSION",
+    "name_pt": "Extensão de Perna (Leg Extension) - Máquina",
+    "equipment_required": ["Adidas Adidas Home Gym New Multi-ginásio"],
+    "muscle_groups_pt": "Quadríceps (Isolamento)",
+    "focus": "Isolamento, Pré-Exaustão de Quads",
+    "image_link": "assets/img/homegym_legextension.gif",
+    "video_link": "https://www.youtube.com/embed/Yy0JjW0B-18"
+  },
+  {
+    "id": "HOMEGYM_CABO_AB",
+    "name_pt": "Abdominal com Cabo (Cable Crunch)",
+    "equipment_required": ["Adidas Adidas Home Gym New Multi-ginásio"],
+    "muscle_groups_pt": "Reto Abdominal",
+    "focus": "Força Abdominal, Sobrecarga",
+    "image_link": "assets/img/cable_crunch.gif",
+    "video_link": "https://www.youtube.com/embed/u_Jk0_Y_q6E"
+  },
+
+  // --- NOVOS EXERCÍCIOS: Core e Estabilidade com Gym Ball ---
+  {
+    "id": "GC_PASS_BOLA",
+    "name_pt": "Passar a Bola (Ball Pass/Transfer)",
+    "equipment_required": ["gym ball", "Tapete"],
+    "muscle_groups_pt": "Core, Abdómen Superior e Inferior",
+    "focus": "Estabilidade, Coordenação",
+    "image_link": "assets/img/ball_pass.gif",
+    "video_link": "https://www.youtube.com/embed/1v01q4b_1F8"
+  },
+  {
+    "id": "GC_WALL_SQUAT",
+    "name_pt": "Agachamento Estático na Parede com Bola",
+    "equipment_required": ["gym ball"],
+    "muscle_groups_pt": "Quadríceps (Isométrico)",
+    "focus": "Resistência Muscular, Estabilidade Lombares",
+    "image_link": "assets/img/wall_squat_ball.gif",
+    "video_link": "https://www.youtube.com/embed/5U2zE8p3v2k"
+  },
+  
+  // ... (Adicionar IDs para Flexões/Crunches/Pranchas com peso corporal) ...
+]
+2. Reforço da Instrução da IA (System Prompt)
+Para garantir que a IA utiliza a vasta gama de exercícios e não se restringe a 3 ou 4 básicos, é necessário reforçar o System Prompt e incluir uma instrução na secção 'TAREFA' do User Prompt.
+
+A. Adição ao System Prompt (Regra de Variedade)
+No início do seu system_prompt (onde define as CRITICAL RULES), adicione:
+
+REGRA DE VARIEDADE: Você DEVE utilizar a vasta gama de equipamentos disponíveis. Evite a repetição excessiva de exercícios na mesma semana (e.g., utilize Leg Press e Agachamento, e não apenas um). Priorize a inclusão de exercícios de Core/Estabilidade (Ginástica Ball) e Isolamento (Home Gym/Halteres) para apoiar o objetivo de definição corporal.
+
+B. Adição ao User Prompt (Instrução da Tarefa)
+Na seção TAREFA ou CONSTRANGIMENTOS DE TREINO, adicione:
+
+EXIGÊNCIA DE DIVERSIDADE: Certifique-se de que o plano de 7 dias utiliza a Máquina Multifuncional Adidas (Home Gym) em pelo menos 2 sessões e a Bola de Ginástica (Gym Ball) para Core ou Estabilidade em 3 sessões, para maximizar o uso do equipamento e variar o estímulo.
+
+Com esta combinação de uma base de dados JSON expandida e instruções diretas de reforço no prompt, o Azure OpenAI será forçado a criar planos de treino diversificados, eficazes e que exploram todo o potencial do equipamento disponível.

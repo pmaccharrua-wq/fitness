@@ -1,4 +1,5 @@
 import { UserProfile } from "@shared/schema";
+import { exerciseLibrary, exerciseIdsByCategory } from "../exerciseData";
 
 interface AzureOpenAIConfig {
   apiKey: string;
@@ -164,6 +165,56 @@ export async function generateFitnessPlan(
     ? userProfile.equipment.join(", ")
     : "Peso corporal (sem equipamento)";
 
+  // Map user equipment to exercise equipment types
+  const equipmentMapping: Record<string, string[]> = {
+    "Halteres de 2kg": ["dumbbell", "bodyweight"],
+    "Haltere de 4kg": ["dumbbell", "bodyweight"],
+    "Haltere de 9kg": ["dumbbell", "bodyweight"],
+    "Kettlebell de 6kg": ["kettlebell", "bodyweight"],
+    "Titanium Strength SUPREME Leg Press / Hack Squat": ["machine", "bodyweight"],
+    "Adidas Home Gym Multi-ginásio": ["cable machine", "bodyweight"],
+    "Passadeira com elevação e velocidade ajustáveis": ["treadmill", "bodyweight"],
+    "Bicicleta": ["stationary bike", "bodyweight"],
+    "Máquina de step": ["step machine", "bodyweight"],
+    "Banco Adidas": ["bench", "dumbbell", "barbell", "bodyweight"],
+    "Bola de ginástica": ["gym ball", "bodyweight"],
+    "Barra (10kg + Discos)": ["barbell", "bodyweight"],
+    "Peso corporal (sem equipamento)": ["bodyweight"],
+  };
+
+  // Get equipment types user has access to
+  const userEquipmentTypes = new Set<string>(["bodyweight"]);
+  (userProfile.equipment || []).forEach(eq => {
+    const types = equipmentMapping[eq] || [];
+    types.forEach(t => userEquipmentTypes.add(t));
+  });
+
+  // Filter exercises based on user's equipment
+  const availableExercises = exerciseLibrary.filter(ex => 
+    userEquipmentTypes.has(ex.equipment)
+  );
+
+  // Generate concise exercise reference - only exercises user can do
+  const categoryNamePt: Record<string, string> = {
+    chest: "PEITO",
+    back: "COSTAS",
+    legs: "PERNAS/GLÚTEOS",
+    shoulders: "OMBROS",
+    arms: "BRAÇOS",
+    core: "CORE/ABDOMINAIS",
+    cardio: "CARDIO"
+  };
+
+  const exerciseLibraryReference = Object.entries(exerciseIdsByCategory).map(([category, ids]) => {
+    const exercises = ids
+      .map(id => availableExercises.find(e => e.id === id))
+      .filter(Boolean)
+      .map(ex => `  - "${ex!.namePt}"`)
+      .join("\n");
+    if (!exercises) return null;
+    return `**${categoryNamePt[category] || category.toUpperCase()}:**\n${exercises}`;
+  }).filter(Boolean).join("\n\n");
+
   const systemPrompt = `És um Coach de Saúde e Fitness e Nutricionista Registado certificado com expertise em IA. A tua função principal é analisar perfis detalhados de utilizadores e métricas cientificamente calculadas para gerar planos de fitness de 30 dias **altamente personalizados, seguros e eficazes** e diretrizes nutricionais acompanhantes.
 
 **MODELOS CIENTÍFICOS A UTILIZAR:**
@@ -218,18 +269,25 @@ export async function generateFitnessPlan(
 - Equipamento Disponível: ${userEquipment}
 - Último Feedback de Sessão: ${lastFeedback}
 
+**4. BIBLIOTECA DE EXERCÍCIOS DISPONÍVEIS:**
+Usa APENAS exercícios desta biblioteca. Usa o nome em português (namePt) no campo "name_pt" do output.
+
+${exerciseLibraryReference}
+
 [FIM DADOS DO CLIENTE]
 
 **TAREFA:**
 
 **A. PLANO DE TREINO (Primeiros 7 Dias do Plano de 30 Dias):**
 1. Desenvolve os primeiros 7 dias usando o modelo de Periodização Ondulatória (para variar estímulos) ou o Modelo OPT do NASM (para iniciantes).
-2. Cada sessão DEVE incluir Aquecimento (5 min) e Alongamento (5 min) dentro do tempo total de ${workoutTimePerDay} minutos.
-3. Inclui pelo menos 1-2 dias de descanso ativo ou completo nos 7 dias para recuperação adequada.
-4. Para cada exercício, estima as calorias queimadas para a sessão completa baseado na intensidade e peso do utilizador (${userProfile.weight}kg).
-5. Fornece placeholders para 'video_link' e 'image_link' (e.g., "placeholder/video/agachamento.mp4").
-6. Ajusta a intensidade baseado na dificuldade desejada: ${workoutDifficulty}.
-7. Se houver último feedback (${lastFeedback}), ajusta a intensidade conforme necessário.
+2. **OBRIGATÓRIO:** Usa APENAS exercícios da BIBLIOTECA DE EXERCÍCIOS acima. Usa o nome em português exatamente como listado.
+3. Cada sessão DEVE incluir Aquecimento (5 min) e Alongamento (5 min) dentro do tempo total de ${workoutTimePerDay} minutos.
+4. Inclui pelo menos 1-2 dias de descanso ativo ou completo nos 7 dias para recuperação adequada.
+5. Para cada exercício, estima as calorias queimadas para a sessão completa baseado na intensidade e peso do utilizador (${userProfile.weight}kg).
+6. Usa "placeholder" para 'video_link' e 'image_link' - a aplicação substituirá automaticamente pelos links reais.
+7. Ajusta a intensidade baseado na dificuldade desejada: ${workoutDifficulty}.
+8. Se houver último feedback (${lastFeedback}), ajusta a intensidade conforme necessário.
+9. **PRIORIZA** equipamentos que o utilizador possui: ${userEquipment}.
 
 **B. PLANO DE NUTRIÇÃO (3 Dias Completos):**
 1. Cria 3 dias de plano de refeições com 6 refeições/dia:

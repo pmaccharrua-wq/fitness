@@ -481,15 +481,315 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     videoUrl: "https://www.youtube.com/watch?v=52r_Ul5k03g",
     instructions: "Stand facing box, jump onto box, step down carefully",
     instructionsPt: "Fique de frente para a caixa, salte para cima da caixa, desça com cuidado"
+  },
+
+  // LEG PRESS / HACK SQUAT EXERCISES
+  {
+    id: "hack_squat",
+    name: "Hack Squat",
+    namePt: "Hack Squat Invertido",
+    primaryMuscles: ["quadriceps"],
+    secondaryMuscles: ["glutes", "hamstrings"],
+    equipment: "machine",
+    difficulty: "intermediate",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/10/hack-squat.gif",
+    videoUrl: "https://www.youtube.com/watch?v=0tn5K9NlCfo",
+    instructions: "Position shoulders under pads, feet shoulder-width, squat down and press up",
+    instructionsPt: "Posicione os ombros sob as almofadas, pés à largura dos ombros, agache e empurre para cima"
+  },
+  {
+    id: "calf_press",
+    name: "Calf Press on Leg Press",
+    namePt: "Calf Press no Leg Press",
+    primaryMuscles: ["calves"],
+    secondaryMuscles: [],
+    equipment: "machine",
+    difficulty: "beginner",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/03/leg-press-calf-raise.gif",
+    videoUrl: "https://www.youtube.com/watch?v=je5lLvmVypU",
+    instructions: "Place toes on edge of platform, press through toes to extend ankles",
+    instructionsPt: "Coloque os dedos na borda da plataforma, empurre pelos dedos para estender os tornozelos"
+  },
+
+  // HOME GYM MULTI-GINÁSIO EXERCISES
+  {
+    id: "pec_dec_fly",
+    name: "Pec Deck Fly",
+    namePt: "Pec Deck / Abertura no Pec Deck",
+    primaryMuscles: ["chest"],
+    secondaryMuscles: ["shoulders"],
+    equipment: "cable machine",
+    difficulty: "beginner",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/02/pec-deck-machine-fly.gif",
+    videoUrl: "https://www.youtube.com/watch?v=Z57CtFmRMxA",
+    instructions: "Sit with arms on pads, squeeze arms together in front of chest",
+    instructionsPt: "Sente com os braços nas almofadas, aperte os braços juntos à frente do peito"
+  },
+  {
+    id: "seated_chest_press",
+    name: "Seated Chest Press Machine",
+    namePt: "Chest Press Sentado na Máquina",
+    primaryMuscles: ["chest"],
+    secondaryMuscles: ["triceps", "shoulders"],
+    equipment: "cable machine",
+    difficulty: "beginner",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/10/chest-press-machine.gif",
+    videoUrl: "https://www.youtube.com/watch?v=xUm0BiZCWlQ",
+    instructions: "Sit with back against pad, grip handles, press forward and return",
+    instructionsPt: "Sente com as costas contra a almofada, agarre as pegas, empurre para a frente e volte"
+  },
+  {
+    id: "cable_crossover",
+    name: "Cable Crossover",
+    namePt: "Cross-over na Máquina de Cabos",
+    primaryMuscles: ["chest"],
+    secondaryMuscles: ["shoulders"],
+    equipment: "cable machine",
+    difficulty: "intermediate",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/11/cable-crossover.gif",
+    videoUrl: "https://www.youtube.com/watch?v=taI4XduLpTk",
+    instructions: "Stand between cables, pull handles down and together in arc motion",
+    instructionsPt: "Fique entre os cabos, puxe as pegas para baixo e junte num movimento em arco"
+  },
+  {
+    id: "seated_row_machine",
+    name: "Seated Cable Row",
+    namePt: "Remada Sentada na Máquina",
+    primaryMuscles: ["back"],
+    secondaryMuscles: ["biceps", "shoulders"],
+    equipment: "cable machine",
+    difficulty: "beginner",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/03/seated-cable-row.gif",
+    videoUrl: "https://www.youtube.com/watch?v=GZbfZ033f74",
+    instructions: "Sit with feet on platform, pull handle to abdomen, squeeze shoulder blades",
+    instructionsPt: "Sente com os pés na plataforma, puxe a pega ao abdómen, aperte as omoplatas"
+  },
+  {
+    id: "cable_tricep_extension",
+    name: "Cable Tricep Extension",
+    namePt: "Extensão de Tríceps com Cabo",
+    primaryMuscles: ["triceps"],
+    secondaryMuscles: [],
+    equipment: "cable machine",
+    difficulty: "beginner",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/08/overhead-tricep-extension.gif",
+    videoUrl: "https://www.youtube.com/watch?v=kiuVA0gs3EI",
+    instructions: "Face away from cable, extend arms overhead, control the return",
+    instructionsPt: "Fique de costas para o cabo, estenda os braços acima da cabeça, controle o retorno"
+  },
+
+  // BARBELL EXERCISES (Additional)
+  {
+    id: "barbell_lunge",
+    name: "Barbell Lunge",
+    namePt: "Afundos com Barra",
+    primaryMuscles: ["quadriceps", "glutes"],
+    secondaryMuscles: ["hamstrings", "core"],
+    equipment: "barbell",
+    difficulty: "intermediate",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/04/barbell-lunge.gif",
+    videoUrl: "https://www.youtube.com/watch?v=D7KaRcUTQeE",
+    instructions: "Bar on upper back, step forward into lunge, push back to start",
+    instructionsPt: "Barra nas costas superiores, passo à frente em afundo, empurre de volta ao início"
+  },
+  {
+    id: "good_morning",
+    name: "Good Morning",
+    namePt: "Good Morning com Barra",
+    primaryMuscles: ["hamstrings", "back"],
+    secondaryMuscles: ["glutes", "core"],
+    equipment: "barbell",
+    difficulty: "intermediate",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/03/good-morning-exercise.gif",
+    videoUrl: "https://www.youtube.com/watch?v=YA-h3n9L4YU",
+    instructions: "Bar on upper back, hinge at hips keeping back straight, return to standing",
+    instructionsPt: "Barra nas costas superiores, curve nos quadris mantendo as costas retas, volte a ficar em pé"
+  },
+
+  // KETTLEBELL / DUMBBELL EXERCISES (Additional)
+  {
+    id: "goblet_squat",
+    name: "Goblet Squat",
+    namePt: "Agachamento Cálice / Goblet Squat",
+    primaryMuscles: ["quadriceps", "glutes"],
+    secondaryMuscles: ["core", "hamstrings"],
+    equipment: "kettlebell",
+    difficulty: "beginner",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/09/goblet-squat.gif",
+    videoUrl: "https://www.youtube.com/watch?v=MeIiIdhvXT4",
+    instructions: "Hold kettlebell at chest, squat down keeping chest up, drive through heels",
+    instructionsPt: "Segure o kettlebell ao peito, agache mantendo o peito erguido, empurre pelos calcanhares"
+  },
+  {
+    id: "rdl_dumbbell",
+    name: "Dumbbell Romanian Deadlift",
+    namePt: "Levantamento Terra Romeno com Halteres",
+    primaryMuscles: ["hamstrings", "glutes"],
+    secondaryMuscles: ["back", "core"],
+    equipment: "dumbbell",
+    difficulty: "intermediate",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/06/dumbbell-romanian-deadlift.gif",
+    videoUrl: "https://www.youtube.com/watch?v=hQgFixeXdZo",
+    instructions: "Hold dumbbells, hinge at hips lowering weights along legs, squeeze glutes to rise",
+    instructionsPt: "Segure os halteres, curve nos quadris baixando os pesos ao longo das pernas, aperte os glúteos para subir"
+  },
+  {
+    id: "bulgarian_split_squat",
+    name: "Bulgarian Split Squat",
+    namePt: "Afundo Búlgaro",
+    primaryMuscles: ["quadriceps", "glutes"],
+    secondaryMuscles: ["hamstrings", "core"],
+    equipment: "dumbbell",
+    difficulty: "intermediate",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/09/bulgarian-split-squat.gif",
+    videoUrl: "https://www.youtube.com/watch?v=2C-uNgKwPLE",
+    instructions: "Rear foot on bench, lower into lunge, drive through front heel",
+    instructionsPt: "Pé de trás no banco, baixe em afundo, empurre pelo calcanhar da frente"
+  },
+  {
+    id: "kettlebell_swing",
+    name: "Kettlebell Swing",
+    namePt: "Kettlebell Swing",
+    primaryMuscles: ["glutes", "hamstrings"],
+    secondaryMuscles: ["core", "shoulders"],
+    equipment: "kettlebell",
+    difficulty: "intermediate",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/06/kettlebell-swing.gif",
+    videoUrl: "https://www.youtube.com/watch?v=YSxHifyI6s8",
+    instructions: "Hinge at hips, swing kettlebell between legs, thrust hips to swing up",
+    instructionsPt: "Curve nos quadris, balance o kettlebell entre as pernas, empurre os quadris para balançar para cima"
+  },
+
+  // GYM BALL EXERCISES
+  {
+    id: "hip_thrust_ball",
+    name: "Hip Thrust on Gym Ball",
+    namePt: "Hip Thrust na Bola de Ginástica",
+    primaryMuscles: ["glutes"],
+    secondaryMuscles: ["hamstrings", "core"],
+    equipment: "gym ball",
+    difficulty: "beginner",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2023/05/stability-ball-hip-thrust.gif",
+    videoUrl: "https://www.youtube.com/watch?v=3-y9Z9GMBfk",
+    instructions: "Upper back on ball, feet flat, thrust hips up squeezing glutes",
+    instructionsPt: "Costas superiores na bola, pés planos, empurre os quadris para cima apertando os glúteos"
+  },
+  {
+    id: "hamstring_curl_ball",
+    name: "Hamstring Curl on Gym Ball",
+    namePt: "Extensão de Pernas na Bola de Ginástica",
+    primaryMuscles: ["hamstrings"],
+    secondaryMuscles: ["glutes", "core"],
+    equipment: "gym ball",
+    difficulty: "intermediate",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2021/10/stability-ball-hamstring-curl.gif",
+    videoUrl: "https://www.youtube.com/watch?v=JFzr1Cl8gRQ",
+    instructions: "Lie on back, heels on ball, curl ball toward glutes",
+    instructionsPt: "Deite de costas, calcanhares na bola, curve a bola em direção aos glúteos"
+  },
+  {
+    id: "gym_ball_crunch",
+    name: "Gym Ball Crunch",
+    namePt: "Abdominal na Bola de Ginástica",
+    primaryMuscles: ["core"],
+    secondaryMuscles: [],
+    equipment: "gym ball",
+    difficulty: "beginner",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/03/stability-ball-crunch.gif",
+    videoUrl: "https://www.youtube.com/watch?v=k4_h34oU8kI",
+    instructions: "Lower back on ball, hands behind head, crunch up squeezing abs",
+    instructionsPt: "Lombar na bola, mãos atrás da cabeça, curve para cima apertando os abdominais"
+  },
+
+  // PUSH-UP VARIATIONS
+  {
+    id: "pushup_incline",
+    name: "Incline Push-Up",
+    namePt: "Flexões Inclinadas no Banco",
+    primaryMuscles: ["chest"],
+    secondaryMuscles: ["triceps", "shoulders"],
+    equipment: "bench",
+    difficulty: "beginner",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/10/incline-push-up.gif",
+    videoUrl: "https://www.youtube.com/watch?v=cfns2POUMR8",
+    instructions: "Hands on bench, body straight, lower chest to bench and push up",
+    instructionsPt: "Mãos no banco, corpo reto, baixe o peito ao banco e empurre para cima"
+  },
+  {
+    id: "pushup_decline",
+    name: "Decline Push-Up",
+    namePt: "Flexões Declinadas",
+    primaryMuscles: ["chest", "shoulders"],
+    secondaryMuscles: ["triceps", "core"],
+    equipment: "bench",
+    difficulty: "intermediate",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/10/decline-push-up.gif",
+    videoUrl: "https://www.youtube.com/watch?v=SKPab2YC8BE",
+    instructions: "Feet on bench, hands on floor, lower chest to floor and push up",
+    instructionsPt: "Pés no banco, mãos no chão, baixe o peito ao chão e empurre para cima"
+  },
+
+  // CARDIO MACHINE EXERCISES
+  {
+    id: "treadmill_hiit",
+    name: "Treadmill HIIT Sprints",
+    namePt: "Cardio HIIT na Passadeira (Sprints)",
+    primaryMuscles: ["full body"],
+    secondaryMuscles: [],
+    equipment: "treadmill",
+    difficulty: "intermediate",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2023/02/running-on-a-treadmill.jpg",
+    videoUrl: "https://www.youtube.com/watch?v=2_e2Vp0nK7w",
+    instructions: "Alternate between high-speed sprints and recovery walks/jogs",
+    instructionsPt: "Alterne entre sprints de alta velocidade e caminhadas/corridas de recuperação"
+  },
+  {
+    id: "treadmill_incline_walk",
+    name: "Treadmill Incline Walk",
+    namePt: "Caminhada com Inclinação na Passadeira",
+    primaryMuscles: ["glutes", "hamstrings"],
+    secondaryMuscles: ["calves", "core"],
+    equipment: "treadmill",
+    difficulty: "beginner",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/01/incline-treadmill-walking.jpg",
+    videoUrl: "https://www.youtube.com/watch?v=ESN7_DnSsNw",
+    instructions: "Set high incline, walk at moderate pace for glute and cardio workout",
+    instructionsPt: "Ajuste inclinação alta, caminhe a ritmo moderado para treino de glúteos e cardio"
+  },
+  {
+    id: "step_machine",
+    name: "Step Machine",
+    namePt: "Máquina de Step (Subida de Escadas)",
+    primaryMuscles: ["quadriceps", "glutes"],
+    secondaryMuscles: ["calves", "hamstrings"],
+    equipment: "step machine",
+    difficulty: "beginner",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/08/stair-climber.jpg",
+    videoUrl: "https://www.youtube.com/watch?v=K8iY5g_c74s",
+    instructions: "Step continuously, maintain upright posture, control the pace",
+    instructionsPt: "Suba continuamente, mantenha a postura ereta, controle o ritmo"
+  },
+  {
+    id: "stationary_bike",
+    name: "Stationary Bike",
+    namePt: "Bicicleta Estacionária",
+    primaryMuscles: ["quadriceps", "hamstrings"],
+    secondaryMuscles: ["calves", "glutes"],
+    equipment: "stationary bike",
+    difficulty: "beginner",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2023/01/recumbent-bike.jpg",
+    videoUrl: "https://www.youtube.com/watch?v=b1xGHEr_6iI",
+    instructions: "Pedal at steady pace, adjust resistance as needed for intensity",
+    instructionsPt: "Pedale a ritmo constante, ajuste a resistência conforme necessário para intensidade"
   }
 ];
 
 export const exerciseIdsByCategory = {
-  chest: ["pushup_standard", "bench_press_barbell", "bench_press_dumbbell", "incline_press_dumbbell", "chest_fly_dumbbell"],
-  back: ["pullup", "lat_pulldown", "bent_over_row_barbell", "dumbbell_row", "deadlift_conventional"],
-  legs: ["squat_bodyweight", "squat_barbell", "lunge_walking", "leg_press", "romanian_deadlift", "calf_raise"],
+  chest: ["pushup_standard", "bench_press_barbell", "bench_press_dumbbell", "incline_press_dumbbell", "chest_fly_dumbbell", "pec_dec_fly", "seated_chest_press", "cable_crossover", "pushup_incline", "pushup_decline"],
+  back: ["pullup", "lat_pulldown", "bent_over_row_barbell", "dumbbell_row", "deadlift_conventional", "seated_row_machine", "good_morning"],
+  legs: ["squat_bodyweight", "squat_barbell", "lunge_walking", "leg_press", "romanian_deadlift", "calf_raise", "hack_squat", "calf_press", "barbell_lunge", "goblet_squat", "rdl_dumbbell", "bulgarian_split_squat", "hip_thrust_ball", "hamstring_curl_ball", "kettlebell_swing"],
   shoulders: ["overhead_press_barbell", "shoulder_press_dumbbell", "lateral_raise", "front_raise", "face_pull"],
-  arms: ["bicep_curl_dumbbell", "hammer_curl", "tricep_pushdown", "tricep_dip", "skull_crusher"],
-  core: ["plank", "crunch", "russian_twist", "leg_raise", "mountain_climber"],
-  cardio: ["burpee", "jumping_jack", "high_knees", "jump_squat", "box_jump"]
+  arms: ["bicep_curl_dumbbell", "hammer_curl", "tricep_pushdown", "tricep_dip", "skull_crusher", "cable_tricep_extension"],
+  core: ["plank", "crunch", "russian_twist", "leg_raise", "mountain_climber", "gym_ball_crunch"],
+  cardio: ["burpee", "jumping_jack", "high_knees", "jump_squat", "box_jump", "treadmill_hiit", "treadmill_incline_walk", "step_machine", "stationary_bike"]
 };

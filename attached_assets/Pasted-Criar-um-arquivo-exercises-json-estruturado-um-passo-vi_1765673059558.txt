@@ -1,0 +1,148 @@
+Criar um arquivo exercises.json estruturado é um passo vital. Ele serve como o banco de dados de ativos da sua aplicação.
+
+Quando o Azure OpenAI Service gerar um plano de treino, ele retornará o exercise_id (o identificador único) e o seu backend usará este ID para procurar o nome completo, a imagem (GIF) e o vídeo no YouTube no ficheiro exercises.json.
+
+Aqui está uma estrutura de exemplo para o seu arquivo data/exercises.json, focando no equipamento que especificou:
+
+🗂️ Exemplo de Ficheiro data/exercises.json
+JSON
+
+[
+  // --- A. EXERCÍCIOS COM BARRA E DISCOS (ALTA FORÇA) ---
+  {
+    "id": "BARRA_AGACHAMENTO",
+    "name_pt": "Agachamento com Barra (Barbell Squat)",
+    "equipment_required": ["Barra de Levantamento 10kg", "Discos de 4kg", "Discos de 1kg"],
+    "muscle_groups_pt": "Quadríceps, Glúteos, Lombares, Core",
+    "focus": "Força Composta, Hipertrofia",
+    "image_link": "assets/img/squat_bar.gif",
+    "video_link": "https://www.youtube.com/embed/S_T0J4_K-L8",
+    "safety_notes_pt": "Priorizar a técnica e profundidade à carga. Manter a coluna reta."
+  },
+  {
+    "id": "BARRA_PESO_MORTO",
+    "name_pt": "Peso Morto (Deadlift)",
+    "equipment_required": ["Barra de Levantamento 10kg", "Discos de 4kg"],
+    "muscle_groups_pt": "Isquiotibiais, Glúteos, Costas, Trapézio",
+    "focus": "Cadeia Posterior, Força Máxima",
+    "image_link": "assets/img/deadlift.gif",
+    "video_link": "https://www.youtube.com/embed/t0D5lJ-dK_U",
+    "safety_notes_pt": "Essencial manter as costas neutras. Não recomendado para iniciantes com problemas lombares."
+  },
+  {
+    "id": "BARRA_REMADA_INCLINADA",
+    "name_pt": "Remada Inclinada com Barra (Bent-Over Row)",
+    "equipment_required": ["Barra de Levantamento 10kg", "Discos de 1kg"],
+    "muscle_groups_pt": "Dorsais, Romboides, Bíceps",
+    "focus": "Espessura das Costas",
+    "image_link": "assets/img/bent_over_row.gif",
+    "video_link": "https://www.youtube.com/embed/e_kI-I8W_jU",
+    "safety_notes_pt": "Movimento controlado. Evitar balançar o corpo para levantar o peso."
+  },
+  
+  // --- B. EXERCÍCIOS DE MÁQUINAS DE FORÇA ---
+  {
+    "id": "LEGPRESS_45",
+    "name_pt": "Leg Press na Máquina (45 Graus)",
+    "equipment_required": ["titanium strength SUPREME Leg Press / Hack Squat"],
+    "muscle_groups_pt": "Quadríceps, Glúteos",
+    "focus": "Volume, Hipertrofia de Quads",
+    "image_link": "assets/img/leg_press.gif",
+    "video_link": "https://www.youtube.com/embed/P-D-mU39D7M"
+  },
+  {
+    "id": "HOMEGYM_LAT_PULL",
+    "name_pt": "Puxada Alta (Lat Pulldown) - Home Gym",
+    "equipment_required": ["Adidas Adidas Home Gym New Multi-ginásio"],
+    "muscle_groups_pt": "Dorsais (Grandes dorsais)",
+    "focus": "Largura das Costas, Isolamento",
+    "image_link": "assets/img/lat_pulldown.gif",
+    "video_link": "https://www.youtube.com/embed/G_8B_BqK_sU"
+  },
+  {
+    "id": "HOMEGYM_PEC_FLY",
+    "name_pt": "Peck Deck / Abertura no Pec Deck",
+    "equipment_required": ["Adidas Adidas Home Gym New Multi-ginásio"],
+    "muscle_groups_pt": "Peitoral (Centro)",
+    "focus": "Isolamento, Definição do Peitoral",
+    "image_link": "assets/img/pec_fly.gif",
+    "video_link": "https://www.youtube.com/embed/h7R3S33-Q90"
+  },
+
+  // --- C. EXERCÍCIOS COM PESOS LIVRES E ACESSÓRIOS ---
+  {
+    "id": "DB_PRESS_INCLINADO",
+    "name_pt": "Supino Inclinado com Halteres",
+    "equipment_required": ["9 kg dumbell", "adidas bench"],
+    "muscle_groups_pt": "Peitoral Superior, Ombros",
+    "focus": "Força, Ângulo Específico",
+    "image_link": "assets/img/incline_db_press.gif",
+    "video_link": "https://www.youtube.com/embed/0G2Q_v792bA"
+  },
+  {
+    "id": "DB_ELEV_LATERAL",
+    "name_pt": "Elevação Lateral (Lateral Raise) - 4kg",
+    "equipment_required": ["4 kg dumbell"],
+    "muscle_groups_pt": "Deltoide Medial (Lateral do Ombro)",
+    "focus": "Isolamento, Largura do Ombro",
+    "image_link": "assets/img/lateral_raise.gif",
+    "video_link": "https://www.youtube.com/embed/3VcKaXoZS4Q"
+  },
+  {
+    "id": "KB_SWING",
+    "name_pt": "Kettlebell Swing",
+    "equipment_required": ["6kg kettlebell"],
+    "muscle_groups_pt": "Glúteos, Isquiotibiais, Core, Cardio",
+    "focus": "Força Explosiva, Condicionamento",
+    "image_link": "assets/img/kb_swing.gif",
+    "video_link": "https://www.youtube.com/embed/LIQ2zQ_Fk7I"
+  },
+  {
+    "id": "GC_CRUNCH",
+    "name_pt": "Abdominal na Bola (Gym Ball Crunch)",
+    "equipment_required": ["gym ball"],
+    "muscle_groups_pt": "Reto Abdominal",
+    "focus": "Amplitude de Movimento, Estabilidade",
+    "image_link": "assets/img/gym_ball_crunch.gif",
+    "video_link": "https://www.youtube.com/embed/k4_h34oU8kI"
+  },
+
+  // --- D. EXERCÍCIOS DE CARDIO ---
+  {
+    "id": "CARDIO_PASSADEIRA_HIIT",
+    "name_pt": "Cardio HIIT (Passadeira - Sprints)",
+    "equipment_required": ["treadmill with adjustable elevation and speed"],
+    "muscle_groups_pt": "Corpo inteiro",
+    "focus": "Queima calórica, Eficiência Metabólica",
+    "image_link": "assets/img/treadmill_run.gif",
+    "video_link": "https://www.youtube.com/embed/2_e2Vp0nK7w"
+  },
+  {
+    "id": "CARDIO_STEP",
+    "name_pt": "Step Machine (Subida de Escadas)",
+    "equipment_required": ["step machine"],
+    "muscle_groups_pt": "Quads, Glúteos",
+    "focus": "Endurance, Força Localizada",
+    "image_link": "assets/img/step_machine.gif",
+    "video_link": "https://www.youtube.com/embed/K8iY5g_c74s"
+  }
+]
+🔑 Como a IA Deve Usar Este Ficheiro
+Instrução ao LLM: O System Prompt deve ser instruído a usar apenas os IDs listados (e.g., BARRA_AGACHAMENTO, DB_ELEV_LATERAL) ao criar o JSON do plano de treino, e não o nome completo.
+
+Geração do JSON: No fitness_plan_7_days, a IA devolverá:
+
+JSON
+
+{
+  "name_pt": "Agachamento com Barra (Barbell Squat)", // Nome para display
+  "exercise_id": "BARRA_AGACHAMENTO", // O ID para lookup
+  "sets": 3, 
+  "reps_or_time_pt": "8 repetições", 
+  "equipment_used_pt": "Barra de 10kg + 2 Discos 4kg", // A IA calcula a carga
+  "image_link_lookup": "BARRA_AGACHAMENTO", // A app usa o ID para obter o URL
+  "video_link_lookup": "BARRA_AGACHAMENTO" // A app usa o ID para obter o URL
+}
+Lógica da Aplicação (Frontend/Backend): Quando a sua aplicação recebe o plano da Azure, ela percorre a lista de exercícios. Para cada exercise_id, ela faz uma pesquisa no ficheiro exercises.json para obter os URLs reais do GIF e do YouTube, garantindo que o utilizador vê o conteúdo certo.
+
+Com este ficheiro, garantimos que a aplicação é visualmente rica e que todos os exercícios recomendados correspondem ao equipamento disponível.
