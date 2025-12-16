@@ -106,6 +106,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const path = req.url?.replace(/\?.*$/, "") || "";
 
   try {
+    // Debug endpoint to check DATABASE_URL format
+    if (method === "GET" && path === "/api/debug") {
+      const dbUrl = process.env.DATABASE_URL || "NOT SET";
+      const masked = dbUrl.replace(/:([^:@]+)@/, ':****@');
+      return res.json({ 
+        success: true, 
+        dbUrlMasked: masked,
+        hasDbUrl: !!process.env.DATABASE_URL 
+      });
+    }
+
     if (method === "POST" && path === "/api/login") {
       const { phoneNumber, pin } = req.body;
       if (!phoneNumber || !pin) {
