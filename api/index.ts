@@ -127,11 +127,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (method === "GET" && path === "/api/debug") {
       const dbUrl = process.env.DATABASE_URL || "NOT SET";
       const masked = dbUrl.replace(/:([^:@]+)@/, ':****@');
-      return res.json({ 
-        success: true, 
-        dbUrlMasked: masked,
-        hasDbUrl: !!process.env.DATABASE_URL 
-      });
+      try {
+        const config = parseConnectionString(dbUrl);
+        return res.json({ 
+          success: true, 
+          dbUrlMasked: masked,
+          hasDbUrl: !!process.env.DATABASE_URL,
+          parsedConfig: {
+            user: config.user,
+            host: config.host,
+            port: config.port,
+            database: config.database,
+            passwordLength: config.password?.length || 0
+          }
+        });
+      } catch (e) {
+        return res.json({ 
+          success: false, 
+          error: e instanceof Error ? e.message : "Parse error",
+          dbUrlMasked: masked
+        });
+      }
     }
 
     if (method === "POST" && path === "/api/login") {
