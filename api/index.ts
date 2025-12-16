@@ -118,6 +118,82 @@ export const customMeals = pgTable("custom_meals", {
 
 const db = drizzle(pool);
 
+const AVAILABLE_EQUIPMENT = [
+  "Halteres de 2kg", "Haltere de 4kg", "Haltere de 9kg", "Kettlebell de 6kg",
+  "Titanium Strength SUPREME Leg Press / Hack Squat", "Adidas Home Gym Multi-ginásio",
+  "Passadeira com elevação e velocidade ajustáveis", "Bicicleta", "Máquina de step",
+  "Banco Adidas", "Bola de ginástica", "Peso corporal (sem equipamento)"
+];
+
+async function generateFitnessPlanFromAI(userProfile: any): Promise<any> {
+  const apiKey = process.env.AZURE_OPENAI_API_KEY;
+  const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
+  const deployment = process.env.AZURE_OPENAI_DEPLOYMENT;
+  const apiVersion = process.env.AZURE_OPENAI_API_VERSION || "2024-08-01-preview";
+
+  if (!apiKey || !endpoint || !deployment) {
+    throw new Error("Azure OpenAI environment variables not configured");
+  }
+
+  const bmr = userProfile.sex === "Male"
+    ? 10 * userProfile.weight + 6.25 * userProfile.height - 5 * userProfile.age + 5
+    : 10 * userProfile.weight + 6.25 * userProfile.height - 5 * userProfile.age - 161;
+
+  const activityMultipliers: Record<string, number> = { sedentary: 1.2, light: 1.375, moderate: 1.55, very: 1.725 };
+  const tdee = Math.round(bmr * (activityMultipliers[userProfile.activityLevel] || 1.2));
+  
+  let targetCalories = tdee;
+  if (userProfile.goal === "loss") targetCalories = Math.round(tdee - 400);
+  else if (userProfile.goal === "muscle") targetCalories = Math.round(tdee + 300);
+
+  const waterTarget = Math.round(userProfile.weight * 35);
+  const goalPt: Record<string, string> = { loss: "Perda de Peso", muscle: "Ganho de Massa Muscular", gain: "Ganho de Peso", endurance: "Resistência" };
+
+  const systemPrompt = `És um Coach de Fitness e Nutricionista. Gera um plano de fitness personalizado de 15 dias e plano de nutrição de 7 dias em Português. Retorna APENAS JSON válido.`;
+
+  const userPrompt = `Perfil: ${userProfile.sex === "Male" ? "Masculino" : "Feminino"}, ${userProfile.age} anos, ${userProfile.weight}kg, ${userProfile.height}cm
+Objetivo: ${goalPt[userProfile.goal] || "Fitness Geral"}
+Calorias Diárias: ${targetCalories} kcal
+Hidratação: ${waterTarget} ml/dia
+Equipamento: ${AVAILABLE_EQUIPMENT.join(", ")}
+Impedimentos: ${userProfile.impediments || "Nenhum"}
+
+Gera JSON com estrutura:
+{
+  "plan_summary_pt": "resumo",
+  "fitness_plan_15_days": [{"day":1,"is_rest_day":false,"workout_name_pt":"","duration_minutes":45,"estimated_calories_burnt":300,"focus_pt":"","warmup_pt":"","warmup_exercises":[],"cooldown_pt":"","cooldown_exercises":[],"exercises":[{"name":"","name_pt":"","sequence_order":1,"sets":3,"reps_or_time":"12","equipment_used":""}]}],
+  "nutrition_plan_7_days": [{"day":1,"total_daily_calories":${targetCalories},"total_daily_macros":"","meals":[{"meal_time_pt":"","description_pt":"","main_ingredients_pt":"","recipe_pt":"","calories":0,"protein_g":0,"carbs_g":0,"fat_g":0}]}],
+  "hydration_guidelines_pt": {"water_target_ml":${waterTarget},"notification_schedule_pt":"A cada 90 minutos"}
+}`;
+
+  const url = `${endpoint}/openai/deployments/${deployment}/chat/completions?api-version=${apiVersion}`;
+  
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "api-key": apiKey },
+    body: JSON.stringify({
+      messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
+      max_tokens: 16000,
+      temperature: 0.7
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Azure OpenAI error: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content;
+  
+  if (!content) throw new Error("No content in AI response");
+
+  const jsonMatch = content.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error("No valid JSON in AI response");
+
+  return JSON.parse(jsonMatch[0]);
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { method } = req;
   const path = req.url?.replace(/\?.*$/, "") || "";
@@ -149,6 +225,60 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           dbUrlMasked: masked
         });
       }
+    }
+
+    // Onboarding - create user profile and generate AI plan
+    if (method === "POST" && path === "/api/onboarding") {
+      const profileData = req.body;
+      
+      // Auto-set fixed gym equipment
+      profileData.equipment = AVAILABLE_EQUIPMENT;
+      
+      // Create user profile
+      const [userProfile] = await db.insert(userProfiles)
+        .values({
+          firstName: profileData.firstName,
+          phoneNumber: profileData.phoneNumber,
+          pin: profileData.pin || "0000",
+          language: profileData.language || "pt",
+          sex: profileData.sex,
+          age: profileData.age,
+          weight: profileData.weight,
+          height: profileData.height,
+          goal: profileData.goal,
+          activityLevel: profileData.activityLevel,
+          equipment: profileData.equipment,
+          impediments: profileData.impediments,
+          somatotype: profileData.somatotype,
+          currentBodyComp: profileData.currentBodyComp,
+          targetBodyComp: profileData.targetBodyComp,
+          timePerDay: profileData.timePerDay,
+          difficulty: profileData.difficulty,
+        })
+        .returning();
+
+      console.log("Generating AI plan for user:", userProfile.id);
+      
+      // Generate AI fitness plan
+      const aiPlan = await generateFitnessPlanFromAI(userProfile);
+      
+      // Store the generated plan
+      const [fitnessPlan] = await db.insert(fitnessPlans)
+        .values({
+          userId: userProfile.id,
+          planData: aiPlan,
+          currentDay: 1,
+          durationDays: 30,
+          isActive: true,
+        })
+        .returning();
+
+      return res.json({
+        success: true,
+        userId: userProfile.id,
+        planId: fitnessPlan.id,
+        plan: aiPlan,
+      });
     }
 
     if (method === "POST" && path === "/api/login") {
