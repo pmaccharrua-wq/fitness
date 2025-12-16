@@ -138,7 +138,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             host: config.host,
             port: config.port,
             database: config.database,
-            passwordLength: config.password?.length || 0
+            passwordLength: config.password?.length || 0,
+            passwordHint: config.password ? `${config.password[0]}...${config.password[config.password.length - 1]}` : "none"
           }
         });
       } catch (e) {
