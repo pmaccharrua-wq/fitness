@@ -315,6 +315,52 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.json({ success: true, settings });
     }
 
+    // GET all plans for a user (plural route)
+    if (method === "GET" && path.match(/^\/api\/plans\/\d+$/)) {
+      const userId = parseInt(path.split("/").pop() || "");
+      const plans = await db.select().from(fitnessPlans)
+        .where(eq(fitnessPlans.userId, userId))
+        .orderBy(desc(fitnessPlans.createdAt));
+      return res.json({ success: true, plans });
+    }
+
+    // Notifications poll endpoint
+    if (method === "POST" && path.match(/^\/api\/notifications\/poll\/\d+$/)) {
+      const userId = parseInt(path.split("/").pop() || "");
+      // Return empty notifications for now - can be enhanced later
+      return res.json({ success: true, notifications: [] });
+    }
+
+    // Weight goal validation endpoint
+    if (method === "POST" && path === "/api/validate-weight-goal") {
+      const { currentWeight, goalWeight, height, age, gender, activityLevel } = req.body;
+      
+      // Basic validation - check if goal is realistic
+      const weightDiff = Math.abs(currentWeight - goalWeight);
+      const maxWeeklyChange = 1; // kg per week is safe
+      const weeksNeeded = Math.ceil(weightDiff / maxWeeklyChange);
+      
+      // Calculate BMI for reference
+      const heightInMeters = height / 100;
+      const currentBMI = currentWeight / (heightInMeters * heightInMeters);
+      const goalBMI = goalWeight / (heightInMeters * heightInMeters);
+      
+      const isRealistic = weightDiff <= 30 && goalBMI >= 18.5 && goalBMI <= 30;
+      
+      return res.json({
+        success: true,
+        isRealistic,
+        currentBMI: Math.round(currentBMI * 10) / 10,
+        goalBMI: Math.round(goalBMI * 10) / 10,
+        weeksNeeded,
+        recommendations: isRealistic ? [] : [
+          goalBMI < 18.5 ? "Goal weight may be too low for your height" : "",
+          goalBMI > 30 ? "Consider a more ambitious weight loss goal" : "",
+          weightDiff > 30 ? "Consider setting intermediate goals" : ""
+        ].filter(Boolean)
+      });
+    }
+
     return res.status(404).json({ success: false, error: "Route not found", path, method });
 
   } catch (error) {
