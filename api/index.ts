@@ -4,8 +4,25 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { eq, and, desc } from "drizzle-orm";
 import { pgTable, text, integer, serial, jsonb, timestamp, boolean } from "drizzle-orm/pg-core";
 
+function parseConnectionString(url: string) {
+  const match = url.match(/^postgresql:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/(.+)$/);
+  if (!match) throw new Error("Invalid DATABASE_URL format");
+  return {
+    user: match[1],
+    password: match[2],
+    host: match[3],
+    port: parseInt(match[4]),
+    database: match[5],
+  };
+}
+
+const dbConfig = parseConnectionString(process.env.DATABASE_URL || "");
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  user: dbConfig.user,
+  password: dbConfig.password,
+  host: dbConfig.host,
+  port: dbConfig.port,
+  database: dbConfig.database,
   ssl: { rejectUnauthorized: false }
 });
 
