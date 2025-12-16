@@ -10,8 +10,11 @@
       "memory": 1024
     }
   },
-  "rewrites": [
-    { "source": "/api/:path*", "destination": "/api/index" },
-    { "source": "/:path*", "destination": "/index.html" }
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/index" },
+    { "src": "/assets/(.*)", "dest": "/assets/$1" },
+    { "src": "/favicon.png", "dest": "/favicon.png" },
+    { "src": "/opengraph.jpg", "dest": "/opengraph.jpg" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
