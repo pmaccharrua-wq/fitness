@@ -1,11 +1,11 @@
 {
   "version": 2,
-  "buildCommand": "npm run build && npx tsx script/build-api.ts",
+  "buildCommand": "npm run build",
   "outputDirectory": "dist/public",
   "installCommand": "npm install",
   "framework": null,
   "functions": {
-    "api/index.js": {
+    "api/**/*.ts": {
       "maxDuration": 60,
       "memory": 1024
     }
