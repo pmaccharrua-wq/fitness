@@ -131,6 +131,13 @@ async function generateFitnessPlanFromAI(userProfile: any): Promise<any> {
   const deployment = process.env.AZURE_OPENAI_DEPLOYMENT;
   const apiVersion = process.env.AZURE_OPENAI_API_VERSION || "2024-08-01-preview";
 
+  console.log("Azure config:", {
+    endpointPrefix: endpoint?.substring(0, 30) + "...",
+    deployment,
+    apiVersion,
+    hasApiKey: !!apiKey
+  });
+
   if (!apiKey || !endpoint || !deployment) {
     throw new Error("Azure OpenAI environment variables not configured");
   }
@@ -167,6 +174,7 @@ Gera JSON com estrutura:
 }`;
 
   const url = `${endpoint}/openai/deployments/${deployment}/chat/completions?api-version=${apiVersion}`;
+  console.log("Calling Azure URL:", url);
   
   const response = await fetch(url, {
     method: "POST",
