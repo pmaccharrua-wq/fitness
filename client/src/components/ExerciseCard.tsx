@@ -44,9 +44,10 @@ interface ExerciseCardProps {
   exercise: ExerciseData;
   libraryMatch?: LibraryExercise;
   index: number;
+  onEnrichmentComplete?: (exerciseName: string, enrichedData: EnrichedExercise) => void;
 }
 
-export default function ExerciseCard({ exercise, libraryMatch, index }: ExerciseCardProps) {
+export default function ExerciseCard({ exercise, libraryMatch, index, onEnrichmentComplete }: ExerciseCardProps) {
   const [showDetails, setShowDetails] = useState(false);
   const [isEnriching, setIsEnriching] = useState(false);
   const [enrichedData, setEnrichedData] = useState<EnrichedExercise | null>(null);
@@ -66,6 +67,10 @@ export default function ExerciseCard({ exercise, libraryMatch, index }: Exercise
       );
       if (response.success && response.exercise) {
         setEnrichedData(response.exercise);
+        const exerciseName = exercise.name || exercise.name_pt || "";
+        if (onEnrichmentComplete && exerciseName) {
+          onEnrichmentComplete(exerciseName, response.exercise);
+        }
         if (!response.exercise.instructions) {
           setEnrichError(language === "pt" 
             ? "Dados parciais gerados. Tente novamente para mais detalhes."
@@ -92,11 +97,15 @@ export default function ExerciseCard({ exercise, libraryMatch, index }: Exercise
   
   const originalName = language === "pt" && exercise.name_pt ? exercise.name_pt : (exercise.name || exercise.name_pt);
   const enrichedName = effectiveData 
-    ? (language === "pt" ? effectiveData.namePt : effectiveData.name) 
+    ? (language === "pt" 
+        ? (effectiveData.namePt || effectiveData.name) 
+        : (effectiveData.name || effectiveData.namePt)) 
     : null;
   const displayName = enrichedName || originalName;
   const instructions = effectiveData 
-    ? (language === "pt" ? effectiveData.instructionsPt : effectiveData.instructions) 
+    ? (language === "pt" 
+        ? (effectiveData.instructionsPt || effectiveData.instructions) 
+        : (effectiveData.instructions || effectiveData.instructionsPt)) 
     : null;
   const repsOrTime = language === "pt" 
     ? (exercise.reps_or_time_pt || exercise.reps_or_time || "")

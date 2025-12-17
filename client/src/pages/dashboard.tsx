@@ -56,6 +56,20 @@ export default function Dashboard() {
     return exerciseLibrary[exerciseKey];
   };
 
+  // Handler for when an exercise is enriched - updates the library so it persists
+  const handleEnrichmentComplete = (exerciseName: string, enrichedData: any) => {
+    setExerciseLibrary(prev => ({
+      ...prev,
+      [exerciseName]: enrichedData
+    }));
+    if (enrichedData.id) {
+      setExerciseLibraryById(prev => ({
+        ...prev,
+        [enrichedData.id]: enrichedData
+      }));
+    }
+  };
+
   useEffect(() => {
     const userId = getUserId();
     if (!userId) {
@@ -508,7 +522,8 @@ export default function Dashboard() {
                                  equipment_used_pt: "Peso corporal"
                                }} 
                                libraryMatch={getLibraryMatch(ex)} 
-                               index={i} 
+                               index={i}
+                               onEnrichmentComplete={handleEnrichmentComplete}
                              />
                            );
                          })}
@@ -534,7 +549,8 @@ export default function Dashboard() {
                             key={i} 
                             exercise={{ ...ex, focus: todaysPlan.focus_pt }} 
                             libraryMatch={getLibraryMatch(ex)} 
-                            index={i} 
+                            index={i}
+                            onEnrichmentComplete={handleEnrichmentComplete}
                           />
                         );
                       })}
@@ -563,7 +579,8 @@ export default function Dashboard() {
                                  equipment_used_pt: "Peso corporal"
                                }} 
                                libraryMatch={getLibraryMatch(ex)} 
-                               index={i} 
+                               index={i}
+                               onEnrichmentComplete={handleEnrichmentComplete}
                              />
                            );
                          })}
