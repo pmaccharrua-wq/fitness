@@ -2,9 +2,15 @@ import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { LayoutDashboard, User, Activity, Calendar, LogOut, Home } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
+import { clearUserId } from "@/lib/api";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
+
+  function handleLogout() {
+    clearUserId();
+    setLocation("/");
+  }
 
   const navItems = [
     { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
@@ -41,7 +47,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="p-4 border-t border-border">
-          <button className="flex items-center gap-3 px-4 py-3 text-muted-foreground hover:text-destructive w-full transition-colors">
+          <button 
+            onClick={handleLogout}
+            data-testid="button-signout"
+            className="flex items-center gap-3 px-4 py-3 text-muted-foreground hover:text-destructive w-full transition-colors"
+          >
             <LogOut className="w-5 h-5" />
             <span className="font-medium">Sign Out</span>
           </button>
