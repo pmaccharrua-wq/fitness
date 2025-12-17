@@ -982,16 +982,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Generate recipe for a meal that doesn't have one
     if (method === "POST" && path === "/api/nutrition/generate-recipe") {
       const { mealDescription, mainIngredients, targetCalories, targetProtein, targetCarbs, targetFat, language } = req.body;
-      if (!mealDescription || !mainIngredients) {
-        return res.status(400).json({ success: false, error: "mealDescription and mainIngredients required" });
+      
+      // Validate with helpful error messages
+      if (!mealDescription && !mainIngredients) {
+        return res.status(400).json({ 
+          success: false, 
+          error: language === "pt" 
+            ? "Descrição da refeição e ingredientes são necessários" 
+            : "Meal description and ingredients are required",
+          received: { mealDescription, mainIngredients }
+        });
       }
+      
+      // Use defaults if one is missing
+      const description = mealDescription || mainIngredients || "Refeição";
+      const ingredients = mainIngredients || mealDescription || "Ingredientes variados";
       const isPt = (language || "pt") === "pt";
+      const cals = targetCalories || 300;
+      const prot = targetProtein || 20;
+      const carbs = targetCarbs || 30;
+      const fat = targetFat || 10;
       const systemPrompt = isPt
-        ? `És um chef nutricional. Cria uma receita detalhada para a refeição descrita.\n\nREGRAS:\n1. Usa os ingredientes indicados com quantidades exatas em gramas\n2. Cria passos de preparação numerados (1., 2., 3., etc.)\n3. Os macros dos ingredientes devem somar aproximadamente: ${targetCalories} kcal, ${targetProtein}g proteína, ${targetCarbs}g carboidratos, ${targetFat}g gordura\n4. Português (pt-PT)`
-        : `You are a nutritional chef. Create a detailed recipe for the described meal.\n\nRULES:\n1. Use the listed ingredients with exact quantities in grams\n2. Create numbered preparation steps (1., 2., 3., etc.)\n3. Ingredient macros should sum to approximately: ${targetCalories} kcal, ${targetProtein}g protein, ${targetCarbs}g carbs, ${targetFat}g fat\n4. English`;
+        ? `És um chef nutricional. Cria uma receita detalhada para a refeição descrita.\n\nREGRAS:\n1. Usa os ingredientes indicados com quantidades exatas em gramas\n2. Cria passos de preparação numerados (1., 2., 3., etc.)\n3. Os macros dos ingredientes devem somar aproximadamente: ${cals} kcal, ${prot}g proteína, ${carbs}g carboidratos, ${fat}g gordura\n4. Português (pt-PT)`
+        : `You are a nutritional chef. Create a detailed recipe for the described meal.\n\nRULES:\n1. Use the listed ingredients with exact quantities in grams\n2. Create numbered preparation steps (1., 2., 3., etc.)\n3. Ingredient macros should sum to approximately: ${cals} kcal, ${prot}g protein, ${carbs}g carbs, ${fat}g fat\n4. English`;
       const userPrompt = isPt
-        ? `Refeição: ${mealDescription}\nIngredientes principais: ${mainIngredients}\nMeta nutricional: ${targetCalories} kcal, P:${targetProtein}g, C:${targetCarbs}g, G:${targetFat}g\n\nCria a receita completa com lista de ingredientes detalhada.`
-        : `Meal: ${mealDescription}\nMain ingredients: ${mainIngredients}\nNutritional target: ${targetCalories} kcal, P:${targetProtein}g, C:${targetCarbs}g, F:${targetFat}g\n\nCreate the complete recipe with detailed ingredient list.`;
+        ? `Refeição: ${description}\nIngredientes principais: ${ingredients}\nMeta nutricional: ${cals} kcal, P:${prot}g, C:${carbs}g, G:${fat}g\n\nCria a receita completa com lista de ingredientes detalhada.`
+        : `Meal: ${description}\nMain ingredients: ${ingredients}\nNutritional target: ${cals} kcal, P:${prot}g, C:${carbs}g, F:${fat}g\n\nCreate the complete recipe with detailed ingredient list.`;
       const jsonSchema = {
         name: "recipe_response",
         strict: true,
