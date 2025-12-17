@@ -1064,19 +1064,28 @@ Create the complete recipe with detailed ingredient list.`;
   }
 
   const data = await response.json();
+  console.log("[generateRecipeForMeal] Response data:", JSON.stringify(data, null, 2).substring(0, 500));
+  
   const choice = data.choices?.[0];
   
   if (choice?.finish_reason === "content_filter") {
+    console.error("[generateRecipeForMeal] Content filter triggered");
     throw new Error("Content filter triggered");
   }
   
+  if (choice?.finish_reason === "length") {
+    console.error("[generateRecipeForMeal] Response truncated due to length limit");
+  }
+  
   if (choice?.message?.refusal) {
+    console.error("[generateRecipeForMeal] Request refused:", choice.message.refusal);
     throw new Error(`Request refused: ${choice.message.refusal}`);
   }
   
   const content = choice?.message?.content;
   if (!content) {
-    throw new Error("No content in response");
+    console.error("[generateRecipeForMeal] No content in response. Full data:", JSON.stringify(data));
+    throw new Error("No content in response - the AI may have failed to generate a recipe");
   }
 
   return JSON.parse(content);
