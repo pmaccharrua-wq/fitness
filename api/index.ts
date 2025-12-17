@@ -234,13 +234,13 @@ async function generatePlanChunk(userProfile: any, step: number): Promise<any> {
     const dayRanges = [[1,3], [4,6], [7,9], [10,12], [13,15]];
     const [start, end] = dayRanges[step - 1];
     const prompt = `${profile}\n\nGera dias ${start}-${end} treino. JSON array:\n${dayStructure}`;
-    return await callAzureOpenAI(`Fitness coach. Dias ${start}-${end}. JSON array only.`, prompt, 2500);
+    return await callAzureOpenAI(`Fitness coach. Dias ${start}-${end}. JSON array only.`, prompt, 8000);
   }
   // Step 6: Nutrition plan
   else if (step === 6) {
     const nutritionStructure = `{"plan_summary_pt":"","nutrition_plan_7_days":[{"day":1,"total_daily_calories":${targetCalories},"meals":[{"meal_time_pt":"Pequeno Almoço","description_pt":"","calories":0,"protein_g":0,"carbs_g":0,"fat_g":0}]}],"hydration_guidelines_pt":{"water_target_ml":${waterTarget}}}`;
     const prompt = `${profile}\n\nGera nutrição 7 dias. ${targetCalories} kcal/dia. JSON:\n${nutritionStructure}`;
-    return await callAzureOpenAI("Nutricionista. 7 dias. JSON only.", prompt, 4000);
+    return await callAzureOpenAI("Nutricionista. 7 dias. JSON only.", prompt, 10000);
   }
   throw new Error("Invalid step");
 }
