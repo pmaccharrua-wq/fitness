@@ -1346,6 +1346,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .where(and(eq(exerciseProgress.userId, userId), eq(exerciseProgress.planId, plan.id)));
       const daysCompleted = progressEntries.length;
       const totalDays = plan.durationDays || 30;
+      const progressPercentage = Math.min(100, Math.round((daysCompleted / totalDays) * 100));
       let currentStreak = 0;
       if (progressEntries.length > 0) {
         const sortedDays = Array.from(new Set(progressEntries.map((p: any) => p.day))).sort((a: any, b: any) => a - b);
@@ -1355,56 +1356,59 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           else break;
         }
       }
-      const difficultyFeedback = { easy: 0, justRight: 0, hard: 0 };
-      progressEntries.forEach((p: any) => {
-        if (p.difficulty === "easy") difficultyFeedback.easy++;
-        else if (p.difficulty === "just right") difficultyFeedback.justRight++;
-        else if (p.difficulty === "hard") difficultyFeedback.hard++;
-      });
       const isPt = profile.language === "pt";
-      const systemPrompt = isPt
-        ? `És um coach de fitness motivacional. Dá 2-3 dicas personalizadas com base no progresso do utilizador. Sê encorajador. Português pt-PT.`
-        : `You are a motivational fitness coach. Give 2-3 personalized tips based on user progress. Be encouraging.`;
-      const userPrompt = isPt
-        ? `Nome: ${profile.firstName}\nProgresso: ${daysCompleted}/${totalDays} dias\nSequência: ${currentStreak} dias\nFeedback: Fácil=${difficultyFeedback.easy}, Ideal=${difficultyFeedback.justRight}, Difícil=${difficultyFeedback.hard}\nObjetivo: ${profile.goal}\n\nGera dicas de coaching.`
-        : `Name: ${profile.firstName}\nProgress: ${daysCompleted}/${totalDays} days\nStreak: ${currentStreak} days\nFeedback: Easy=${difficultyFeedback.easy}, Just Right=${difficultyFeedback.justRight}, Hard=${difficultyFeedback.hard}\nGoal: ${profile.goal}\n\nGenerate coaching tips.`;
-      const jsonSchema = {
-        name: "coaching_tips_response",
-        strict: true,
-        schema: {
-          type: "object",
-          properties: {
-            greeting: { type: "string" },
-            tips: { type: "array", items: { type: "string" } },
-            motivationalMessage: { type: "string" }
-          },
-          required: ["greeting", "tips", "motivationalMessage"],
-          additionalProperties: false
-        }
-      };
-      const { apiKey, endpoint, deployment, apiVersion } = getAzureConfig();
-      const url = `${endpoint}/openai/deployments/${deployment}/chat/completions?api-version=${apiVersion}`;
-      const aiResponse = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "api-key": apiKey },
-        body: JSON.stringify({
-          messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
-          response_format: { type: "json_schema", json_schema: jsonSchema },
-          temperature: 1,
-          max_completion_tokens: 2000,
-        }),
-      });
-      if (!aiResponse.ok) {
-        const errorText = await aiResponse.text();
-        throw new Error(`Azure OpenAI API error: ${aiResponse.status} - ${errorText}`);
+      
+      // Generate fallback coaching tips (faster, no AI call needed for simple messages)
+      let motivationalMessage = "";
+      let coachingTip = "";
+      let streakMessage: string | null = null;
+
+      if (daysCompleted === 0) {
+        motivationalMessage = isPt 
+          ? `${profile.firstName}, hoje é o dia perfeito para começar a tua transformação!`
+          : `${profile.firstName}, today is the perfect day to start your transformation!`;
+        coachingTip = isPt
+          ? "Começa devagar e foca na consistência, não na intensidade."
+          : "Start slow and focus on consistency, not intensity.";
+      } else if (progressPercentage >= 80) {
+        motivationalMessage = isPt
+          ? `${profile.firstName}, estás quase a terminar! A disciplina vence o talento.`
+          : `${profile.firstName}, you're almost there! Discipline beats talent.`;
+        coachingTip = isPt
+          ? "Mantém o foco nestas últimas semanas para terminar forte!"
+          : "Stay focused these last weeks to finish strong!";
+      } else if (progressPercentage >= 50) {
+        motivationalMessage = isPt
+          ? `${profile.firstName}, ultrapassaste a metade do caminho! Continua assim!`
+          : `${profile.firstName}, you've passed the halfway mark! Keep going!`;
+        coachingTip = isPt
+          ? "O teu corpo já está a adaptar-se. Mantém a consistência!"
+          : "Your body is adapting. Stay consistent!";
+      } else {
+        motivationalMessage = isPt
+          ? `${profile.firstName}, cada treino conta. Estás a construir hábitos!`
+          : `${profile.firstName}, every workout counts. You're building habits!`;
+        coachingTip = isPt
+          ? "Foca-te no progresso, não na perfeição."
+          : "Focus on progress, not perfection.";
       }
-      const data = await aiResponse.json();
-      const content = data.choices?.[0]?.message?.content;
-      if (!content) throw new Error("No content in response");
-      const result = JSON.parse(content);
+
+      if (currentStreak >= 7) {
+        streakMessage = isPt
+          ? `Incrível! ${currentStreak} dias consecutivos! Estás imparável!`
+          : `Amazing! ${currentStreak} consecutive days! You're unstoppable!`;
+      } else if (currentStreak >= 3) {
+        streakMessage = isPt
+          ? `Boa sequência de ${currentStreak} dias! Mantém o ritmo!`
+          : `Great ${currentStreak}-day streak! Keep the momentum!`;
+      }
+
       return res.json({
         success: true,
-        ...result,
+        motivationalMessage,
+        coachingTip,
+        streakMessage,
+        progressPercentage,
         daysCompleted,
         totalDays,
         currentStreak
