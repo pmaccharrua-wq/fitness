@@ -6,7 +6,7 @@
   "framework": null,
   "functions": {
     "api/**/*.ts": {
-      "maxDuration": 60,
+      "maxDuration": 300,
       "memory": 1024
     }
   },
