@@ -104,6 +104,17 @@ export const notificationSettings = pgTable("notification_settings", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  type: text("type").notNull(),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  isRead: boolean("is_read").default(false).notNull(),
+  readAt: timestamp("read_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const customMeals = pgTable("custom_meals", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
@@ -925,6 +936,222 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const meals = await db.select().from(customMeals)
         .where(and(eq(customMeals.userId, userId), eq(customMeals.planId, planId)));
       return res.json({ success: true, customMeals: meals });
+    }
+
+    // Update notification settings
+    if (method === "PATCH" && path.match(/^\/api\/notifications\/settings\/\d+$/)) {
+      const userId = parseInt(path.split("/").pop() || "");
+      const { waterRemindersEnabled, waterReminderIntervalMinutes, mealRemindersEnabled, 
+              workoutRemindersEnabled, sleepStartHour, sleepEndHour, waterTargetMl } = req.body;
+      const updateData: Record<string, any> = {};
+      if (waterRemindersEnabled !== undefined) updateData.waterRemindersEnabled = waterRemindersEnabled;
+      if (waterReminderIntervalMinutes !== undefined) updateData.waterReminderIntervalMinutes = waterReminderIntervalMinutes;
+      if (mealRemindersEnabled !== undefined) updateData.mealRemindersEnabled = mealRemindersEnabled;
+      if (workoutRemindersEnabled !== undefined) updateData.workoutRemindersEnabled = workoutRemindersEnabled;
+      if (sleepStartHour !== undefined) updateData.sleepStartHour = sleepStartHour;
+      if (sleepEndHour !== undefined) updateData.sleepEndHour = sleepEndHour;
+      if (waterTargetMl !== undefined) updateData.waterTargetMl = waterTargetMl;
+      await db.update(notificationSettings).set(updateData).where(eq(notificationSettings.userId, userId));
+      return res.json({ success: true });
+    }
+
+    // Get user notifications
+    if (method === "GET" && path.match(/^\/api\/notifications\/\d+$/) && !path.includes("settings")) {
+      const userId = parseInt(path.split("/").pop() || "");
+      const notifs = await db.select().from(notifications)
+        .where(eq(notifications.userId, userId))
+        .orderBy(desc(notifications.createdAt));
+      return res.json({ success: true, notifications: notifs });
+    }
+
+    // Mark notification as read
+    if (method === "PATCH" && path.match(/^\/api\/notifications\/\d+\/read$/)) {
+      const notifId = parseInt(path.split("/")[3]);
+      await db.update(notifications)
+        .set({ isRead: true, readAt: new Date() })
+        .where(eq(notifications.id, notifId));
+      return res.json({ success: true });
+    }
+
+    // Get meal image from Pexels
+    if (method === "POST" && path === "/api/images/meal") {
+      const { description, mealTime } = req.body;
+      if (!description || !mealTime) {
+        return res.status(400).json({ success: false, error: "description and mealTime required" });
+      }
+      const pexelsApiKey = process.env.PEXELS_API_KEY;
+      const searchTerms = `food ${description} ${mealTime}`.trim();
+      if (!pexelsApiKey) {
+        return res.json({ success: true, image: { url: "https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=800", source: "pexels-fallback" } });
+      }
+      try {
+        const pexelsResponse = await fetch(
+          `https://api.pexels.com/v1/search?query=${encodeURIComponent(searchTerms)}&per_page=1&orientation=landscape`,
+          { headers: { Authorization: pexelsApiKey } }
+        );
+        if (pexelsResponse.ok) {
+          const data = await pexelsResponse.json();
+          if (data.photos && data.photos.length > 0) {
+            const photo = data.photos[0];
+            return res.json({ success: true, image: { url: photo.src.medium, source: "pexels", photographer: photo.photographer } });
+          }
+        }
+      } catch (e) {
+        console.log("Pexels meal image error:", e);
+      }
+      return res.json({ success: true, image: { url: "https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=800", source: "pexels-fallback" } });
+    }
+
+    // Meal swap alternatives
+    if (method === "POST" && path === "/api/nutrition/meal-swap") {
+      const { originalMeal, targetCalories, targetProtein, targetCarbs, targetFat, mealTime, language } = req.body;
+      if (!originalMeal || !targetCalories) {
+        return res.status(400).json({ success: false, error: "originalMeal and targetCalories required" });
+      }
+      const isPt = (language || "pt") === "pt";
+      const systemPrompt = isPt
+        ? `Nutricionista. Gera 3 alternativas de refeição com macros similares. Cada alternativa deve ter: description_pt, main_ingredients_pt, recipe_pt, calories, protein_g, carbs_g, fat_g. Meta: ${targetCalories} kcal. Português pt-PT.`
+        : `Nutritionist. Generate 3 meal alternatives with similar macros. Each should have: description_pt, main_ingredients_pt, recipe_pt, calories, protein_g, carbs_g, fat_g. Target: ${targetCalories} kcal. English.`;
+      const userPrompt = isPt
+        ? `Refeição original: ${originalMeal.description_pt}\nIngredientes: ${originalMeal.main_ingredients_pt}\nHora: ${mealTime}\nMeta: ${targetCalories} kcal, P:${targetProtein}g, C:${targetCarbs}g, G:${targetFat}g\n\nGera 3 alternativas variadas.`
+        : `Original meal: ${originalMeal.description_pt}\nIngredients: ${originalMeal.main_ingredients_pt}\nTime: ${mealTime}\nTarget: ${targetCalories} kcal, P:${targetProtein}g, C:${targetCarbs}g, F:${targetFat}g\n\nGenerate 3 varied alternatives.`;
+      const jsonSchema = {
+        name: "meal_swap_response",
+        strict: true,
+        schema: {
+          type: "object",
+          properties: {
+            alternatives: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  meal_time_pt: { type: "string" },
+                  description_pt: { type: "string" },
+                  main_ingredients_pt: { type: "string" },
+                  recipe_pt: { type: "string" },
+                  calories: { type: "integer" },
+                  protein_g: { type: "number" },
+                  carbs_g: { type: "number" },
+                  fat_g: { type: "number" }
+                },
+                required: ["meal_time_pt", "description_pt", "main_ingredients_pt", "recipe_pt", "calories", "protein_g", "carbs_g", "fat_g"],
+                additionalProperties: false
+              }
+            }
+          },
+          required: ["alternatives"],
+          additionalProperties: false
+        }
+      };
+      const { apiKey, endpoint, deployment, apiVersion } = getAzureConfig();
+      const url = `${endpoint}/openai/deployments/${deployment}/chat/completions?api-version=${apiVersion}`;
+      const aiResponse = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "api-key": apiKey },
+        body: JSON.stringify({
+          messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
+          response_format: { type: "json_schema", json_schema: jsonSchema },
+          temperature: 1,
+          max_completion_tokens: 6000,
+        }),
+      });
+      if (!aiResponse.ok) {
+        const errorText = await aiResponse.text();
+        throw new Error(`Azure OpenAI API error: ${aiResponse.status} - ${errorText}`);
+      }
+      const data = await aiResponse.json();
+      const content = data.choices?.[0]?.message?.content;
+      if (!content) throw new Error("No content in response");
+      const result = JSON.parse(content);
+      return res.json({ success: true, alternatives: result.alternatives });
+    }
+
+    // Coaching tips endpoint
+    if (method === "GET" && path.match(/^\/api\/coaching\/\d+$/)) {
+      const userId = parseInt(path.split("/").pop() || "");
+      const [profile] = await db.select().from(userProfiles).where(eq(userProfiles.id, userId));
+      if (!profile) {
+        return res.status(404).json({ success: false, error: "User not found" });
+      }
+      let [plan] = await db.select().from(fitnessPlans)
+        .where(and(eq(fitnessPlans.userId, userId), eq(fitnessPlans.isActive, true)));
+      if (!plan) {
+        [plan] = await db.select().from(fitnessPlans)
+          .where(eq(fitnessPlans.userId, userId))
+          .orderBy(desc(fitnessPlans.createdAt))
+          .limit(1);
+      }
+      if (!plan) {
+        return res.status(404).json({ success: false, error: "No plan found" });
+      }
+      const progressEntries = await db.select().from(exerciseProgress)
+        .where(and(eq(exerciseProgress.userId, userId), eq(exerciseProgress.planId, plan.id)));
+      const daysCompleted = progressEntries.length;
+      const totalDays = plan.durationDays || 30;
+      let currentStreak = 0;
+      if (progressEntries.length > 0) {
+        const sortedDays = [...new Set(progressEntries.map((p: any) => p.day))].sort((a, b) => a - b);
+        currentStreak = 1;
+        for (let i = sortedDays.length - 1; i > 0; i--) {
+          if (sortedDays[i] - sortedDays[i - 1] === 1) currentStreak++;
+          else break;
+        }
+      }
+      const difficultyFeedback = { easy: 0, justRight: 0, hard: 0 };
+      progressEntries.forEach((p: any) => {
+        if (p.difficulty === "easy") difficultyFeedback.easy++;
+        else if (p.difficulty === "just right") difficultyFeedback.justRight++;
+        else if (p.difficulty === "hard") difficultyFeedback.hard++;
+      });
+      const isPt = profile.language === "pt";
+      const systemPrompt = isPt
+        ? `És um coach de fitness motivacional. Dá 2-3 dicas personalizadas com base no progresso do utilizador. Sê encorajador. Português pt-PT.`
+        : `You are a motivational fitness coach. Give 2-3 personalized tips based on user progress. Be encouraging.`;
+      const userPrompt = isPt
+        ? `Nome: ${profile.firstName}\nProgresso: ${daysCompleted}/${totalDays} dias\nSequência: ${currentStreak} dias\nFeedback: Fácil=${difficultyFeedback.easy}, Ideal=${difficultyFeedback.justRight}, Difícil=${difficultyFeedback.hard}\nObjetivo: ${profile.goal}\n\nGera dicas de coaching.`
+        : `Name: ${profile.firstName}\nProgress: ${daysCompleted}/${totalDays} days\nStreak: ${currentStreak} days\nFeedback: Easy=${difficultyFeedback.easy}, Just Right=${difficultyFeedback.justRight}, Hard=${difficultyFeedback.hard}\nGoal: ${profile.goal}\n\nGenerate coaching tips.`;
+      const jsonSchema = {
+        name: "coaching_tips_response",
+        strict: true,
+        schema: {
+          type: "object",
+          properties: {
+            greeting: { type: "string" },
+            tips: { type: "array", items: { type: "string" } },
+            motivationalMessage: { type: "string" }
+          },
+          required: ["greeting", "tips", "motivationalMessage"],
+          additionalProperties: false
+        }
+      };
+      const { apiKey, endpoint, deployment, apiVersion } = getAzureConfig();
+      const url = `${endpoint}/openai/deployments/${deployment}/chat/completions?api-version=${apiVersion}`;
+      const aiResponse = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "api-key": apiKey },
+        body: JSON.stringify({
+          messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
+          response_format: { type: "json_schema", json_schema: jsonSchema },
+          temperature: 1,
+          max_completion_tokens: 2000,
+        }),
+      });
+      if (!aiResponse.ok) {
+        const errorText = await aiResponse.text();
+        throw new Error(`Azure OpenAI API error: ${aiResponse.status} - ${errorText}`);
+      }
+      const data = await aiResponse.json();
+      const content = data.choices?.[0]?.message?.content;
+      if (!content) throw new Error("No content in response");
+      const result = JSON.parse(content);
+      return res.json({
+        success: true,
+        ...result,
+        daysCompleted,
+        totalDays,
+        currentStreak
+      });
     }
 
     return res.status(404).json({ success: false, error: "Route not found", path, method });
