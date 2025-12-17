@@ -891,15 +891,134 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     videoUrl: "https://www.youtube.com/watch?v=nBJUhxqH6y4",
     instructions: "Forearms on ball, body straight, hold position engaging core",
     instructionsPt: "Antebraços na bola, corpo reto, mantenha a posição contraindo o core"
+  },
+  {
+    id: "hip_circles",
+    name: "Hip Circles",
+    namePt: "Mobilidade de quadril (círculos)",
+    primaryMuscles: ["hips"],
+    secondaryMuscles: ["core"],
+    equipment: "bodyweight",
+    difficulty: "beginner",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/06/hip-circles.gif",
+    videoUrl: "https://www.youtube.com/watch?v=QxCOEozHnMs",
+    instructions: "Stand on one leg, make large circles with raised knee, switch sides",
+    instructionsPt: "Fique num pé só, faça círculos grandes com o joelho levantado, troque de lado"
+  },
+  {
+    id: "ankle_mobility",
+    name: "Ankle Mobility",
+    namePt: "Mobilidade de tornozelos",
+    primaryMuscles: ["calves"],
+    secondaryMuscles: ["ankles"],
+    equipment: "bodyweight",
+    difficulty: "beginner",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/04/ankle-circles.gif",
+    videoUrl: "https://www.youtube.com/watch?v=tgeVo1luU4Y",
+    instructions: "Rotate ankles in circles, flex and point toes to warm up joints",
+    instructionsPt: "Rode os tornozelos em círculos, flexione e estique os dedos para aquecer as articulações"
+  },
+  {
+    id: "pause_squat",
+    name: "Pause Squat",
+    namePt: "Agachamento com pausa no fundo",
+    primaryMuscles: ["quadriceps", "glutes"],
+    secondaryMuscles: ["core", "hamstrings"],
+    equipment: "bodyweight",
+    difficulty: "intermediate",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2023/03/air-squat.gif",
+    videoUrl: "https://www.youtube.com/watch?v=aclHkVaku9U",
+    instructions: "Squat down, pause for 2-3 seconds at the bottom, then stand up",
+    instructionsPt: "Agache, pause 2-3 segundos no fundo, depois levante"
+  },
+  {
+    id: "dumbbell_lunge",
+    name: "Dumbbell Lunge",
+    namePt: "Passada (lunge) com halteres",
+    primaryMuscles: ["quadriceps", "glutes"],
+    secondaryMuscles: ["hamstrings", "calves"],
+    equipment: "dumbbells",
+    difficulty: "intermediate",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/10/walking-lunges.gif",
+    videoUrl: "https://www.youtube.com/watch?v=D7KaRcUTQeE",
+    instructions: "Hold dumbbells at sides, step forward into lunge, alternate legs",
+    instructionsPt: "Segure halteres nas laterais, dê um passo à frente numa passada, alterne as pernas"
+  },
+  {
+    id: "hamstring_stretch",
+    name: "Hamstring Stretch",
+    namePt: "Alongamento de isquiotibiais",
+    primaryMuscles: ["hamstrings"],
+    secondaryMuscles: ["lower back"],
+    equipment: "bodyweight",
+    difficulty: "beginner",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/10/standing-hamstring-stretch.gif",
+    videoUrl: "https://www.youtube.com/watch?v=FDwpEdxZ4H4",
+    instructions: "Extend one leg forward, hinge at hips, reach toward toes, hold 20-30 seconds",
+    instructionsPt: "Estenda uma perna à frente, incline no quadril, alcance os dedos dos pés, segure 20-30 segundos"
+  },
+  {
+    id: "pigeon_stretch",
+    name: "Pigeon Pose Stretch",
+    namePt: "Alongamento de glúteos (posição de pombo)",
+    primaryMuscles: ["glutes"],
+    secondaryMuscles: ["hips", "piriformis"],
+    equipment: "bodyweight",
+    difficulty: "beginner",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/08/pigeon-pose.gif",
+    videoUrl: "https://www.youtube.com/watch?v=UKwkChzThig",
+    instructions: "One leg bent in front, other extended back, lean forward and hold",
+    instructionsPt: "Uma perna dobrada à frente, outra estendida atrás, incline para frente e segure"
+  },
+  {
+    id: "calf_stretch",
+    name: "Calf Stretch",
+    namePt: "Alongamento de panturrilhas",
+    primaryMuscles: ["calves"],
+    secondaryMuscles: ["achilles"],
+    equipment: "bodyweight",
+    difficulty: "beginner",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/09/calf-stretch.gif",
+    videoUrl: "https://www.youtube.com/watch?v=u_sfQX5JKWQ",
+    instructions: "Step one foot back, press heel to floor, lean forward, hold 20-30 seconds",
+    instructionsPt: "Recue um pé, pressione o calcanhar no chão, incline para frente, segure 20-30 segundos"
+  },
+  {
+    id: "bicep_wall_stretch",
+    name: "Bicep Wall Stretch",
+    namePt: "Alongamento de bíceps (mão na parede)",
+    primaryMuscles: ["biceps"],
+    secondaryMuscles: ["shoulders", "chest"],
+    equipment: "bodyweight",
+    difficulty: "beginner",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/11/bicep-stretch.gif",
+    videoUrl: "https://www.youtube.com/watch?v=iME7lnPnWHs",
+    instructions: "Place palm on wall behind you, rotate body away to stretch bicep",
+    instructionsPt: "Coloque a palma na parede atrás de si, rode o corpo para alongar o bíceps"
+  },
+  {
+    id: "tricep_overhead_stretch",
+    name: "Overhead Tricep Stretch",
+    namePt: "Alongamento de tríceps acima da cabeça",
+    primaryMuscles: ["triceps"],
+    secondaryMuscles: ["shoulders"],
+    equipment: "bodyweight",
+    difficulty: "beginner",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/03/tricep-stretch.gif",
+    videoUrl: "https://www.youtube.com/watch?v=4aoUZEZFJF8",
+    instructions: "Raise arm overhead, bend elbow, use other hand to gently push elbow down",
+    instructionsPt: "Levante o braço acima da cabeça, dobre o cotovelo, use a outra mão para empurrar suavemente o cotovelo para baixo"
   }
 ];
 
 export const exerciseIdsByCategory = {
   chest: ["pushup_standard", "bench_press_barbell", "bench_press_dumbbell", "incline_press_dumbbell", "chest_fly_dumbbell", "pec_dec_fly", "seated_chest_press", "cable_crossover", "pushup_incline", "pushup_decline"],
   back: ["pullup", "lat_pulldown", "bent_over_row_barbell", "dumbbell_row", "deadlift_conventional", "seated_row_machine", "good_morning", "gc_back_extension"],
-  legs: ["squat_bodyweight", "squat_barbell", "lunge_walking", "leg_press", "romanian_deadlift", "calf_raise", "hack_squat", "calf_press", "barbell_lunge", "goblet_squat", "rdl_dumbbell", "bulgarian_split_squat", "hip_thrust_ball", "hamstring_curl_ball", "kettlebell_swing", "homegym_leg_extension", "homegym_leg_curl", "gc_wall_squat"],
+  legs: ["squat_bodyweight", "squat_barbell", "lunge_walking", "leg_press", "romanian_deadlift", "calf_raise", "hack_squat", "calf_press", "barbell_lunge", "goblet_squat", "rdl_dumbbell", "bulgarian_split_squat", "hip_thrust_ball", "hamstring_curl_ball", "kettlebell_swing", "homegym_leg_extension", "homegym_leg_curl", "gc_wall_squat", "dumbbell_lunge", "pause_squat"],
   shoulders: ["overhead_press_barbell", "shoulder_press_dumbbell", "lateral_raise", "front_raise", "face_pull"],
   arms: ["bicep_curl_dumbbell", "hammer_curl", "tricep_pushdown", "tricep_dip", "skull_crusher", "cable_tricep_extension", "db_french_press"],
   core: ["plank", "crunch", "russian_twist", "leg_raise", "mountain_climber", "gym_ball_crunch", "homegym_cable_crunch", "gc_ball_pass", "gc_plank"],
-  cardio: ["burpee", "jumping_jack", "high_knees", "jump_squat", "box_jump", "treadmill_hiit", "treadmill_incline_walk", "step_machine", "stationary_bike"]
+  cardio: ["burpee", "jumping_jack", "high_knees", "jump_squat", "box_jump", "treadmill_hiit", "treadmill_incline_walk", "step_machine", "stationary_bike"],
+  warmup: ["hip_circles", "ankle_mobility"],
+  stretch: ["hamstring_stretch", "pigeon_stretch", "calf_stretch", "bicep_wall_stretch", "tricep_overhead_stretch"]
 };
