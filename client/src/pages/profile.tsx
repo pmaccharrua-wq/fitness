@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, User, Target, Activity, Scale, Ruler, LogOut, Edit2, Save, X, RefreshCw } from "lucide-react";
+import { Loader2, User, Target, Activity, Scale, Ruler, LogOut, Edit2, Save, X, RefreshCw, Info, Brain, Dumbbell, Utensils, Maximize2, Sparkles } from "lucide-react";
 import { getUserProfile, getUserId, clearUserId, updateUserProfile } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
 import { toast } from "sonner";
@@ -388,6 +388,172 @@ export default function Profile() {
             </CardContent>
           </Card>
         )}
+
+        {/* About This App Section */}
+        <Card className="bg-gradient-to-br from-card/80 to-card/40 border-primary/10 mt-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-primary">
+              <Info className="w-5 h-5" />
+              {txt("Sobre Esta Aplicação", "About This App")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* App Description */}
+            <div className="space-y-3">
+              <h4 className="font-heading font-bold text-lg flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-yellow-500" />
+                {txt("O Que É o AI Fitness Planner?", "What Is AI Fitness Planner?")}
+              </h4>
+              <p className="text-muted-foreground leading-relaxed">
+                {txt(
+                  "O AI Fitness Planner é uma aplicação de fitness e nutrição personalizada que utiliza inteligência artificial avançada para criar planos de treino e alimentação adaptados às suas necessidades específicas. A aplicação analisa o seu perfil (peso, altura, idade, objetivos, equipamento disponível e limitações físicas) para gerar um plano científico de 30 dias.",
+                  "AI Fitness Planner is a personalized fitness and nutrition application that uses advanced artificial intelligence to create workout and meal plans tailored to your specific needs. The app analyzes your profile (weight, height, age, goals, available equipment, and physical limitations) to generate a scientific 30-day plan."
+                )}
+              </p>
+            </div>
+
+            {/* AI Models */}
+            <div className="space-y-3">
+              <h4 className="font-heading font-bold text-lg flex items-center gap-2">
+                <Brain className="w-4 h-4 text-purple-500" />
+                {txt("Modelos de IA Utilizados", "AI Models Used")}
+              </h4>
+              <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-4 space-y-3">
+                <div>
+                  <span className="font-bold text-purple-400">Azure OpenAI GPT-5</span>
+                  <p className="text-muted-foreground text-sm mt-1">
+                    {txt(
+                      "O GPT-5 (Generative Pre-trained Transformer 5) é o modelo de linguagem mais avançado da OpenAI. É um modelo de inteligência artificial generativa treinado em vastos conjuntos de dados, capaz de compreender contexto complexo e gerar respostas altamente personalizadas. Utiliza 'reasoning tokens' internos para 'pensar' antes de responder, resultando em planos de treino e nutrição mais precisos e cientificamente fundamentados.",
+                      "GPT-5 (Generative Pre-trained Transformer 5) is OpenAI's most advanced language model. It's a generative AI model trained on vast datasets, capable of understanding complex context and generating highly personalized responses. It uses internal 'reasoning tokens' to 'think' before responding, resulting in more accurate and scientifically grounded workout and nutrition plans."
+                    )}
+                  </p>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {txt(
+                    "Parâmetros: max_completion_tokens=2000+, temperature=1, API version 2025-01-01-preview",
+                    "Parameters: max_completion_tokens=2000+, temperature=1, API version 2025-01-01-preview"
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Fullscreen Feature */}
+            <div className="space-y-3">
+              <h4 className="font-heading font-bold text-lg flex items-center gap-2">
+                <Maximize2 className="w-4 h-4 text-blue-500" />
+                {txt("Modo Tela Cheia", "Fullscreen Mode")}
+              </h4>
+              <p className="text-muted-foreground leading-relaxed">
+                {txt(
+                  "O botão de tela cheia (ícone de maximizar no cabeçalho) permite expandir a aplicação para ocupar todo o ecrã, proporcionando uma experiência mais imersiva durante os treinos. Clique novamente para voltar ao modo normal. Esta funcionalidade é especialmente útil quando está a seguir exercícios no telemóvel ou tablet.",
+                  "The fullscreen button (maximize icon in the header) allows you to expand the app to fill your entire screen, providing a more immersive experience during workouts. Click again to return to normal mode. This feature is especially useful when following exercises on your phone or tablet."
+                )}
+              </p>
+            </div>
+
+            {/* Workout Plan AI Features */}
+            <div className="space-y-3">
+              <h4 className="font-heading font-bold text-lg flex items-center gap-2">
+                <Dumbbell className="w-4 h-4 text-green-500" />
+                {txt("Funcionalidades IA nos Planos de Treino", "AI Features in Workout Plans")}
+              </h4>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
+                  <span className="font-semibold text-green-400">{txt("Geração de Plano Personalizado", "Personalized Plan Generation")}</span>
+                  <p className="text-muted-foreground text-sm mt-1">
+                    {txt(
+                      "A IA cria um plano de 30 dias baseado nos seus objetivos (perda de peso, ganho muscular, manutenção), equipamento disponível, nível de atividade e limitações físicas.",
+                      "AI creates a 30-day plan based on your goals (weight loss, muscle gain, maintenance), available equipment, activity level, and physical limitations."
+                    )}
+                  </p>
+                </div>
+                <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
+                  <span className="font-semibold text-green-400">{txt("Enriquecimento de Exercícios", "Exercise Enrichment")}</span>
+                  <p className="text-muted-foreground text-sm mt-1">
+                    {txt(
+                      "Botão 'Gerar Dados' em cada exercício usa IA para adicionar instruções detalhadas, músculos trabalhados, imagens e links para vídeos tutoriais.",
+                      "'Generate Data' button on each exercise uses AI to add detailed instructions, muscles worked, images, and links to tutorial videos."
+                    )}
+                  </p>
+                </div>
+                <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
+                  <span className="font-semibold text-green-400">{txt("Coaching Diário", "Daily Coaching")}</span>
+                  <p className="text-muted-foreground text-sm mt-1">
+                    {txt(
+                      "Mensagens motivacionais e dicas de treino personalizadas geradas pela IA todos os dias, adaptadas ao seu progresso.",
+                      "Motivational messages and personalized training tips generated by AI every day, adapted to your progress."
+                    )}
+                  </p>
+                </div>
+                <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
+                  <span className="font-semibold text-green-400">{txt("Aquecimento e Arrefecimento", "Warm-up and Cool-down")}</span>
+                  <p className="text-muted-foreground text-sm mt-1">
+                    {txt(
+                      "Exercícios de aquecimento e arrefecimento específicos gerados automaticamente para cada sessão de treino.",
+                      "Specific warm-up and cool-down exercises automatically generated for each training session."
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Nutrition Plan AI Features */}
+            <div className="space-y-3">
+              <h4 className="font-heading font-bold text-lg flex items-center gap-2">
+                <Utensils className="w-4 h-4 text-orange-500" />
+                {txt("Funcionalidades IA no Plano Nutricional", "AI Features in Nutrition Plan")}
+              </h4>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-3">
+                  <span className="font-semibold text-orange-400">{txt("Cálculo de Macros", "Macro Calculation")}</span>
+                  <p className="text-muted-foreground text-sm mt-1">
+                    {txt(
+                      "Usa a equação Mifflin-St Jeor para calcular as suas necessidades calóricas e distribui proteínas, carboidratos e gorduras com base nas diretrizes ISSN/DGA.",
+                      "Uses the Mifflin-St Jeor equation to calculate your caloric needs and distributes proteins, carbs, and fats based on ISSN/DGA guidelines."
+                    )}
+                  </p>
+                </div>
+                <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-3">
+                  <span className="font-semibold text-orange-400">{txt("Plano de 7 Dias com Receitas", "7-Day Plan with Recipes")}</span>
+                  <p className="text-muted-foreground text-sm mt-1">
+                    {txt(
+                      "A IA gera 7 dias de refeições completas com ingredientes detalhados, quantidades, calorias e instruções de preparação.",
+                      "AI generates 7 days of complete meals with detailed ingredients, quantities, calories, and preparation instructions."
+                    )}
+                  </p>
+                </div>
+                <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-3">
+                  <span className="font-semibold text-orange-400">{txt("Criador de Refeições IA", "AI Meal Builder")}</span>
+                  <p className="text-muted-foreground text-sm mt-1">
+                    {txt(
+                      "Permite criar refeições personalizadas através de IA. Descreva o que quer comer e a IA gera uma refeição completa com macros calculados.",
+                      "Allows creating custom meals via AI. Describe what you want to eat and AI generates a complete meal with calculated macros."
+                    )}
+                  </p>
+                </div>
+                <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-3">
+                  <span className="font-semibold text-orange-400">{txt("Hidratação Personalizada", "Personalized Hydration")}</span>
+                  <p className="text-muted-foreground text-sm mt-1">
+                    {txt(
+                      "Recomendações de consumo de água calculadas com base no seu peso e nível de atividade, com lembretes programados.",
+                      "Water intake recommendations calculated based on your weight and activity level, with scheduled reminders."
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Scientific Basis */}
+            <div className="bg-muted/30 rounded-lg p-4 text-sm text-muted-foreground">
+              <p className="font-semibold mb-2">{txt("Base Científica:", "Scientific Basis:")}</p>
+              <ul className="list-disc list-inside space-y-1">
+                <li>{txt("Equação Mifflin-St Jeor para cálculo de metabolismo basal", "Mifflin-St Jeor equation for basal metabolic rate calculation")}</li>
+                <li>{txt("Diretrizes ACSM (American College of Sports Medicine) para treino", "ACSM (American College of Sports Medicine) guidelines for training")}</li>
+                <li>{txt("Padrões ISSN/DGA para nutrição desportiva", "ISSN/DGA standards for sports nutrition")}</li>
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </Layout>
   );
