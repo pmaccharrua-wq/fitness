@@ -646,6 +646,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         "chest fly": "chest_fly_dumbbell", "dumbbell fly": "chest_fly_dumbbell", "crucifixo": "chest_fly_dumbbell",
         "face pull": "face_pull",
         "hip thrust": "hip_thrust", "elevação de quadril": "hip_thrust",
+        // Warmup exercises
+        "marcha no lugar": "high_knees", "marcha no lugar com elevação de joelhos": "high_knees",
+        "rotações de braços": "arm_circles", "rotação de braços": "arm_circles", "arm circles": "arm_circles",
+        "rotações de anca": "hip_circles", "rotação de anca": "hip_circles", "hip circles": "hip_circles",
+        "agachamentos leves": "squat_bodyweight",
+        // Cooldown/Stretching exercises  
+        "alongamento de quadríceps": "quad_stretch", "alongamento quadríceps": "quad_stretch",
+        "alongamento de isquiotibiais": "hamstring_stretch",
+        "alongamento de peito": "chest_stretch",
+        "alongamento de costas": "back_stretch", "alongamento costas": "back_stretch",
+        "respiração profunda": "deep_breathing",
       };
 
       const findSynonymMatch = (name: string, exercises: any[]): any | null => {
@@ -703,20 +714,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           }
         }
         
-        // Step 5: Word-based fuzzy matching (match if 2+ words match)
-        const inputWords = normalized.split(/[\s\-_]+/).filter(w => w.length > 2);
-        if (inputWords.length > 0) {
+        // Step 5: Word-based fuzzy matching - STRICT (only exact word matches, requires 3+ words)
+        const inputWords = normalized.split(/[\s\-_]+/).filter(w => w.length > 3);
+        if (inputWords.length >= 3) {
           for (const ex of exercises) {
             const exWords = [...ex.name.toLowerCase().split(/[\s\-_]+/), ...ex.namePt.toLowerCase().split(/[\s\-_]+/)];
-            const matchingWords = inputWords.filter(w => exWords.some(ew => ew.includes(w) || w.includes(ew)));
-            if (matchingWords.length >= Math.min(2, inputWords.length)) {
-              console.log(`[match] Fuzzy: "${name}" -> ${ex.name} (${matchingWords.length} words)`);
+            // Only count EXACT word matches, not partial contains
+            const matchingWords = inputWords.filter(w => exWords.some(ew => ew === w));
+            // Require at least 3 exact matching words to avoid false positives
+            if (matchingWords.length >= 3) {
+              console.log(`[match] Fuzzy: "${name}" -> ${ex.name} (${matchingWords.length} exact words)`);
               return ex;
             }
           }
         }
         
-        console.log(`[match] FAILED: "${name}" - no match found`);
+        console.log(`[match] UNMATCHED: "${name}" - no match found (will be skipped)`);
         return null;
       }
       
