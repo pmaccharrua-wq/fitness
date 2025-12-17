@@ -1140,9 +1140,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Enrich a single exercise on-demand (user-facing)
     // Takes exercise name/id and generates description, image, video
     if (method === "POST" && path === "/api/exercises/enrich-single") {
+      console.log(`[enrich-single] Request received, body:`, JSON.stringify(req.body));
       const { exerciseName, exerciseNamePt, exerciseId } = req.body;
       
       if (!exerciseName && !exerciseNamePt && !exerciseId) {
+        console.log(`[enrich-single] Missing required fields`);
         return res.status(400).json({ success: false, error: "exerciseName, exerciseNamePt, or exerciseId required" });
       }
       
@@ -1317,6 +1319,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       }
       
+      console.log(`[enrich-single] Returning response for: ${generatedId}, success: true`);
       return res.json({ success: true, exercise: result });
     }
 
