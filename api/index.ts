@@ -188,11 +188,27 @@ async function callAzureOpenAI(systemPrompt: string, userPrompt: string, maxToke
   }
 
   const data = await response.json();
+  console.log("Azure response status:", response.status, "choices:", data.choices?.length || 0);
+  
   const content = data.choices?.[0]?.message?.content;
-  if (!content) throw new Error("No content in AI response");
+  if (!content) {
+    console.error("No content in response. Full response:", JSON.stringify(data).slice(0, 500));
+    throw new Error("No content in AI response");
+  }
+  
+  console.log("AI content length:", content.length);
   const jsonMatch = content.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
-  if (!jsonMatch) throw new Error("No valid JSON in AI response");
-  return JSON.parse(jsonMatch[0]);
+  if (!jsonMatch) {
+    console.error("No JSON found in content:", content.slice(0, 300));
+    throw new Error("No valid JSON in AI response");
+  }
+  
+  try {
+    return JSON.parse(jsonMatch[0]);
+  } catch (parseErr) {
+    console.error("JSON parse error:", parseErr, "Content:", jsonMatch[0].slice(0, 300));
+    throw new Error("Failed to parse AI response as JSON");
+  }
 }
 
 // Generate plan in 6 smaller chunks (3 days each for workout, plus nutrition)
@@ -320,7 +336,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.log(`Generating chunk ${nextStep}/6 for user ${userId}`);
 
       try {
+        console.log("Calling generatePlanChunk for step", nextStep);
         const chunkData = await generatePlanChunk(userProfile, nextStep);
+        console.log("Chunk data received, type:", Array.isArray(chunkData) ? "array" : typeof chunkData);
         const partial = (status.partialData || {}) as any;
 
         // Steps 1-5: Workout days (3 days each)
