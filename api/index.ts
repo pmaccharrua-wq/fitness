@@ -938,38 +938,67 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.json({ success: true, customMeals: meals });
     }
 
-    // Update notification settings
+    // Update notification settings (with validation)
     if (method === "PATCH" && path.match(/^\/api\/notifications\/settings\/\d+$/)) {
       const userId = parseInt(path.split("/").pop() || "");
       const { waterRemindersEnabled, waterReminderIntervalMinutes, mealRemindersEnabled, 
               workoutRemindersEnabled, sleepStartHour, sleepEndHour, waterTargetMl } = req.body;
       const updateData: Record<string, any> = {};
-      if (waterRemindersEnabled !== undefined) updateData.waterRemindersEnabled = waterRemindersEnabled;
-      if (waterReminderIntervalMinutes !== undefined) updateData.waterReminderIntervalMinutes = waterReminderIntervalMinutes;
-      if (mealRemindersEnabled !== undefined) updateData.mealRemindersEnabled = mealRemindersEnabled;
-      if (workoutRemindersEnabled !== undefined) updateData.workoutRemindersEnabled = workoutRemindersEnabled;
-      if (sleepStartHour !== undefined) updateData.sleepStartHour = sleepStartHour;
-      if (sleepEndHour !== undefined) updateData.sleepEndHour = sleepEndHour;
-      if (waterTargetMl !== undefined) updateData.waterTargetMl = waterTargetMl;
-      await db.update(notificationSettings).set(updateData).where(eq(notificationSettings.userId, userId));
+      if (waterRemindersEnabled !== undefined) updateData.waterRemindersEnabled = Boolean(waterRemindersEnabled);
+      if (waterReminderIntervalMinutes !== undefined) {
+        const val = parseInt(waterReminderIntervalMinutes);
+        if (val >= 30 && val <= 180) updateData.waterReminderIntervalMinutes = val;
+        else return res.status(400).json({ success: false, error: "waterReminderIntervalMinutes must be 30-180" });
+      }
+      if (mealRemindersEnabled !== undefined) updateData.mealRemindersEnabled = Boolean(mealRemindersEnabled);
+      if (workoutRemindersEnabled !== undefined) updateData.workoutRemindersEnabled = Boolean(workoutRemindersEnabled);
+      if (sleepStartHour !== undefined) {
+        const val = parseInt(sleepStartHour);
+        if (val >= 0 && val <= 23) updateData.sleepStartHour = val;
+        else return res.status(400).json({ success: false, error: "sleepStartHour must be 0-23" });
+      }
+      if (sleepEndHour !== undefined) {
+        const val = parseInt(sleepEndHour);
+        if (val >= 0 && val <= 23) updateData.sleepEndHour = val;
+        else return res.status(400).json({ success: false, error: "sleepEndHour must be 0-23" });
+      }
+      if (waterTargetMl !== undefined) {
+        const val = parseInt(waterTargetMl);
+        if (val >= 1000 && val <= 5000) updateData.waterTargetMl = val;
+        else return res.status(400).json({ success: false, error: "waterTargetMl must be 1000-5000" });
+      }
+      if (Object.keys(updateData).length > 0) {
+        await db.update(notificationSettings).set(updateData).where(eq(notificationSettings.userId, userId));
+      }
       return res.json({ success: true });
     }
 
-    // Get user notifications
+    // Get user notifications (with ordering and limit)
     if (method === "GET" && path.match(/^\/api\/notifications\/\d+$/) && !path.includes("settings")) {
       const userId = parseInt(path.split("/").pop() || "");
+      if (isNaN(userId)) {
+        return res.status(400).json({ success: false, error: "Invalid user ID" });
+      }
       const notifs = await db.select().from(notifications)
         .where(eq(notifications.userId, userId))
-        .orderBy(desc(notifications.createdAt));
+        .orderBy(desc(notifications.createdAt))
+        .limit(50);
       return res.json({ success: true, notifications: notifs });
     }
 
-    // Mark notification as read
+    // Mark notification as read (with validation)
     if (method === "PATCH" && path.match(/^\/api\/notifications\/\d+\/read$/)) {
       const notifId = parseInt(path.split("/")[3]);
-      await db.update(notifications)
+      if (isNaN(notifId)) {
+        return res.status(400).json({ success: false, error: "Invalid notification ID" });
+      }
+      const result = await db.update(notifications)
         .set({ isRead: true, readAt: new Date() })
-        .where(eq(notifications.id, notifId));
+        .where(eq(notifications.id, notifId))
+        .returning();
+      if (result.length === 0) {
+        return res.status(404).json({ success: false, error: "Notification not found" });
+      }
       return res.json({ success: true });
     }
 
