@@ -966,6 +966,122 @@ Create 1 simple meal.`;
   throw lastError || new Error("Failed to generate meal after all retry attempts");
 }
 
+// Generate recipe for an existing meal that doesn't have one
+export async function generateRecipeForMeal(
+  mealDescription: string,
+  mainIngredients: string,
+  targetCalories: number,
+  targetProtein: number,
+  targetCarbs: number,
+  targetFat: number,
+  language: string = "pt"
+): Promise<{ recipe_pt: string; ingredients: Array<{ name_pt: string; quantity: string; calories: number; protein_g: number; carbs_g: number; fat_g: number }> }> {
+  const isPt = language === "pt";
+  
+  const systemPrompt = isPt
+    ? `És um chef nutricional. Cria uma receita detalhada para a refeição descrita.
+
+REGRAS:
+1. Usa os ingredientes indicados com quantidades exatas em gramas
+2. Cria passos de preparação numerados (1., 2., 3., etc.)
+3. Os macros dos ingredientes devem somar aproximadamente: ${targetCalories} kcal, ${targetProtein}g proteína, ${targetCarbs}g carboidratos, ${targetFat}g gordura
+4. Português (pt-PT)`
+    : `You are a nutritional chef. Create a detailed recipe for the described meal.
+
+RULES:
+1. Use the listed ingredients with exact quantities in grams
+2. Create numbered preparation steps (1., 2., 3., etc.)
+3. Ingredient macros should sum to approximately: ${targetCalories} kcal, ${targetProtein}g protein, ${targetCarbs}g carbs, ${targetFat}g fat
+4. English`;
+
+  const userPrompt = isPt
+    ? `Refeição: ${mealDescription}
+Ingredientes principais: ${mainIngredients}
+Meta nutricional: ${targetCalories} kcal, P:${targetProtein}g, C:${targetCarbs}g, G:${targetFat}g
+
+Cria a receita completa com lista de ingredientes detalhada.`
+    : `Meal: ${mealDescription}
+Main ingredients: ${mainIngredients}
+Nutritional target: ${targetCalories} kcal, P:${targetProtein}g, C:${targetCarbs}g, F:${targetFat}g
+
+Create the complete recipe with detailed ingredient list.`;
+
+  const jsonSchema = {
+    name: "recipe_response",
+    strict: true,
+    schema: {
+      type: "object",
+      properties: {
+        recipe_pt: { type: "string" },
+        ingredients: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              name_pt: { type: "string" },
+              quantity: { type: "string" },
+              calories: { type: "integer" },
+              protein_g: { type: "number" },
+              carbs_g: { type: "number" },
+              fat_g: { type: "number" }
+            },
+            required: ["name_pt", "quantity", "calories", "protein_g", "carbs_g", "fat_g"],
+            additionalProperties: false
+          }
+        }
+      },
+      required: ["recipe_pt", "ingredients"],
+      additionalProperties: false
+    }
+  };
+
+  const apiVersion = config.apiVersion || "2024-08-01-preview";
+  const url = `${config.endpoint}openai/deployments/${config.deployment}/chat/completions?api-version=${apiVersion}`;
+  
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "api-key": config.apiKey,
+    },
+    body: JSON.stringify({
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      response_format: { 
+        type: "json_schema",
+        json_schema: jsonSchema
+      },
+      temperature: 1,
+      max_completion_tokens: 4000,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Azure OpenAI API error: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+  const choice = data.choices?.[0];
+  
+  if (choice?.finish_reason === "content_filter") {
+    throw new Error("Content filter triggered");
+  }
+  
+  if (choice?.message?.refusal) {
+    throw new Error(`Request refused: ${choice.message.refusal}`);
+  }
+  
+  const content = choice?.message?.content;
+  if (!content) {
+    throw new Error("No content in response");
+  }
+
+  return JSON.parse(content);
+}
+
 // Validate weight goal - fast local calculation (no AI needed)
 export interface WeightGoalValidation {
   status: "possible" | "challenging" | "not_possible";

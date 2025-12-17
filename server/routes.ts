@@ -850,6 +850,48 @@ export async function registerRoutes(
     }
   });
 
+  // Generate recipe for a meal that doesn't have one
+  app.post("/api/nutrition/generate-recipe", async (req: Request, res: Response) => {
+    try {
+      const { generateRecipeForMeal } = await import("./services/azure-ai");
+      
+      const schema = z.object({
+        mealDescription: z.string(),
+        mainIngredients: z.string(),
+        targetCalories: z.number(),
+        targetProtein: z.number(),
+        targetCarbs: z.number(),
+        targetFat: z.number(),
+        language: z.string().optional(),
+      });
+
+      const { mealDescription, mainIngredients, targetCalories, targetProtein, targetCarbs, targetFat, language } = schema.parse(req.body);
+
+      const recipe = await generateRecipeForMeal(
+        mealDescription,
+        mainIngredients,
+        targetCalories,
+        targetProtein,
+        targetCarbs,
+        targetFat,
+        language || "pt"
+      );
+
+      res.json({ success: true, recipe });
+    } catch (error) {
+      console.error("Error generating recipe:", error);
+      
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, error: fromZodError(error).toString() });
+      }
+
+      res.status(500).json({ 
+        success: false, 
+        error: error instanceof Error ? error.message : "Failed to generate recipe" 
+      });
+    }
+  });
+
   // Generate meal from ingredients
   app.post("/api/nutrition/meal-from-ingredients", async (req: Request, res: Response) => {
     try {

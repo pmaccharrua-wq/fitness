@@ -62,13 +62,17 @@ export default function MealCard({
   const [swapError, setSwapError] = useState<string | null>(null);
   const [ingredients, setIngredients] = useState<string[]>([]);
   const [newIngredient, setNewIngredient] = useState("");
+  const [isGeneratingRecipe, setIsGeneratingRecipe] = useState(false);
+  const [generatedRecipe, setGeneratedRecipe] = useState<{ recipe_pt: string; ingredients: IngredientData[] } | null>(null);
   const { t, language } = useTranslation();
   
   const isMainMeal = meal.meal_time_pt?.toLowerCase().includes("almoço") || 
                      meal.meal_time_pt?.toLowerCase().includes("jantar") ||
                      meal.meal_time_pt?.toLowerCase().includes("lunch") ||
                      meal.meal_time_pt?.toLowerCase().includes("dinner");
-  const hasRecipe = meal.recipe_pt && meal.recipe_pt.length > 10;
+  const hasRecipe = (meal.recipe_pt && meal.recipe_pt.length > 10) || generatedRecipe !== null;
+  const displayRecipe = generatedRecipe?.recipe_pt || meal.recipe_pt;
+  const displayIngredients = generatedRecipe?.ingredients || meal.ingredients;
 
   useEffect(() => {
     async function fetchMealImage() {
@@ -193,6 +197,38 @@ export default function MealCard({
     }
   };
 
+  const handleGenerateRecipe = async () => {
+    setIsGeneratingRecipe(true);
+    try {
+      const response = await fetch("/api/nutrition/generate-recipe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mealDescription: meal.description_pt,
+          mainIngredients: meal.main_ingredients_pt,
+          targetCalories: meal.calories,
+          targetProtein: meal.protein_g,
+          targetCarbs: meal.carbs_g,
+          targetFat: meal.fat_g,
+          language,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success && data.recipe) {
+        setGeneratedRecipe({
+          recipe_pt: data.recipe.recipe_pt,
+          ingredients: data.recipe.ingredients || [],
+        });
+        setIsRecipeOpen(true);
+      }
+    } catch (error) {
+      console.error("Error generating recipe:", error);
+    } finally {
+      setIsGeneratingRecipe(false);
+    }
+  };
+
   return (
     <>
       <Card className={`overflow-hidden ${isCustomMeal ? 'ring-2 ring-primary/50' : ''}`} data-testid={`card-recipe-${index}`}>
@@ -274,6 +310,28 @@ export default function MealCard({
             )}
           </div>
 
+          {isMainMeal && !hasRecipe && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full mt-2 gap-2"
+              onClick={handleGenerateRecipe}
+              disabled={isGeneratingRecipe}
+              data-testid={`button-generate-recipe-${index}`}
+            >
+              {isGeneratingRecipe ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {language === "pt" ? "A gerar receita..." : "Generating recipe..."}
+                </>
+              ) : (
+                <>
+                  <ChefHat className="w-4 h-4" />
+                  {language === "pt" ? "Gerar Receita" : "Generate Recipe"}
+                </>
+              )}
+            </Button>
+          )}
           {isMainMeal && hasRecipe && (
             <Collapsible open={isRecipeOpen} onOpenChange={setIsRecipeOpen}>
               <CollapsibleTrigger asChild>
@@ -289,7 +347,7 @@ export default function MealCard({
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-3 space-y-3">
-                {meal.ingredients && meal.ingredients.length > 0 && (
+                {displayIngredients && displayIngredients.length > 0 && (
                   <div className="bg-muted/50 rounded-lg p-3 space-y-2">
                     <h5 className="font-bold text-sm">
                       {language === "pt" ? "Informação Nutricional por Ingrediente" : "Nutritional Info per Ingredient"}
@@ -306,7 +364,7 @@ export default function MealCard({
                           </tr>
                         </thead>
                         <tbody>
-                          {meal.ingredients.map((ing, ingIdx) => (
+                          {displayIngredients.map((ing, ingIdx) => (
                             <tr key={ingIdx} className="border-b border-border/50 last:border-0">
                               <td className="py-1.5">
                                 <span className="font-medium">{ing.name_pt}</span>
@@ -329,7 +387,7 @@ export default function MealCard({
                     {language === "pt" ? "Modo de Preparação" : "Preparation"}
                   </h5>
                   <div className="text-xs space-y-2">
-                    {(meal.recipe_pt || "").split(/(?=\d+\.)/).filter(Boolean).map((step, stepIdx) => (
+                    {(displayRecipe || "").split(/(?=\d+\.)/).filter(Boolean).map((step, stepIdx) => (
                       <p key={stepIdx} className="leading-relaxed">{step.trim()}</p>
                     ))}
                   </div>
