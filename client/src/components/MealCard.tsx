@@ -347,7 +347,7 @@ export default function MealCard({
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-3 space-y-3">
-                {displayIngredients && displayIngredients.length > 0 && (
+                {displayIngredients && displayIngredients.length > 0 ? (
                   <div className="bg-muted/50 rounded-lg p-3 space-y-2">
                     <h5 className="font-bold text-sm">
                       {language === "pt" ? "Informação Nutricional por Ingrediente" : "Nutritional Info per Ingredient"}
@@ -379,6 +379,13 @@ export default function MealCard({
                         </tbody>
                       </table>
                     </div>
+                  </div>
+                ) : meal.main_ingredients_pt && (
+                  <div className="bg-muted/50 rounded-lg p-3 space-y-2">
+                    <h5 className="font-bold text-sm">
+                      {language === "pt" ? "Ingredientes" : "Ingredients"}
+                    </h5>
+                    <p className="text-xs text-muted-foreground">{meal.main_ingredients_pt}</p>
                   </div>
                 )}
                 <div className="bg-muted/50 rounded-lg p-3 space-y-2">
