@@ -759,16 +759,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       for (const name of exerciseNames) {
         const match = findSynonymMatch(name, allExercises);
         if (match) {
-          // Fetch Pexels image as fallback if no library image
+          // Always fetch Pexels image as primary source (InspireUSA URLs are returning 404)
           let pexelsImage = null;
-          if (!match.imageUrl) {
-            try {
-              pexelsImage = await getPexelsImage(match.name, match.primaryMuscles || []);
-            } catch (e) {
-              console.log("Pexels error for", name, e);
-            }
+          try {
+            pexelsImage = await getPexelsImage(match.name, match.primaryMuscles || []);
+          } catch (e) {
+            console.log("Pexels error for", name, e);
           }
-          matched[name] = { ...match, pexelsImage };
+          // Use Pexels as primary, clear broken imageUrl
+          matched[name] = { ...match, imageUrl: null, pexelsImage };
           matchDetails.push({
             name,
             matchedTo: match.name,

@@ -880,7 +880,7 @@ export async function registerRoutes(
       for (const name of exerciseNames) {
         const match = findSynonymMatch(name, allExercises);
         if (match) {
-          // Fetch Pexels image for this exercise
+          // Always fetch Pexels image as primary source (InspireUSA URLs are returning 404)
           try {
             const image = await getExerciseImage(
               match.name,
@@ -888,10 +888,11 @@ export async function registerRoutes(
               match.equipment,
               match.primaryMuscles || []
             );
-            matched[name] = { ...match, pexelsImage: image };
+            // Use Pexels as primary, clear broken imageUrl
+            matched[name] = { ...match, imageUrl: null, pexelsImage: image };
           } catch (imgError) {
             console.log(`[exercises/match] Pexels image error for "${name}":`, imgError);
-            matched[name] = match;
+            matched[name] = { ...match, imageUrl: null };
           }
           
           matchDetails.push({
