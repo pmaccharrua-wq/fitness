@@ -1162,14 +1162,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       
       let result: any = {
         id: generatedId,
-        name: exerciseName || null,
-        namePt: exerciseNamePt || null,
+        name: exerciseName || exerciseNamePt || searchName,
+        namePt: exerciseNamePt || exerciseName || searchName,
         instructions: null,
         instructionsPt: null,
         primaryMuscles: [],
         secondaryMuscles: [],
         equipment: "bodyweight",
-        difficulty: "intermediate",
+        difficulty: "beginner",
         imageUrl: null,
         videoUrl: null
       };

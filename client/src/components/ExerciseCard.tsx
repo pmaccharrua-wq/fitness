@@ -90,9 +90,11 @@ export default function ExerciseCard({ exercise, libraryMatch, index }: Exercise
 
   const effectiveData = enrichedData || libraryMatch;
   
-  const displayName = effectiveData 
+  const originalName = language === "pt" && exercise.name_pt ? exercise.name_pt : (exercise.name || exercise.name_pt);
+  const enrichedName = effectiveData 
     ? (language === "pt" ? effectiveData.namePt : effectiveData.name) 
-    : (language === "pt" && exercise.name_pt ? exercise.name_pt : (exercise.name || exercise.name_pt));
+    : null;
+  const displayName = enrichedName || originalName;
   const instructions = effectiveData 
     ? (language === "pt" ? effectiveData.instructionsPt : effectiveData.instructions) 
     : null;
