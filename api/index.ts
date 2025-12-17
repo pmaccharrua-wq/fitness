@@ -180,15 +180,25 @@ async function callAzureOpenAI(systemPrompt: string, userPrompt: string, maxToke
   });
 
   const elapsed = Date.now() - startTime;
-  console.log(`Azure response in ${elapsed}ms`);
+  console.log(`Azure response in ${elapsed}ms, status: ${response.status}`);
+
+  const responseText = await response.text();
+  console.log("Azure raw response length:", responseText.length);
 
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Azure error: ${response.status} - ${errorText}`);
+    console.error("Azure error response:", responseText.slice(0, 500));
+    throw new Error(`Azure error: ${response.status} - ${responseText.slice(0, 200)}`);
   }
 
-  const data = await response.json();
-  console.log("Azure response status:", response.status, "choices:", data.choices?.length || 0);
+  let data;
+  try {
+    data = JSON.parse(responseText);
+  } catch (e) {
+    console.error("Failed to parse Azure response as JSON:", responseText.slice(0, 500));
+    throw new Error("Azure response is not valid JSON");
+  }
+  
+  console.log("Azure parsed, choices:", data.choices?.length || 0, "error:", data.error?.message || "none");
   
   const content = data.choices?.[0]?.message?.content;
   if (!content) {
