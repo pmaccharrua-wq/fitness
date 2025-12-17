@@ -74,7 +74,8 @@ export default function WorkoutTimer({
   
   const convertWarmupCooldownToExercises = (items: WarmupCooldownExercise[], isWarmup: boolean): Exercise[] => {
     return items.map((item) => ({
-      name: item.name || (isWarmup ? "Warm-up" : "Cool-down"),
+      // Use name_pt as fallback for name to match exerciseLibrary keys
+      name: item.name || item.name_pt || (isWarmup ? "Warm-up" : "Cool-down"),
       name_pt: item.name_pt,
       sets: 1,
       reps_or_time: `${item.duration_seconds} segundos`,
