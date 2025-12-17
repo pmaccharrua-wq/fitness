@@ -40,6 +40,24 @@ export const exerciseLibrary = pgTable("exercise_library", {
   instructionsPt: text("instructions_pt"),
 });
 
+export const exerciseCandidates = pgTable("exercise_candidates", {
+  id: serial("id").primaryKey(),
+  exerciseId: text("exercise_id").notNull().unique(),
+  name: text("name"),
+  namePt: text("name_pt"),
+  primaryMuscles: text("primary_muscles").array(),
+  equipment: text("equipment"),
+  difficulty: text("difficulty"),
+  imageUrl: text("image_url"),
+  videoUrl: text("video_url"),
+  instructions: text("instructions"),
+  instructionsPt: text("instructions_pt"),
+  status: text("status").default("pending").notNull(),
+  sourceContext: text("source_context"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  promotedAt: timestamp("promoted_at"),
+});
+
 export const userProfiles = pgTable("user_profiles", {
   id: serial("id").primaryKey(),
   firstName: text("first_name").notNull(),
@@ -819,15 +837,51 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             hasInstructions: !!(match.instructions || match.instructionsPt)
           });
         } else if (name) {
-          unmatched.push(name);
+          unmatched.push({ name, exerciseId: requestedId });
         } else if (requestedId) {
-          unmatched.push(`[ID: ${requestedId}]`);
+          unmatched.push({ name: null, exerciseId: requestedId });
         }
       }
       
       // Log summary for debugging
       if (unmatched.length > 0) {
-        console.log(`[exercises/match] UNMATCHED exercises (${unmatched.length}):`, unmatched);
+        console.log(`[exercises/match] UNMATCHED exercises (${unmatched.length}):`, unmatched.map(u => u.name || u.exerciseId));
+        
+        // Stage unmatched exercises as candidates for enrichment
+        for (const unmatchedItem of unmatched) {
+          const unmatchedName = unmatchedItem.name;
+          const unmatchedId = unmatchedItem.exerciseId;
+          
+          // Generate a canonical ID slug - prefer provided ID, otherwise derive from name
+          let exerciseIdSlug = unmatchedId;
+          if (!exerciseIdSlug && unmatchedName) {
+            exerciseIdSlug = unmatchedName
+              .toLowerCase()
+              .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Remove accents
+              .replace(/[^a-z0-9]+/g, "_")
+              .replace(/^_|_$/g, "");
+          }
+          
+          if (!exerciseIdSlug) continue; // Skip if we can't generate an ID
+          
+          try {
+            // Check if already exists in candidates
+            const [existing] = await db.select().from(exerciseCandidates)
+              .where(eq(exerciseCandidates.exerciseId, exerciseIdSlug));
+            
+            if (!existing) {
+              await db.insert(exerciseCandidates).values({
+                exerciseId: exerciseIdSlug,
+                namePt: unmatchedName || null,
+                status: "pending",
+                sourceContext: `Detected from plan matching at ${new Date().toISOString()}. Original: name="${unmatchedName}", id="${unmatchedId}"`
+              });
+              console.log(`[exercises/match] Staged new candidate: ${exerciseIdSlug} (from name="${unmatchedName}", id="${unmatchedId}")`);
+            }
+          } catch (e) {
+            console.log(`[exercises/match] Could not stage candidate ${exerciseIdSlug}:`, e);
+          }
+        }
       }
       
       const missingData = matchDetails.filter(m => !m.hasVideo || !m.hasImage || !m.hasInstructions);
@@ -846,6 +900,240 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       
       // Return both maps: byName for backward compat, byId for new reliable lookups
       return res.json({ success: true, exercises: matched, exercisesById: byId, matchDetails });
+    }
+
+    // Enrich pending exercise candidates with AI descriptions, images, and videos
+    // Protected endpoint - requires admin key or internal call
+    if (method === "POST" && path === "/api/exercises/enrich") {
+      const adminKey = req.headers["x-admin-key"] || req.body?.adminKey;
+      const expectedKey = process.env.ADMIN_API_KEY || "fitness-admin-2024";
+      if (adminKey !== expectedKey) {
+        return res.status(401).json({ success: false, error: "Unauthorized - admin key required" });
+      }
+      
+      const pendingCandidates = await db.select().from(exerciseCandidates)
+        .where(eq(exerciseCandidates.status, "pending"));
+      
+      if (pendingCandidates.length === 0) {
+        return res.json({ success: true, message: "No pending candidates to enrich", enriched: 0 });
+      }
+      
+      const pexelsApiKey = process.env.PEXELS_API_KEY;
+      const azureEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
+      const azureApiKey = process.env.AZURE_OPENAI_API_KEY;
+      const azureDeployment = process.env.AZURE_OPENAI_DEPLOYMENT || "gpt-5";
+      
+      const enrichedIds: string[] = [];
+      
+      for (const candidate of pendingCandidates.slice(0, 5)) { // Process max 5 at a time
+        try {
+          const exerciseName = candidate.namePt || candidate.name || candidate.exerciseId;
+          
+          // 1. Generate AI descriptions (EN/PT)
+          let instructions = candidate.instructions;
+          let instructionsPt = candidate.instructionsPt;
+          let name = candidate.name;
+          let primaryMuscles = candidate.primaryMuscles;
+          let equipment = candidate.equipment;
+          let difficulty = candidate.difficulty;
+          
+          if (azureEndpoint && azureApiKey && (!instructions || !instructionsPt)) {
+            try {
+              const aiResponse = await fetch(
+                `${azureEndpoint}/openai/deployments/${azureDeployment}/chat/completions?api-version=2025-01-01-preview`,
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    "api-key": azureApiKey
+                  },
+                  body: JSON.stringify({
+                    messages: [
+                      {
+                        role: "system",
+                        content: "You are a fitness expert. Provide exercise information in JSON format."
+                      },
+                      {
+                        role: "user",
+                        content: `Provide information about the exercise "${exerciseName}". Return JSON with:
+{
+  "name_en": "English name",
+  "name_pt": "Portuguese name", 
+  "instructions_en": "Step by step instructions in English (2-3 sentences)",
+  "instructions_pt": "Instruções passo a passo em Português (2-3 frases)",
+  "primary_muscles": ["muscle1", "muscle2"],
+  "equipment": "bodyweight/dumbbell/barbell/etc",
+  "difficulty": "beginner/intermediate/advanced"
+}`
+                      }
+                    ],
+                    max_tokens: 500,
+                    temperature: 0.7
+                  })
+                }
+              );
+              
+              if (aiResponse.ok) {
+                const aiData = await aiResponse.json();
+                const content = aiData.choices?.[0]?.message?.content || "";
+                try {
+                  const jsonMatch = content.match(/\{[\s\S]*\}/);
+                  if (jsonMatch) {
+                    const parsed = JSON.parse(jsonMatch[0]);
+                    name = parsed.name_en || name;
+                    instructions = parsed.instructions_en || instructions;
+                    instructionsPt = parsed.instructions_pt || instructionsPt;
+                    primaryMuscles = parsed.primary_muscles || primaryMuscles;
+                    equipment = parsed.equipment || equipment;
+                    difficulty = parsed.difficulty || difficulty;
+                  }
+                } catch (parseErr) {
+                  console.log(`[enrich] Could not parse AI response for ${exerciseName}`);
+                }
+              }
+            } catch (aiErr) {
+              console.log(`[enrich] AI error for ${exerciseName}:`, aiErr);
+            }
+          }
+          
+          // 2. Fetch Pexels image
+          let imageUrl = candidate.imageUrl;
+          if (!imageUrl && pexelsApiKey) {
+            try {
+              const searchTerm = `fitness ${name || exerciseName} exercise`;
+              const pexelsResponse = await fetch(
+                `https://api.pexels.com/v1/search?query=${encodeURIComponent(searchTerm)}&per_page=1&orientation=landscape`,
+                { headers: { Authorization: pexelsApiKey } }
+              );
+              if (pexelsResponse.ok) {
+                const pexelsData = await pexelsResponse.json();
+                if (pexelsData.photos?.[0]) {
+                  imageUrl = pexelsData.photos[0].src.medium;
+                }
+              }
+            } catch (pexErr) {
+              console.log(`[enrich] Pexels error for ${exerciseName}:`, pexErr);
+            }
+          }
+          
+          // 3. Search for YouTube video (using simple search URL)
+          let videoUrl = candidate.videoUrl;
+          if (!videoUrl) {
+            // Generate a YouTube search URL that users can follow
+            const searchQuery = encodeURIComponent(`${name || exerciseName} exercise tutorial how to`);
+            videoUrl = `https://www.youtube.com/results?search_query=${searchQuery}`;
+          }
+          
+          // Update the candidate
+          await db.update(exerciseCandidates)
+            .set({
+              name: name || null,
+              namePt: candidate.namePt || (name ? name : null),
+              instructions: instructions || null,
+              instructionsPt: instructionsPt || null,
+              primaryMuscles: primaryMuscles || null,
+              equipment: equipment || null,
+              difficulty: difficulty || null,
+              imageUrl: imageUrl || null,
+              videoUrl: videoUrl || null,
+              status: (instructions && instructionsPt && imageUrl) ? "enriched" : "pending"
+            } as any)
+            .where(eq(exerciseCandidates.id, candidate.id));
+          
+          if (instructions && instructionsPt && imageUrl) {
+            enrichedIds.push(candidate.exerciseId);
+            console.log(`[enrich] Successfully enriched: ${candidate.exerciseId}`);
+          }
+        } catch (err) {
+          console.log(`[enrich] Error enriching ${candidate.exerciseId}:`, err);
+        }
+      }
+      
+      return res.json({ 
+        success: true, 
+        enriched: enrichedIds.length,
+        enrichedIds,
+        pending: pendingCandidates.length - enrichedIds.length
+      });
+    }
+
+    // Auto-promote enriched candidates to exercise_library
+    // Protected endpoint - requires admin key or internal call
+    if (method === "POST" && path === "/api/exercises/promote") {
+      const adminKey = req.headers["x-admin-key"] || req.body?.adminKey;
+      const expectedKey = process.env.ADMIN_API_KEY || "fitness-admin-2024";
+      if (adminKey !== expectedKey) {
+        return res.status(401).json({ success: false, error: "Unauthorized - admin key required" });
+      }
+      
+      const enrichedCandidates = await db.select().from(exerciseCandidates)
+        .where(eq(exerciseCandidates.status, "enriched"));
+      
+      if (enrichedCandidates.length === 0) {
+        return res.json({ success: true, message: "No enriched candidates to promote", promoted: 0 });
+      }
+      
+      const promotedIds: string[] = [];
+      
+      for (const candidate of enrichedCandidates) {
+        // Check if already exists in exercise_library
+        const [existing] = await db.select().from(exerciseLibrary)
+          .where(eq(exerciseLibrary.id, candidate.exerciseId));
+        
+        if (existing) {
+          // Mark as already promoted
+          await db.update(exerciseCandidates)
+            .set({ status: "promoted", promotedAt: new Date() } as any)
+            .where(eq(exerciseCandidates.id, candidate.id));
+          continue;
+        }
+        
+        // Validate required fields
+        if (!candidate.name || !candidate.namePt || !candidate.primaryMuscles || !candidate.equipment || !candidate.difficulty) {
+          console.log(`[promote] Candidate ${candidate.exerciseId} missing required fields, skipping`);
+          continue;
+        }
+        
+        try {
+          // Insert into exercise_library
+          await db.insert(exerciseLibrary).values({
+            id: candidate.exerciseId,
+            name: candidate.name,
+            namePt: candidate.namePt,
+            primaryMuscles: candidate.primaryMuscles,
+            secondaryMuscles: [],
+            equipment: candidate.equipment,
+            difficulty: candidate.difficulty,
+            imageUrl: candidate.imageUrl,
+            videoUrl: candidate.videoUrl,
+            instructions: candidate.instructions,
+            instructionsPt: candidate.instructionsPt
+          });
+          
+          // Mark candidate as promoted
+          await db.update(exerciseCandidates)
+            .set({ status: "promoted", promotedAt: new Date() } as any)
+            .where(eq(exerciseCandidates.id, candidate.id));
+          
+          promotedIds.push(candidate.exerciseId);
+          console.log(`[promote] Successfully promoted: ${candidate.exerciseId}`);
+        } catch (err) {
+          console.log(`[promote] Error promoting ${candidate.exerciseId}:`, err);
+        }
+      }
+      
+      return res.json({ 
+        success: true, 
+        promoted: promotedIds.length,
+        promotedIds
+      });
+    }
+
+    // Get exercise candidates (for admin view)
+    if (method === "GET" && path === "/api/exercises/candidates") {
+      const candidates = await db.select().from(exerciseCandidates)
+        .orderBy(desc(exerciseCandidates.createdAt));
+      return res.json({ success: true, candidates });
     }
 
     if (method === "POST" && path === "/api/progress") {
