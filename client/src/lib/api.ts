@@ -332,25 +332,42 @@ export interface EnrichExerciseResponse {
 export async function enrichExercise(
   exerciseName?: string,
   exerciseNamePt?: string,
-  exerciseId?: string
+  exerciseId?: string,
+  retries = 3
 ): Promise<EnrichExerciseResponse> {
-  const response = await fetch("/api/exercises/enrich-single", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ exerciseName, exerciseNamePt, exerciseId }),
-  });
-  
-  const contentType = response.headers.get("content-type");
-  if (!contentType || !contentType.includes("application/json")) {
-    const text = await response.text();
-    console.error("Non-JSON response from enrich-single:", text.substring(0, 200));
-    return { success: false, error: "Server returned invalid response", exercise: null as any };
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const response = await fetch("/api/exercises/enrich-single", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ exerciseName, exerciseNamePt, exerciseId }),
+      });
+      
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await response.text();
+        console.error(`[attempt ${attempt}/${retries}] Non-JSON response from enrich-single:`, text.substring(0, 200));
+        if (attempt < retries) {
+          await new Promise(r => setTimeout(r, 1000 * attempt));
+          continue;
+        }
+        return { success: false, error: "Server temporarily unavailable, please try again", exercise: null as any };
+      }
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+        return { success: false, error: errorData.error || `HTTP ${response.status}`, exercise: null as any };
+      }
+      
+      return response.json();
+    } catch (err) {
+      console.error(`[attempt ${attempt}/${retries}] Fetch error:`, err);
+      if (attempt < retries) {
+        await new Promise(r => setTimeout(r, 1000 * attempt));
+        continue;
+      }
+      return { success: false, error: "Network error, please try again", exercise: null as any };
+    }
   }
-  
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
-    return { success: false, error: errorData.error || `HTTP ${response.status}`, exercise: null as any };
-  }
-  
-  return response.json();
+  return { success: false, error: "Failed after retries", exercise: null as any };
 }
