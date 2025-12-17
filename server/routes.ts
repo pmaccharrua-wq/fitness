@@ -701,6 +701,8 @@ export async function registerRoutes(
       
       const allExercises = await storage.getAllExercises();
       const matched: Record<string, any> = {};
+      const unmatched: string[] = [];
+      const matchDetails: { name: string; matchedTo?: string; hasVideo: boolean; hasImage: boolean; hasInstructions: boolean }[] = [];
       
       for (const name of exerciseNames) {
         const normalizedName = name.toLowerCase().trim();
@@ -721,13 +723,43 @@ export async function registerRoutes(
             );
             matched[name] = { ...match, pexelsImage: image };
           } catch (imgError) {
+            console.log(`[exercises/match] Pexels image error for "${name}":`, imgError);
             matched[name] = match;
           }
+          
+          matchDetails.push({
+            name,
+            matchedTo: match.name,
+            hasVideo: !!match.videoUrl,
+            hasImage: !!(match.imageUrl || matched[name]?.pexelsImage?.url),
+            hasInstructions: !!(match.instructions || match.instructionsPt)
+          });
+        } else {
+          unmatched.push(name);
         }
+      }
+      
+      // Log summary for debugging
+      if (unmatched.length > 0) {
+        console.log(`[exercises/match] UNMATCHED exercises (${unmatched.length}):`, unmatched);
+      }
+      
+      const missingData = matchDetails.filter(m => !m.hasVideo || !m.hasImage || !m.hasInstructions);
+      if (missingData.length > 0) {
+        console.log(`[exercises/match] Matched but MISSING data:`, missingData.map(m => ({
+          name: m.name,
+          matchedTo: m.matchedTo,
+          missing: [
+            !m.hasVideo ? 'video' : null,
+            !m.hasImage ? 'image' : null,
+            !m.hasInstructions ? 'instructions' : null
+          ].filter(Boolean)
+        })));
       }
       
       res.json({ success: true, exercises: matched });
     } catch (error) {
+      console.error("[exercises/match] Error:", error);
       res.status(500).json({ success: false, error: "Failed to match exercises" });
     }
   });

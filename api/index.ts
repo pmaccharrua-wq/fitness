@@ -533,6 +533,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       const allExercises = await db.select().from(exerciseLibrary);
       const matched: Record<string, any> = {};
+      const unmatched: string[] = [];
+      const matchDetails: { name: string; matchedTo?: string; hasVideo: boolean; hasImage: boolean; hasInstructions: boolean }[] = [];
+      
       for (const name of exerciseNames) {
         const normalizedName = name.toLowerCase().trim();
         const match = allExercises.find(ex =>
@@ -543,8 +546,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         );
         if (match) {
           matched[name] = match;
+          matchDetails.push({
+            name,
+            matchedTo: match.name,
+            hasVideo: !!match.videoUrl,
+            hasImage: !!match.imageUrl,
+            hasInstructions: !!(match.instructions || match.instructionsPt)
+          });
+        } else {
+          unmatched.push(name);
         }
       }
+      
+      // Log summary for debugging
+      if (unmatched.length > 0) {
+        console.log(`[exercises/match] UNMATCHED exercises (${unmatched.length}):`, unmatched);
+      }
+      
+      const missingData = matchDetails.filter(m => !m.hasVideo || !m.hasImage || !m.hasInstructions);
+      if (missingData.length > 0) {
+        console.log(`[exercises/match] Matched but MISSING data:`, missingData.map(m => ({
+          name: m.name,
+          matchedTo: m.matchedTo,
+          missing: [
+            !m.hasVideo ? 'video' : null,
+            !m.hasImage ? 'image' : null,
+            !m.hasInstructions ? 'instructions' : null
+          ].filter(Boolean)
+        })));
+      }
+      
       return res.json({ success: true, exercises: matched });
     }
 
