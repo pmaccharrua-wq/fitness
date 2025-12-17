@@ -13,7 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Check, ChevronRight, ChevronLeft, Loader2, Globe, AlertTriangle, CheckCircle, Info } from "lucide-react";
-import { submitOnboarding, saveUserId } from "@/lib/api";
+import { submitOnboardingWithChunks, saveUserId } from "@/lib/api";
 import { toast } from "sonner";
 
 interface GoalValidation {
@@ -62,6 +62,8 @@ export default function Onboarding() {
   const [currentStep, setCurrentStep] = useState(1);
   const [direction, setDirection] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [generationStep, setGenerationStep] = useState(0);
+  const [generationTotal, setGenerationTotal] = useState(4);
   const [goalValidation, setGoalValidation] = useState<GoalValidation | null>(null);
   const [isValidatingGoal, setIsValidatingGoal] = useState(false);
 
@@ -144,30 +146,33 @@ export default function Onboarding() {
       setCurrentStep(s => s + 1);
     } else {
       setIsLoading(true);
+      setGenerationStep(0);
       try {
         const formData = form.getValues();
-        const response = await submitOnboarding({
-          firstName: formData.firstName,
-          phoneNumber: formData.phoneNumber.startsWith("+351") ? formData.phoneNumber : `+351${formData.phoneNumber}`,
-          pin: formData.pin,
-          language: formData.language,
-          sex: formData.sex,
-          age: parseInt(formData.age),
-          weight: parseInt(formData.weight),
-          height: parseInt(formData.height),
-          goal: formData.goal,
-          activityLevel: formData.activityLevel,
-          impediments: formData.impediments || undefined,
-          somatotype: formData.somatotype || undefined,
-          currentBodyComp: formData.currentBodyComp || undefined,
-          targetBodyComp: formData.targetBodyComp || undefined,
-          targetWeight: formData.targetWeight ? parseInt(formData.targetWeight) : undefined,
-          weightGoalWeeks: formData.weightGoalWeeks ? parseInt(formData.weightGoalWeeks) : undefined,
-          goalRealistic: goalValidation?.isRealistic,
-          goalFeedback: goalValidation?.feedback,
-          timePerDay: parseInt(formData.timePerDay),
-          difficulty: formData.difficulty,
-        });
+        const response = await submitOnboardingWithChunks(
+          {
+            firstName: formData.firstName,
+            phoneNumber: formData.phoneNumber.startsWith("+351") ? formData.phoneNumber : `+351${formData.phoneNumber}`,
+            pin: formData.pin,
+            language: formData.language,
+            sex: formData.sex,
+            age: parseInt(formData.age),
+            weight: parseInt(formData.weight),
+            height: parseInt(formData.height),
+            goal: formData.goal,
+            activityLevel: formData.activityLevel,
+            impediments: formData.impediments || undefined,
+            somatotype: formData.somatotype || undefined,
+            currentBodyComp: formData.currentBodyComp || undefined,
+            targetBodyComp: formData.targetBodyComp || undefined,
+            timePerDay: parseInt(formData.timePerDay),
+            difficulty: formData.difficulty,
+          },
+          (step, total) => {
+            setGenerationStep(step);
+            setGenerationTotal(total);
+          }
+        );
 
         if (response.success) {
           saveUserId(response.userId);
@@ -181,6 +186,7 @@ export default function Onboarding() {
         toast.error(t("Ocorreu um erro. Tente novamente.", "An error occurred. Please try again."));
       } finally {
         setIsLoading(false);
+        setGenerationStep(0);
       }
     }
   };
@@ -613,7 +619,9 @@ export default function Onboarding() {
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                {t("A Gerar...", "Generating...")}
+                {generationStep > 0 
+                  ? t(`A gerar... (${generationStep}/${generationTotal})`, `Generating... (${generationStep}/${generationTotal})`)
+                  : t("A iniciar...", "Starting...")}
               </>
             ) : (
               <>

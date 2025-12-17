@@ -116,6 +116,19 @@ export const customMeals = pgTable("custom_meals", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const planGenerationStatus = pgTable("plan_generation_status", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  planId: integer("plan_id"),
+  status: text("status").notNull().default("pending"),
+  currentStep: integer("current_step").default(0).notNull(),
+  totalSteps: integer("total_steps").default(4).notNull(),
+  partialData: jsonb("partial_data"),
+  error: text("error"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 const db = drizzle(pool);
 
 const AVAILABLE_EQUIPMENT = [
@@ -125,54 +138,33 @@ const AVAILABLE_EQUIPMENT = [
   "Banco Adidas", "Bola de ginástica", "Peso corporal (sem equipamento)"
 ];
 
-async function generateFitnessPlanFromAI(userProfile: any): Promise<any> {
+function getAzureConfig() {
   const apiKey = process.env.AZURE_OPENAI_API_KEY;
   const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
   const deployment = process.env.AZURE_OPENAI_DEPLOYMENT;
-  const apiVersion = process.env.AZURE_OPENAI_API_VERSION || "2024-08-01-preview";
-
-  console.log("Azure config:", {
-    endpointPrefix: endpoint?.substring(0, 30) + "...",
-    deployment,
-    apiVersion,
-    hasApiKey: !!apiKey
-  });
-
+  const apiVersion = process.env.AZURE_OPENAI_API_VERSION || "2025-01-01-preview";
+  
   if (!apiKey || !endpoint || !deployment) {
     throw new Error("Azure OpenAI environment variables not configured");
   }
+  return { apiKey, endpoint, deployment, apiVersion };
+}
 
+function calculateUserMetrics(userProfile: any) {
   const bmr = userProfile.sex === "Male"
     ? 10 * userProfile.weight + 6.25 * userProfile.height - 5 * userProfile.age + 5
     : 10 * userProfile.weight + 6.25 * userProfile.height - 5 * userProfile.age - 161;
-
   const activityMultipliers: Record<string, number> = { sedentary: 1.2, light: 1.375, moderate: 1.55, very: 1.725 };
   const tdee = Math.round(bmr * (activityMultipliers[userProfile.activityLevel] || 1.2));
-  
   let targetCalories = tdee;
   if (userProfile.goal === "loss") targetCalories = Math.round(tdee - 400);
   else if (userProfile.goal === "muscle") targetCalories = Math.round(tdee + 300);
-
   const waterTarget = Math.round(userProfile.weight * 35);
-  const goalPt: Record<string, string> = { loss: "Perda de Peso", muscle: "Ganho de Massa Muscular", gain: "Ganho de Peso", endurance: "Resistência" };
+  return { bmr, tdee, targetCalories, waterTarget };
+}
 
-  const systemPrompt = `És um Coach de Fitness e Nutricionista. Gera um plano de fitness personalizado de 15 dias e plano de nutrição de 7 dias em Português. Retorna APENAS JSON válido.`;
-
-  const userPrompt = `Perfil: ${userProfile.sex === "Male" ? "Masculino" : "Feminino"}, ${userProfile.age} anos, ${userProfile.weight}kg, ${userProfile.height}cm
-Objetivo: ${goalPt[userProfile.goal] || "Fitness Geral"}
-Calorias Diárias: ${targetCalories} kcal
-Hidratação: ${waterTarget} ml/dia
-Equipamento: ${AVAILABLE_EQUIPMENT.join(", ")}
-Impedimentos: ${userProfile.impediments || "Nenhum"}
-
-Gera JSON com estrutura:
-{
-  "plan_summary_pt": "resumo",
-  "fitness_plan_15_days": [{"day":1,"is_rest_day":false,"workout_name_pt":"","duration_minutes":45,"estimated_calories_burnt":300,"focus_pt":"","warmup_pt":"","warmup_exercises":[],"cooldown_pt":"","cooldown_exercises":[],"exercises":[{"name":"","name_pt":"","sequence_order":1,"sets":3,"reps_or_time":"12","equipment_used":""}]}],
-  "nutrition_plan_7_days": [{"day":1,"total_daily_calories":${targetCalories},"total_daily_macros":"","meals":[{"meal_time_pt":"","description_pt":"","main_ingredients_pt":"","recipe_pt":"","calories":0,"protein_g":0,"carbs_g":0,"fat_g":0}]}],
-  "hydration_guidelines_pt": {"water_target_ml":${waterTarget},"notification_schedule_pt":"A cada 90 minutos"}
-}`;
-
+async function callAzureOpenAI(systemPrompt: string, userPrompt: string): Promise<any> {
+  const { apiKey, endpoint, deployment, apiVersion } = getAzureConfig();
   const url = `${endpoint}/openai/deployments/${deployment}/chat/completions?api-version=${apiVersion}`;
   console.log("Calling Azure URL:", url);
   
@@ -181,7 +173,7 @@ Gera JSON com estrutura:
     headers: { "Content-Type": "application/json", "api-key": apiKey },
     body: JSON.stringify({
       messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
-      max_completion_tokens: 16000,
+      max_completion_tokens: 8000,
       temperature: 1
     })
   });
@@ -193,13 +185,31 @@ Gera JSON com estrutura:
 
   const data = await response.json();
   const content = data.choices?.[0]?.message?.content;
-  
   if (!content) throw new Error("No content in AI response");
-
-  const jsonMatch = content.match(/\{[\s\S]*\}/);
+  const jsonMatch = content.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
   if (!jsonMatch) throw new Error("No valid JSON in AI response");
-
   return JSON.parse(jsonMatch[0]);
+}
+
+async function generatePlanChunk(userProfile: any, step: number): Promise<any> {
+  const { targetCalories, waterTarget } = calculateUserMetrics(userProfile);
+  const goalPt: Record<string, string> = { loss: "Perda de Peso", muscle: "Ganho de Massa Muscular", gain: "Ganho de Peso", endurance: "Resistência" };
+  const profileInfo = `Perfil: ${userProfile.sex === "Male" ? "Masculino" : "Feminino"}, ${userProfile.age} anos, ${userProfile.weight}kg, ${userProfile.height}cm. Objetivo: ${goalPt[userProfile.goal] || "Fitness Geral"}. Calorias: ${targetCalories} kcal. Equipamento: ${AVAILABLE_EQUIPMENT.slice(0,6).join(", ")}. Impedimentos: ${userProfile.impediments || "Nenhum"}`;
+
+  if (step === 1) {
+    const prompt = `${profileInfo}\n\nGera APENAS dias 1-5 do plano fitness. Retorna JSON array:\n[{"day":1,"is_rest_day":false,"workout_name_pt":"","duration_minutes":45,"estimated_calories_burnt":300,"focus_pt":"","warmup_pt":"5 min aquecimento","warmup_exercises":[{"name":"","name_pt":"","duration_seconds":60,"description_pt":""}],"cooldown_pt":"5 min alongamento","cooldown_exercises":[{"name":"","name_pt":"","duration_seconds":60,"description_pt":""}],"exercises":[{"name":"","name_pt":"","sequence_order":1,"sets":3,"reps_or_time":"12","equipment_used":""}]}]`;
+    return await callAzureOpenAI("Coach de Fitness. Gera dias 1-5 do plano. Retorna APENAS JSON array válido.", prompt);
+  } else if (step === 2) {
+    const prompt = `${profileInfo}\n\nGera APENAS dias 6-10 do plano fitness (continuação). Retorna JSON array com mesma estrutura dos dias 1-5.`;
+    return await callAzureOpenAI("Coach de Fitness. Gera dias 6-10 do plano. Retorna APENAS JSON array válido.", prompt);
+  } else if (step === 3) {
+    const prompt = `${profileInfo}\n\nGera APENAS dias 11-15 do plano fitness (final). Retorna JSON array com mesma estrutura.`;
+    return await callAzureOpenAI("Coach de Fitness. Gera dias 11-15 do plano. Retorna APENAS JSON array válido.", prompt);
+  } else if (step === 4) {
+    const prompt = `${profileInfo}\n\nGera plano nutrição 7 dias. Meta: ${targetCalories} kcal/dia. Retorna JSON:\n{"plan_summary_pt":"resumo","nutrition_plan_7_days":[{"day":1,"total_daily_calories":${targetCalories},"total_daily_macros":"P:Xg,C:Xg,G:Xg","meals":[{"meal_time_pt":"Pequeno Almoço","description_pt":"","main_ingredients_pt":"","recipe_pt":"","calories":0,"protein_g":0,"carbs_g":0,"fat_g":0}]}],"hydration_guidelines_pt":{"water_target_ml":${waterTarget},"notification_schedule_pt":"A cada 90 minutos"}}`;
+    return await callAzureOpenAI("Nutricionista. Gera plano 7 dias. Retorna APENAS JSON válido.", prompt);
+  }
+  throw new Error("Invalid step");
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -235,11 +245,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // Onboarding - create user profile and generate AI plan
+    // Onboarding - create user profile and start chunked plan generation
     if (method === "POST" && path === "/api/onboarding") {
       const profileData = req.body;
-      
-      // Auto-set fixed gym equipment
       profileData.equipment = AVAILABLE_EQUIPMENT;
       
       // Create user profile
@@ -265,27 +273,103 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         })
         .returning();
 
-      console.log("Generating AI plan for user:", userProfile.id);
+      console.log("Created user profile:", userProfile.id, "- Starting chunked generation");
       
-      // Generate AI fitness plan
-      const aiPlan = await generateFitnessPlanFromAI(userProfile);
-      
-      // Store the generated plan
-      const [fitnessPlan] = await db.insert(fitnessPlans)
+      // Create generation status tracker
+      const [status] = await db.insert(planGenerationStatus)
         .values({
           userId: userProfile.id,
-          planData: aiPlan,
-          currentDay: 1,
-          durationDays: 30,
-          isActive: true,
+          status: "generating",
+          currentStep: 0,
+          totalSteps: 4,
+          partialData: { fitness_plan_15_days: [], nutrition_plan_7_days: [], plan_summary_pt: "", hydration_guidelines_pt: null }
         })
         .returning();
 
       return res.json({
         success: true,
         userId: userProfile.id,
-        planId: fitnessPlan.id,
-        plan: aiPlan,
+        statusId: status.id,
+        status: "generating",
+        currentStep: 0,
+        totalSteps: 4,
+        message: "Profile created. Call /api/generate-chunk to continue."
+      });
+    }
+
+    // Generate next chunk of the plan
+    if (method === "POST" && path === "/api/generate-chunk") {
+      const { userId, statusId } = req.body;
+      
+      const [status] = await db.select().from(planGenerationStatus).where(eq(planGenerationStatus.id, statusId));
+      if (!status) return res.status(404).json({ success: false, error: "Status not found" });
+      if (status.status === "completed") return res.json({ success: true, status: "completed", planId: status.planId });
+      if (status.status === "error") return res.status(500).json({ success: false, error: status.error });
+
+      const [userProfile] = await db.select().from(userProfiles).where(eq(userProfiles.id, userId));
+      if (!userProfile) return res.status(404).json({ success: false, error: "User not found" });
+
+      const nextStep = status.currentStep + 1;
+      console.log(`Generating chunk ${nextStep}/4 for user ${userId}`);
+
+      try {
+        const chunkData = await generatePlanChunk(userProfile, nextStep);
+        const partial = (status.partialData || {}) as any;
+
+        if (nextStep <= 3) {
+          const days = Array.isArray(chunkData) ? chunkData : [];
+          partial.fitness_plan_15_days = [...(partial.fitness_plan_15_days || []), ...days];
+        } else {
+          partial.plan_summary_pt = chunkData.plan_summary_pt || "";
+          partial.nutrition_plan_7_days = chunkData.nutrition_plan_7_days || [];
+          partial.hydration_guidelines_pt = chunkData.hydration_guidelines_pt || null;
+        }
+
+        if (nextStep >= 4) {
+          // All chunks done - save final plan
+          const [fitnessPlan] = await db.insert(fitnessPlans)
+            .values({
+              userId: userProfile.id,
+              planData: partial,
+              currentDay: 1,
+              durationDays: 15,
+              isActive: true,
+            })
+            .returning();
+
+          await db.update(planGenerationStatus)
+            .set({ status: "completed", currentStep: 4, partialData: partial, planId: fitnessPlan.id, updatedAt: new Date() })
+            .where(eq(planGenerationStatus.id, statusId));
+
+          return res.json({ success: true, status: "completed", planId: fitnessPlan.id, plan: partial });
+        } else {
+          await db.update(planGenerationStatus)
+            .set({ currentStep: nextStep, partialData: partial, updatedAt: new Date() })
+            .where(eq(planGenerationStatus.id, statusId));
+
+          return res.json({ success: true, status: "generating", currentStep: nextStep, totalSteps: 4 });
+        }
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : "Generation failed";
+        await db.update(planGenerationStatus)
+          .set({ status: "error", error: errorMsg, updatedAt: new Date() })
+          .where(eq(planGenerationStatus.id, statusId));
+        return res.status(500).json({ success: false, error: errorMsg });
+      }
+    }
+
+    // Check generation status
+    if (method === "GET" && path.match(/^\/api\/generation-status\/\d+$/)) {
+      const statusId = parseInt(path.split("/").pop() || "");
+      const [status] = await db.select().from(planGenerationStatus).where(eq(planGenerationStatus.id, statusId));
+      if (!status) return res.status(404).json({ success: false, error: "Status not found" });
+      return res.json({
+        success: true,
+        status: status.status,
+        currentStep: status.currentStep,
+        totalSteps: status.totalSteps,
+        planId: status.planId,
+        error: status.error
       });
     }
 

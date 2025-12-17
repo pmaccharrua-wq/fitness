@@ -21,8 +21,12 @@ export interface OnboardingData {
 export interface OnboardingResponse {
   success: boolean;
   userId: number;
-  planId: number;
-  plan: any;
+  planId?: number;
+  statusId?: number;
+  plan?: any;
+  status?: string;
+  currentStep?: number;
+  totalSteps?: number;
   error?: string;
 }
 
@@ -74,6 +78,55 @@ export async function submitOnboarding(data: OnboardingData): Promise<Onboarding
   });
 
   return response.json();
+}
+
+export async function generateChunk(userId: number, statusId: number): Promise<OnboardingResponse> {
+  const response = await fetch("/api/generate-chunk", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId, statusId }),
+  });
+  return response.json();
+}
+
+export async function getGenerationStatus(statusId: number): Promise<any> {
+  const response = await fetch(`/api/generation-status/${statusId}`);
+  return response.json();
+}
+
+export async function submitOnboardingWithChunks(
+  data: OnboardingData,
+  onProgress?: (step: number, total: number) => void
+): Promise<OnboardingResponse> {
+  const initial = await submitOnboarding(data);
+  
+  if (!initial.success || !initial.statusId) {
+    return initial;
+  }
+
+  const userId = initial.userId;
+  const statusId = initial.statusId;
+  const totalSteps = initial.totalSteps || 4;
+
+  for (let step = 1; step <= totalSteps; step++) {
+    onProgress?.(step, totalSteps);
+    const result = await generateChunk(userId, statusId);
+    
+    if (!result.success) {
+      return result;
+    }
+    
+    if (result.status === "completed") {
+      return {
+        success: true,
+        userId,
+        planId: result.planId,
+        plan: result.plan,
+      };
+    }
+  }
+
+  return { success: false, userId, error: "Generation did not complete" };
 }
 
 export async function getUserPlan(userId: number): Promise<PlanResponse> {
