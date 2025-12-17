@@ -538,9 +538,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (method === "POST" && path === "/api/exercises/match") {
-      const { exerciseNames } = req.body;
-      if (!exerciseNames || !Array.isArray(exerciseNames)) {
-        return res.status(400).json({ success: false, error: "exerciseNames array required" });
+      // Support both new format (exercises array with name/exerciseId objects) and legacy format (exerciseNames array)
+      const { exercises, exerciseNames } = req.body;
+      const exerciseInputs: { name?: string; exerciseId?: string }[] = exercises || 
+        (exerciseNames ? exerciseNames.map((n: string) => ({ name: n })) : null);
+      
+      if (!exerciseInputs || !Array.isArray(exerciseInputs)) {
+        return res.status(400).json({ success: false, error: "exercises or exerciseNames array required" });
       }
       const allExercises = await db.select().from(exerciseLibrary);
       const matched: Record<string, any> = {};
@@ -769,27 +773,55 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return { url: "https://images.pexels.com/photos/841130/pexels-photo-841130.jpeg?auto=compress&cs=tinysrgb&w=800", source: "pexels-fallback" };
       }
       
-      for (const name of exerciseNames) {
-        const match = findSynonymMatch(name, allExercises);
+      // Also create a map keyed by exerciseId for reliable lookups
+      const byId: Record<string, any> = {};
+      
+      for (const input of exerciseInputs) {
+        const name = input.name || "";
+        const requestedId = input.exerciseId;
+        
+        // Priority 1: Direct ID lookup if exerciseId is provided
+        let match = null;
+        if (requestedId) {
+          match = allExercises.find(ex => ex.id === requestedId);
+          if (match) {
+            console.log(`[match] Direct ID: exerciseId "${requestedId}" -> ${match.name}`);
+          }
+        }
+        
+        // Priority 2: Name-based lookup if no ID or ID not found
+        if (!match && name) {
+          match = findSynonymMatch(name, allExercises);
+        }
+        
         if (match) {
           // Always fetch Pexels image as primary source (InspireUSA URLs are returning 404)
           let pexelsImage: { url: string; source: string; photographer?: string } | null = null;
           try {
             pexelsImage = await getPexelsImage(match.name, match.primaryMuscles || []);
           } catch (e) {
-            console.log("Pexels error for", name, e);
+            console.log("Pexels error for", name || requestedId, e);
           }
-          // Use Pexels as primary, clear broken imageUrl
-          matched[name] = { ...match, imageUrl: null, pexelsImage };
+          // Include original input name for reference
+          const matchData = { ...match, imageUrl: null, pexelsImage, inputName: name, inputExerciseId: requestedId };
+          // Key by input name (backward compat)
+          if (name) {
+            matched[name] = matchData;
+          }
+          // Also key by exerciseId (new reliable method)
+          byId[match.id] = matchData;
           matchDetails.push({
-            name,
+            name: name || match.name,
             matchedTo: match.name,
+            exerciseId: match.id,
             hasVideo: !!match.videoUrl,
             hasImage: !!(pexelsImage?.url),
             hasInstructions: !!(match.instructions || match.instructionsPt)
           });
-        } else {
+        } else if (name) {
           unmatched.push(name);
+        } else if (requestedId) {
+          unmatched.push(`[ID: ${requestedId}]`);
         }
       }
       
@@ -803,6 +835,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         console.log(`[exercises/match] Matched but MISSING data:`, missingData.map(m => ({
           name: m.name,
           matchedTo: m.matchedTo,
+          exerciseId: m.exerciseId,
           missing: [
             !m.hasVideo ? 'video' : null,
             !m.hasImage ? 'image' : null,
@@ -811,7 +844,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         })));
       }
       
-      return res.json({ success: true, exercises: matched });
+      // Return both maps: byName for backward compat, byId for new reliable lookups
+      return res.json({ success: true, exercises: matched, exercisesById: byId, matchDetails });
     }
 
     if (method === "POST" && path === "/api/progress") {

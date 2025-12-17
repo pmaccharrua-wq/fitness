@@ -239,11 +239,11 @@ export async function markNotificationRead(id: number): Promise<any> {
   return response.json();
 }
 
-export async function matchExercises(exerciseNames: string[]): Promise<any> {
+export async function matchExercises(exercises: { name?: string; exerciseId?: string }[]): Promise<any> {
   const response = await fetch("/api/exercises/match", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ exerciseNames }),
+    body: JSON.stringify({ exercises }),
   });
   return response.json();
 }

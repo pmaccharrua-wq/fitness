@@ -33,12 +33,24 @@ export default function Plan() {
   const [progress, setProgress] = useState<any[]>([]);
   const [showTimer, setShowTimer] = useState(false);
   const [exerciseLibrary, setExerciseLibrary] = useState<Record<string, any>>({});
+  const [exerciseLibraryById, setExerciseLibraryById] = useState<Record<string, any>>({});
   const [allPlans, setAllPlans] = useState<any[]>([]);
   const [nutritionDay, setNutritionDay] = useState(1);
   const [customMeals, setCustomMeals] = useState<CustomMealRecord[]>([]);
   const [durationDays, setDurationDays] = useState(30);
   const latestDayRef = useRef<number>(1);
   const { t, language } = useTranslation();
+
+  // Helper to look up exercise by ID first (reliable), then by name (fallback)
+  const getLibraryMatch = (ex: any) => {
+    // Try by exerciseId first (most reliable)
+    if (ex.exerciseId && exerciseLibraryById[ex.exerciseId]) {
+      return exerciseLibraryById[ex.exerciseId];
+    }
+    // Fallback to name-based lookup
+    const exerciseKey = ex.name || ex.name_pt;
+    return exerciseLibrary[exerciseKey];
+  };
 
   useEffect(() => {
     const userId = getUserId();
@@ -63,14 +75,18 @@ export default function Plan() {
     const dayIndex = ((day - 1) % planLength);
     const todaysPlan = fitnessPlanData?.[dayIndex] || fitnessPlanData?.[0];
     if (todaysPlan?.exercises) {
-      const exerciseNames = todaysPlan.exercises.map((ex: any) => ex.name || ex.name_pt);
-      const warmupNames = (todaysPlan.warmup_exercises || []).map((ex: any) => ex.name || ex.name_pt);
-      const cooldownNames = (todaysPlan.cooldown_exercises || []).map((ex: any) => ex.name || ex.name_pt);
-      const allNames = [...warmupNames, ...exerciseNames, ...cooldownNames].filter(Boolean);
+      const mainExercises = todaysPlan.exercises.map((ex: any) => ({ name: ex.name || ex.name_pt, exerciseId: ex.exerciseId }));
+      const warmupExercises = (todaysPlan.warmup_exercises || []).map((ex: any) => ({ name: ex.name || ex.name_pt, exerciseId: ex.exerciseId }));
+      const cooldownExercises = (todaysPlan.cooldown_exercises || []).map((ex: any) => ({ name: ex.name || ex.name_pt, exerciseId: ex.exerciseId }));
+      const allExercises = [...warmupExercises, ...mainExercises, ...cooldownExercises].filter(ex => ex.name || ex.exerciseId);
       try {
-        const matchResult = await matchExercises(allNames);
+        const matchResult = await matchExercises(allExercises);
         if (matchResult.success && day === latestDayRef.current) {
           setExerciseLibrary(matchResult.exercises);
+          // Also store by ID for reliable lookups
+          if (matchResult.exercisesById) {
+            setExerciseLibraryById(matchResult.exercisesById);
+          }
         }
       } catch (e) {
         console.error("Error matching exercises:", e);
@@ -410,7 +426,6 @@ export default function Plan() {
                     {todaysPlan.warmup_exercises?.length > 0 ? (
                       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {todaysPlan.warmup_exercises.map((ex: any, i: number) => {
-                          const exerciseKey = ex.name || ex.name_pt;
                           return (
                             <ExerciseCard 
                               key={`warmup-${i}`} 
@@ -424,7 +439,7 @@ export default function Plan() {
                                 equipment_used: language === "pt" ? "Peso corporal" : "Bodyweight",
                                 equipment_used_pt: "Peso corporal"
                               }} 
-                              libraryMatch={exerciseLibrary[exerciseKey]} 
+                              libraryMatch={getLibraryMatch(ex)} 
                               index={i} 
                             />
                           );
@@ -446,12 +461,11 @@ export default function Plan() {
                   </h4>
                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {(todaysPlan.exercises || []).map((ex: any, i: number) => {
-                      const exerciseKey = ex.name || ex.name_pt;
                       return (
                         <ExerciseCard 
                           key={i} 
                           exercise={{ ...ex, focus: todaysPlan.focus_pt }} 
-                          libraryMatch={exerciseLibrary[exerciseKey]} 
+                          libraryMatch={getLibraryMatch(ex)} 
                           index={i} 
                         />
                       );
@@ -467,7 +481,6 @@ export default function Plan() {
                     {todaysPlan.cooldown_exercises?.length > 0 ? (
                       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {todaysPlan.cooldown_exercises.map((ex: any, i: number) => {
-                          const exerciseKey = ex.name || ex.name_pt;
                           return (
                             <ExerciseCard 
                               key={`cooldown-${i}`} 
@@ -481,7 +494,7 @@ export default function Plan() {
                                 equipment_used: language === "pt" ? "Peso corporal" : "Bodyweight",
                                 equipment_used_pt: "Peso corporal"
                               }} 
-                              libraryMatch={exerciseLibrary[exerciseKey]} 
+                              libraryMatch={getLibraryMatch(ex)} 
                               index={i} 
                             />
                           );
@@ -648,6 +661,7 @@ export default function Plan() {
       <WorkoutTimer
         exercises={todaysPlan.exercises}
         exerciseLibrary={exerciseLibrary}
+        exerciseLibraryById={exerciseLibraryById}
         userDifficulty={planData?.user_difficulty || "medium"}
         warmupExercises={todaysPlan.warmup_exercises || []}
         cooldownExercises={todaysPlan.cooldown_exercises || []}

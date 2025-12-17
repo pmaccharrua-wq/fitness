@@ -8,6 +8,7 @@ import { useTranslation } from "@/lib/i18n";
 interface Exercise {
   name: string;
   name_pt?: string;
+  exerciseId?: string;
   sets: number;
   reps_or_time: string;
   focus: string;
@@ -17,6 +18,7 @@ interface Exercise {
 interface WarmupCooldownExercise {
   name: string;
   name_pt: string;
+  exerciseId?: string;
   duration_seconds: number;
   description_pt: string;
 }
@@ -32,6 +34,7 @@ interface LibraryMatch {
 interface WorkoutTimerProps {
   exercises: Exercise[];
   exerciseLibrary?: Record<string, LibraryMatch>;
+  exerciseLibraryById?: Record<string, LibraryMatch>;
   userDifficulty?: string;
   warmupExercises?: WarmupCooldownExercise[];
   cooldownExercises?: WarmupCooldownExercise[];
@@ -45,6 +48,7 @@ type Phase = "preview" | "prep_countdown" | "exercise" | "countdown" | "resting"
 export default function WorkoutTimer({ 
   exercises, 
   exerciseLibrary = {}, 
+  exerciseLibraryById = {},
   userDifficulty = "medium",
   warmupExercises = [],
   cooldownExercises = [],
@@ -77,6 +81,7 @@ export default function WorkoutTimer({
       // Use name_pt as fallback for name to match exerciseLibrary keys
       name: item.name || item.name_pt || (isWarmup ? "Warm-up" : "Cool-down"),
       name_pt: item.name_pt,
+      exerciseId: item.exerciseId,
       sets: 1,
       reps_or_time: `${item.duration_seconds} segundos`,
       focus: item.description_pt,
@@ -96,7 +101,12 @@ export default function WorkoutTimer({
   
   const exerciseName = currentExercise?.name || currentExercise?.name_pt || "";
   const exerciseNamePt = currentExercise?.name_pt || currentExercise?.name || "";
-  const libraryData = exerciseLibrary[exerciseName] || exerciseLibrary[exerciseNamePt] || {};
+  const exerciseId = (currentExercise as any)?.exerciseId;
+  // Priority: ID-based lookup > name-based lookup
+  const libraryData = (exerciseId && exerciseLibraryById[exerciseId]) 
+    || exerciseLibrary[exerciseName] 
+    || exerciseLibrary[exerciseNamePt] 
+    || {};
   const exerciseImage = libraryData.pexelsImage?.url || libraryData.imageUrl;
 
   const getRepSpeed = () => {
