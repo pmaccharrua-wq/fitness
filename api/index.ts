@@ -358,7 +358,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           targetBodyComp: profileData.targetBodyComp,
           timePerDay: profileData.timePerDay,
           difficulty: profileData.difficulty,
-        })
+        } as any)
         .returning();
 
       console.log("Created user profile:", userProfile.id, "- Starting chunked generation");
@@ -371,7 +371,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           currentStep: 0,
           totalSteps: 6,
           partialData: { fitness_plan_15_days: [], nutrition_plan_7_days: [], plan_summary_pt: "", hydration_guidelines_pt: null }
-        })
+        } as any)
         .returning();
 
       return res.json({
@@ -427,17 +427,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               currentDay: 1,
               durationDays: 15,
               isActive: true,
-            })
+            } as any)
             .returning();
 
           await db.update(planGenerationStatus)
-            .set({ status: "completed", currentStep: 6, partialData: partial, planId: fitnessPlan.id, updatedAt: new Date() })
+            .set({ status: "completed", currentStep: 6, partialData: partial, planId: fitnessPlan.id, updatedAt: new Date() } as any)
             .where(eq(planGenerationStatus.id, statusId));
 
           return res.json({ success: true, status: "completed", planId: fitnessPlan.id, plan: partial });
         } else {
           await db.update(planGenerationStatus)
-            .set({ currentStep: nextStep, partialData: partial, updatedAt: new Date() })
+            .set({ currentStep: nextStep, partialData: partial, updatedAt: new Date() } as any)
             .where(eq(planGenerationStatus.id, statusId));
 
           return res.json({ success: true, status: "generating", currentStep: nextStep, totalSteps: 6 });
@@ -445,7 +445,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : "Generation failed";
         await db.update(planGenerationStatus)
-          .set({ status: "error", error: errorMsg, updatedAt: new Date() })
+          .set({ status: "error", error: errorMsg, updatedAt: new Date() } as any)
           .where(eq(planGenerationStatus.id, statusId));
         return res.status(500).json({ success: false, error: errorMsg });
       }
@@ -648,7 +648,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         "hip thrust": "hip_thrust", "elevação de quadril": "hip_thrust",
       };
 
-      function findSynonymMatch(name: string, exercises: any[]): any | null {
+      const findSynonymMatch = (name: string, exercises: any[]): any | null => {
         const normalized = name.toLowerCase().trim();
         
         // Step 1: Try direct ID lookup first (most reliable)
@@ -724,7 +724,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const pexelsApiKey = process.env.PEXELS_API_KEY;
       const imageCache: Record<string, any> = {};
       
-      async function getPexelsImage(exerciseName: string, primaryMuscles: string[] = []): Promise<{ url: string; source: string; photographer?: string }> {
+      const getPexelsImage = async (exerciseName: string, primaryMuscles: string[] = []): Promise<{ url: string; source: string; photographer?: string }> => {
         const muscleTerms = primaryMuscles.slice(0, 2).join(" ");
         const searchTerms = `fitness ${exerciseName} ${muscleTerms}`.trim();
         
@@ -760,7 +760,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const match = findSynonymMatch(name, allExercises);
         if (match) {
           // Always fetch Pexels image as primary source (InspireUSA URLs are returning 404)
-          let pexelsImage = null;
+          let pexelsImage: { url: string; source: string; photographer?: string } | null = null;
           try {
             pexelsImage = await getPexelsImage(match.name, match.primaryMuscles || []);
           } catch (e) {
@@ -772,7 +772,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             name,
             matchedTo: match.name,
             hasVideo: !!match.videoUrl,
-            hasImage: !!(match.imageUrl || pexelsImage?.url),
+            hasImage: !!(pexelsImage?.url),
             hasInstructions: !!(match.instructions || match.instructionsPt)
           });
         } else {
@@ -815,12 +815,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       let progress;
       if (existing) {
         await db.update(exerciseProgress)
-          .set({ difficulty, completedAt: new Date() })
+          .set({ difficulty, completedAt: new Date() } as any)
           .where(eq(exerciseProgress.id, existing.id));
         progress = { ...existing, difficulty };
       } else {
         [progress] = await db.insert(exerciseProgress)
-          .values({ userId, planId, day, completed: 1, difficulty, completedAt: new Date() })
+          .values({ userId, planId, day, completed: 1, difficulty, completedAt: new Date() } as any)
           .returning();
       }
       const [plan] = await db.select().from(fitnessPlans).where(eq(fitnessPlans.id, planId));
@@ -828,7 +828,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const maxDay = plan.durationDays || 30;
         const nextDay = Math.min(day + 1, maxDay + 1);
         await db.update(fitnessPlans)
-          .set({ currentDay: nextDay, updatedAt: new Date() })
+          .set({ currentDay: nextDay, updatedAt: new Date() } as any)
           .where(eq(fitnessPlans.id, planId));
       }
       return res.json({ success: true, progress });
@@ -846,7 +846,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ success: false, error: `Day cannot exceed ${maxDay}` });
       }
       await db.update(fitnessPlans)
-        .set({ currentDay: day, updatedAt: new Date() })
+        .set({ currentDay: day, updatedAt: new Date() } as any)
         .where(eq(fitnessPlans.id, planId));
       return res.json({ success: true, currentDay: day });
     }
@@ -866,7 +866,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .where(eq(notificationSettings.userId, userId));
       if (!settings) {
         [settings] = await db.insert(notificationSettings)
-          .values({ userId })
+          .values({ userId } as any)
           .returning();
       }
       return res.json({ success: true, settings });
@@ -1144,7 +1144,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ success: false, error: "Missing required fields" });
       }
       const [meal] = await db.insert(customMeals)
-        .values({ userId, planId, dayIndex, mealSlot, source, originalMeal, customMeal: customMealData })
+        .values({ userId, planId, dayIndex, mealSlot, source, originalMeal, customMeal: customMealData } as any)
         .returning();
       return res.json({ success: true, customMeal: meal });
     }
@@ -1221,7 +1221,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ success: false, error: "Invalid notification ID" });
       }
       const result = await db.update(notifications)
-        .set({ isRead: true, readAt: new Date() })
+        .set({ isRead: true, readAt: new Date() } as any)
         .where(eq(notifications.id, notifId))
         .returning();
       if (result.length === 0) {
@@ -1348,7 +1348,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const totalDays = plan.durationDays || 30;
       let currentStreak = 0;
       if (progressEntries.length > 0) {
-        const sortedDays = [...new Set(progressEntries.map((p: any) => p.day))].sort((a, b) => a - b);
+        const sortedDays = Array.from(new Set(progressEntries.map((p: any) => p.day))).sort((a: any, b: any) => a - b);
         currentStreak = 1;
         for (let i = sortedDays.length - 1; i > 0; i--) {
           if (sortedDays[i] - sortedDays[i - 1] === 1) currentStreak++;
