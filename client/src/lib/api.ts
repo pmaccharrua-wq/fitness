@@ -301,3 +301,43 @@ export async function getCoachingTips(userId: number): Promise<CoachingTipsRespo
   const response = await fetch(`/api/coaching/${userId}`);
   return response.json();
 }
+
+export interface EnrichedExercise {
+  id: string;
+  name: string;
+  namePt: string;
+  instructions: string | null;
+  instructionsPt: string | null;
+  primaryMuscles: string[];
+  secondaryMuscles: string[];
+  equipment: string;
+  difficulty: string;
+  imageUrl: string | null;
+  videoUrl: string | null;
+  pexelsImage?: {
+    url: string;
+    source: string;
+    photographer?: string;
+  };
+  savedToLibrary?: boolean;
+  updated?: boolean;
+}
+
+export interface EnrichExerciseResponse {
+  success: boolean;
+  exercise: EnrichedExercise;
+  error?: string;
+}
+
+export async function enrichExercise(
+  exerciseName?: string,
+  exerciseNamePt?: string,
+  exerciseId?: string
+): Promise<EnrichExerciseResponse> {
+  const response = await fetch("/api/exercises/enrich-single", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ exerciseName, exerciseNamePt, exerciseId }),
+  });
+  return response.json();
+}

@@ -17,6 +17,7 @@ function parseConnectionString(url: string) {
 }
 
 const dbConfig = parseConnectionString(process.env.DATABASE_URL || "");
+
 const pool = new Pool({
   user: dbConfig.user,
   password: dbConfig.password,
@@ -1134,6 +1135,189 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const candidates = await db.select().from(exerciseCandidates)
         .orderBy(desc(exerciseCandidates.createdAt));
       return res.json({ success: true, candidates });
+    }
+
+    // Enrich a single exercise on-demand (user-facing)
+    // Takes exercise name/id and generates description, image, video
+    if (method === "POST" && path === "/api/exercises/enrich-single") {
+      const { exerciseName, exerciseNamePt, exerciseId } = req.body;
+      
+      if (!exerciseName && !exerciseNamePt && !exerciseId) {
+        return res.status(400).json({ success: false, error: "exerciseName, exerciseNamePt, or exerciseId required" });
+      }
+      
+      const searchName = exerciseName || exerciseNamePt || exerciseId;
+      const generatedId = exerciseId || searchName
+        .toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]+/g, "_")
+        .replace(/^_|_$/g, "");
+      
+      console.log(`[enrich-single] Enriching exercise: ${searchName} (id: ${generatedId})`);
+      
+      const pexelsApiKey = process.env.PEXELS_API_KEY;
+      const azureEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
+      const azureApiKey = process.env.AZURE_OPENAI_API_KEY;
+      const azureDeployment = process.env.AZURE_OPENAI_DEPLOYMENT || "gpt-5";
+      
+      let result: any = {
+        id: generatedId,
+        name: exerciseName || null,
+        namePt: exerciseNamePt || null,
+        instructions: null,
+        instructionsPt: null,
+        primaryMuscles: [],
+        secondaryMuscles: [],
+        equipment: "bodyweight",
+        difficulty: "intermediate",
+        imageUrl: null,
+        videoUrl: null
+      };
+      
+      // 1. Generate AI descriptions (EN/PT)
+      if (azureEndpoint && azureApiKey) {
+        try {
+          const aiResponse = await fetch(
+            `${azureEndpoint}/openai/deployments/${azureDeployment}/chat/completions?api-version=2025-01-01-preview`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "api-key": azureApiKey
+              },
+              body: JSON.stringify({
+                messages: [
+                  {
+                    role: "system",
+                    content: "You are a fitness expert. Provide exercise information in JSON format only, no other text."
+                  },
+                  {
+                    role: "user",
+                    content: `Provide complete information about the exercise "${searchName}". Return ONLY valid JSON:
+{
+  "name_en": "English name of the exercise",
+  "name_pt": "Nome do exercício em Português",
+  "instructions_en": "Clear step-by-step instructions in English (2-3 sentences)",
+  "instructions_pt": "Instruções claras passo a passo em Português (2-3 frases)",
+  "primary_muscles": ["muscle1", "muscle2"],
+  "secondary_muscles": ["muscle1"],
+  "equipment": "bodyweight/dumbbell/barbell/kettlebell/machine/cable/bench/stability ball",
+  "difficulty": "beginner/intermediate/advanced"
+}`
+                  }
+                ],
+                max_tokens: 600,
+                temperature: 0.7
+              })
+            }
+          );
+          
+          if (aiResponse.ok) {
+            const aiData = await aiResponse.json();
+            const content = aiData.choices?.[0]?.message?.content || "";
+            try {
+              const jsonMatch = content.match(/\{[\s\S]*\}/);
+              if (jsonMatch) {
+                const parsed = JSON.parse(jsonMatch[0]);
+                result.name = parsed.name_en || result.name || searchName;
+                result.namePt = parsed.name_pt || result.namePt || searchName;
+                result.instructions = parsed.instructions_en || null;
+                result.instructionsPt = parsed.instructions_pt || null;
+                result.primaryMuscles = parsed.primary_muscles || [];
+                result.secondaryMuscles = parsed.secondary_muscles || [];
+                result.equipment = parsed.equipment || "bodyweight";
+                result.difficulty = parsed.difficulty || "intermediate";
+                console.log(`[enrich-single] AI generated data for: ${searchName}`);
+              }
+            } catch (parseErr) {
+              console.log(`[enrich-single] Could not parse AI response for ${searchName}:`, parseErr);
+            }
+          } else {
+            console.log(`[enrich-single] AI response not OK:`, await aiResponse.text());
+          }
+        } catch (aiErr) {
+          console.log(`[enrich-single] AI error for ${searchName}:`, aiErr);
+        }
+      } else {
+        console.log(`[enrich-single] Azure OpenAI not configured, skipping AI enrichment`);
+      }
+      
+      // 2. Fetch Pexels image
+      if (pexelsApiKey) {
+        try {
+          const searchTerm = `fitness ${result.name || searchName} exercise workout`;
+          const pexelsResponse = await fetch(
+            `https://api.pexels.com/v1/search?query=${encodeURIComponent(searchTerm)}&per_page=3&orientation=landscape`,
+            { headers: { Authorization: pexelsApiKey } }
+          );
+          if (pexelsResponse.ok) {
+            const pexelsData = await pexelsResponse.json();
+            if (pexelsData.photos?.[0]) {
+              result.imageUrl = pexelsData.photos[0].src.large;
+              result.pexelsImage = {
+                url: pexelsData.photos[0].src.large,
+                source: pexelsData.photos[0].url,
+                photographer: pexelsData.photos[0].photographer
+              };
+              console.log(`[enrich-single] Found Pexels image for: ${searchName}`);
+            }
+          }
+        } catch (pexErr) {
+          console.log(`[enrich-single] Pexels error for ${searchName}:`, pexErr);
+        }
+      } else {
+        console.log(`[enrich-single] PEXELS_API_KEY not configured, skipping image fetch`);
+      }
+      
+      // 3. Generate YouTube search URL
+      const youtubeSearchName = result.name || searchName;
+      const searchQuery = encodeURIComponent(`${youtubeSearchName} exercise tutorial how to proper form`);
+      result.videoUrl = `https://www.youtube.com/results?search_query=${searchQuery}`;
+      
+      // 4. Save to exercise_library if we have enough data
+      if (result.name && result.instructions && result.primaryMuscles?.length > 0) {
+        try {
+          // Check if already exists
+          const [existing] = await db.select().from(exerciseLibrary)
+            .where(eq(exerciseLibrary.id, generatedId));
+          
+          if (!existing) {
+            await db.insert(exerciseLibrary).values({
+              id: generatedId,
+              name: result.name,
+              namePt: result.namePt || result.name,
+              primaryMuscles: result.primaryMuscles,
+              secondaryMuscles: result.secondaryMuscles || [],
+              equipment: result.equipment,
+              difficulty: result.difficulty,
+              imageUrl: result.imageUrl,
+              videoUrl: result.videoUrl,
+              instructions: result.instructions,
+              instructionsPt: result.instructionsPt
+            });
+            result.savedToLibrary = true;
+            console.log(`[enrich-single] Saved to exercise_library: ${generatedId}`);
+          } else {
+            // Update existing entry with new data
+            await db.update(exerciseLibrary)
+              .set({
+                imageUrl: result.imageUrl || existing.imageUrl,
+                videoUrl: result.videoUrl || existing.videoUrl,
+                instructions: result.instructions || existing.instructions,
+                instructionsPt: result.instructionsPt || existing.instructionsPt
+              })
+              .where(eq(exerciseLibrary.id, generatedId));
+            result.savedToLibrary = true;
+            result.updated = true;
+            console.log(`[enrich-single] Updated exercise_library: ${generatedId}`);
+          }
+        } catch (dbErr) {
+          console.log(`[enrich-single] DB error saving ${generatedId}:`, dbErr);
+          result.savedToLibrary = false;
+        }
+      }
+      
+      return res.json({ success: true, exercise: result });
     }
 
     if (method === "POST" && path === "/api/progress") {
