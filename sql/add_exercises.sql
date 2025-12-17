@@ -167,7 +167,7 @@ VALUES
 
 -- Dumbbell Calf Raise
 ('dumbbell_calf_raise', 'Dumbbell Calf Raise', 'Elevação de Panturrilha com Halteres',
- ARRAY['calves'], ARRAY[],
+ ARRAY['calves'], ARRAY[]::text[],
  'dumbbell', 'beginner',
  'https://www.inspireusafoundation.org/wp-content/uploads/2022/10/single-leg-calf-raise.gif',
  'https://www.youtube.com/watch?v=c5Kv6-fnTj8',
