@@ -536,6 +536,42 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const unmatched: string[] = [];
       const matchDetails: { name: string; matchedTo?: string; hasVideo: boolean; hasImage: boolean; hasInstructions: boolean }[] = [];
       
+      // Pexels image fetch helper
+      const pexelsApiKey = process.env.PEXELS_API_KEY;
+      const imageCache: Record<string, any> = {};
+      
+      async function getPexelsImage(exerciseName: string, primaryMuscles: string[] = []): Promise<{ url: string; source: string; photographer?: string }> {
+        const muscleTerms = primaryMuscles.slice(0, 2).join(" ");
+        const searchTerms = `fitness ${exerciseName} ${muscleTerms}`.trim();
+        
+        if (imageCache[searchTerms]) return imageCache[searchTerms];
+        
+        if (!pexelsApiKey) {
+          return { url: "https://images.pexels.com/photos/841130/pexels-photo-841130.jpeg?auto=compress&cs=tinysrgb&w=800", source: "pexels-fallback" };
+        }
+        
+        try {
+          const pexelsResponse = await fetch(
+            `https://api.pexels.com/v1/search?query=${encodeURIComponent(searchTerms)}&per_page=1&orientation=landscape`,
+            { headers: { Authorization: pexelsApiKey } }
+          );
+          
+          if (pexelsResponse.ok) {
+            const data = await pexelsResponse.json();
+            if (data.photos && data.photos.length > 0) {
+              const photo = data.photos[0];
+              const result = { url: photo.src.medium, source: "pexels", photographer: photo.photographer };
+              imageCache[searchTerms] = result;
+              return result;
+            }
+          }
+        } catch (e) {
+          console.log("Pexels fetch error:", e);
+        }
+        
+        return { url: "https://images.pexels.com/photos/841130/pexels-photo-841130.jpeg?auto=compress&cs=tinysrgb&w=800", source: "pexels-fallback" };
+      }
+      
       for (const name of exerciseNames) {
         const normalizedName = name.toLowerCase().trim();
         const match = allExercises.find(ex =>
@@ -545,12 +581,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           normalizedName.includes(ex.namePt.toLowerCase())
         );
         if (match) {
-          matched[name] = match;
+          // Fetch Pexels image as fallback if no library image
+          let pexelsImage = null;
+          if (!match.imageUrl) {
+            try {
+              pexelsImage = await getPexelsImage(match.name, match.primaryMuscles || []);
+            } catch (e) {
+              console.log("Pexels error for", name, e);
+            }
+          }
+          matched[name] = { ...match, pexelsImage };
           matchDetails.push({
             name,
             matchedTo: match.name,
             hasVideo: !!match.videoUrl,
-            hasImage: !!match.imageUrl,
+            hasImage: !!(match.imageUrl || pexelsImage?.url),
             hasInstructions: !!(match.instructions || match.instructionsPt)
           });
         } else {
