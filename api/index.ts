@@ -696,6 +696,192 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
+    // Check for duplicate user
+    if (method === "POST" && path === "/api/users/check") {
+      const { phoneNumber, firstName } = req.body;
+      if (!phoneNumber || !firstName) {
+        return res.status(400).json({ success: false, error: "phoneNumber and firstName required" });
+      }
+      const phoneNormalized = phoneNumber.replace(/\s+/g, "");
+      const [existing] = await db.select().from(userProfiles)
+        .where(and(
+          sql`LOWER(REPLACE(${userProfiles.phoneNumber}, ' ', '')) = LOWER(${phoneNormalized})`,
+          sql`LOWER(${userProfiles.firstName}) = LOWER(${firstName})`
+        ));
+      return res.json({ success: true, exists: !!existing, userId: existing?.id });
+    }
+
+    // Generate recipe for a meal that doesn't have one
+    if (method === "POST" && path === "/api/nutrition/generate-recipe") {
+      const { mealDescription, mainIngredients, targetCalories, targetProtein, targetCarbs, targetFat, language } = req.body;
+      if (!mealDescription || !mainIngredients) {
+        return res.status(400).json({ success: false, error: "mealDescription and mainIngredients required" });
+      }
+      const isPt = (language || "pt") === "pt";
+      const systemPrompt = isPt
+        ? `És um chef nutricional. Cria uma receita detalhada para a refeição descrita.\n\nREGRAS:\n1. Usa os ingredientes indicados com quantidades exatas em gramas\n2. Cria passos de preparação numerados (1., 2., 3., etc.)\n3. Os macros dos ingredientes devem somar aproximadamente: ${targetCalories} kcal, ${targetProtein}g proteína, ${targetCarbs}g carboidratos, ${targetFat}g gordura\n4. Português (pt-PT)`
+        : `You are a nutritional chef. Create a detailed recipe for the described meal.\n\nRULES:\n1. Use the listed ingredients with exact quantities in grams\n2. Create numbered preparation steps (1., 2., 3., etc.)\n3. Ingredient macros should sum to approximately: ${targetCalories} kcal, ${targetProtein}g protein, ${targetCarbs}g carbs, ${targetFat}g fat\n4. English`;
+      const userPrompt = isPt
+        ? `Refeição: ${mealDescription}\nIngredientes principais: ${mainIngredients}\nMeta nutricional: ${targetCalories} kcal, P:${targetProtein}g, C:${targetCarbs}g, G:${targetFat}g\n\nCria a receita completa com lista de ingredientes detalhada.`
+        : `Meal: ${mealDescription}\nMain ingredients: ${mainIngredients}\nNutritional target: ${targetCalories} kcal, P:${targetProtein}g, C:${targetCarbs}g, F:${targetFat}g\n\nCreate the complete recipe with detailed ingredient list.`;
+      const jsonSchema = {
+        name: "recipe_response",
+        strict: true,
+        schema: {
+          type: "object",
+          properties: {
+            recipe_pt: { type: "string" },
+            ingredients: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  name_pt: { type: "string" },
+                  quantity: { type: "string" },
+                  calories: { type: "integer" },
+                  protein_g: { type: "number" },
+                  carbs_g: { type: "number" },
+                  fat_g: { type: "number" }
+                },
+                required: ["name_pt", "quantity", "calories", "protein_g", "carbs_g", "fat_g"],
+                additionalProperties: false
+              }
+            }
+          },
+          required: ["recipe_pt", "ingredients"],
+          additionalProperties: false
+        }
+      };
+      const { apiKey, endpoint, deployment, apiVersion } = getAzureConfig();
+      const url = `${endpoint}/openai/deployments/${deployment}/chat/completions?api-version=${apiVersion}`;
+      const aiResponse = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "api-key": apiKey },
+        body: JSON.stringify({
+          messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
+          response_format: { type: "json_schema", json_schema: jsonSchema },
+          temperature: 1,
+          max_completion_tokens: 4000,
+        }),
+      });
+      if (!aiResponse.ok) {
+        const errorText = await aiResponse.text();
+        throw new Error(`Azure OpenAI API error: ${aiResponse.status} - ${errorText}`);
+      }
+      const data = await aiResponse.json();
+      const content = data.choices?.[0]?.message?.content;
+      if (!content) throw new Error("No content in response");
+      const recipe = JSON.parse(content);
+      return res.json({ success: true, recipe });
+    }
+
+    // Generate meal from ingredients
+    if (method === "POST" && path === "/api/nutrition/meal-from-ingredients") {
+      const { ingredients, targetCalories, targetProtein, targetCarbs, targetFat, mealTime, language } = req.body;
+      if (!ingredients || !Array.isArray(ingredients) || ingredients.length === 0) {
+        return res.status(400).json({ success: false, error: "ingredients array required" });
+      }
+      const isPt = (language || "pt") === "pt";
+      const systemPrompt = isPt
+        ? `Cria uma refeição SIMPLES e realista do dia-a-dia.\n\nREGRAS IMPORTANTES:\n1. Usa 2-4 ingredientes da lista com QUANTIDADES REALISTAS (ex: 80-100g carne, 30-40g fiambre, 150g arroz cozido)\n2. Prioriza porções normais\n3. Calorias aproximadas: ${targetCalories} kcal (±150 está OK)\n4. Preparação em 2-3 passos curtos\n5. Refeição: ${mealTime}\n6. Português (pt-PT)`
+        : `Create a SIMPLE, realistic everyday meal.\n\nRULES:\n1. Use 2-4 ingredients with REALISTIC portions\n2. Prioritize normal portions\n3. Approximate calories: ${targetCalories} kcal (±150 is OK)\n4. Preparation in 2-3 short steps\n5. Meal time: ${mealTime}\n6. English`;
+      const userPrompt = isPt
+        ? `Ingredientes: ${ingredients.join(', ')}\nMeta: ~${targetCalories} kcal, ~${targetProtein}g proteína\n\nCria 1 refeição simples.`
+        : `Ingredients: ${ingredients.join(', ')}\nTarget: ~${targetCalories} kcal, ~${targetProtein}g protein\n\nCreate 1 simple meal.`;
+      const jsonSchema = {
+        name: "meal_from_ingredients_response",
+        strict: true,
+        schema: {
+          type: "object",
+          properties: {
+            meal: {
+              type: "object",
+              properties: {
+                meal_time_pt: { type: "string" },
+                description_pt: { type: "string" },
+                main_ingredients_pt: { type: "string" },
+                recipe_pt: { type: "string" },
+                calories: { type: "integer" },
+                protein_g: { type: "number" },
+                carbs_g: { type: "number" },
+                fat_g: { type: "number" },
+                ingredients: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      name_pt: { type: "string" },
+                      quantity: { type: "string" },
+                      calories: { type: "integer" },
+                      protein_g: { type: "number" },
+                      carbs_g: { type: "number" },
+                      fat_g: { type: "number" }
+                    },
+                    required: ["name_pt", "quantity", "calories", "protein_g", "carbs_g", "fat_g"],
+                    additionalProperties: false
+                  }
+                }
+              },
+              required: ["meal_time_pt", "description_pt", "main_ingredients_pt", "recipe_pt", "calories", "protein_g", "carbs_g", "fat_g", "ingredients"],
+              additionalProperties: false
+            }
+          },
+          required: ["meal"],
+          additionalProperties: false
+        }
+      };
+      const { apiKey, endpoint, deployment, apiVersion } = getAzureConfig();
+      const url = `${endpoint}/openai/deployments/${deployment}/chat/completions?api-version=${apiVersion}`;
+      const aiResponse = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "api-key": apiKey },
+        body: JSON.stringify({
+          messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
+          response_format: { type: "json_schema", json_schema: jsonSchema },
+          temperature: 1,
+          max_completion_tokens: 8000,
+        }),
+      });
+      if (!aiResponse.ok) {
+        const errorText = await aiResponse.text();
+        throw new Error(`Azure OpenAI API error: ${aiResponse.status} - ${errorText}`);
+      }
+      const data = await aiResponse.json();
+      const content = data.choices?.[0]?.message?.content;
+      if (!content) throw new Error("No content in response");
+      const result = JSON.parse(content);
+      return res.json({ success: true, meal: result.meal });
+    }
+
+    // Save custom meal
+    if (method === "POST" && path === "/api/nutrition/custom-meal") {
+      const { userId, planId, dayIndex, mealSlot, source, originalMeal, customMeal: customMealData } = req.body;
+      if (!userId || !planId || dayIndex === undefined || mealSlot === undefined || !source || !customMealData) {
+        return res.status(400).json({ success: false, error: "Missing required fields" });
+      }
+      const [meal] = await db.insert(customMeals)
+        .values({ userId, planId, dayIndex, mealSlot, source, originalMeal, customMeal: customMealData })
+        .returning();
+      return res.json({ success: true, customMeal: meal });
+    }
+
+    // Delete custom meal (revert to original)
+    if (method === "DELETE" && path.match(/^\/api\/nutrition\/custom-meal\/\d+$/)) {
+      const mealId = parseInt(path.split("/").pop() || "");
+      await db.delete(customMeals).where(eq(customMeals.id, mealId));
+      return res.json({ success: true });
+    }
+
+    // Get custom meals for nutrition (alternate path)
+    if (method === "GET" && path.match(/^\/api\/nutrition\/custom-meals\/\d+\/\d+$/)) {
+      const parts = path.split("/");
+      const userId = parseInt(parts[4]);
+      const planId = parseInt(parts[5]);
+      const meals = await db.select().from(customMeals)
+        .where(and(eq(customMeals.userId, userId), eq(customMeals.planId, planId)));
+      return res.json({ success: true, customMeals: meals });
+    }
+
     return res.status(404).json({ success: false, error: "Route not found", path, method });
 
   } catch (error) {
