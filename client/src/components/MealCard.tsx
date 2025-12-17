@@ -73,6 +73,9 @@ export default function MealCard({
   const hasRecipe = (meal.recipe_pt && meal.recipe_pt.length > 10) || generatedRecipe !== null;
   const displayRecipe = generatedRecipe?.recipe_pt || meal.recipe_pt;
   const displayIngredients = generatedRecipe?.ingredients || meal.ingredients;
+  
+  // Fallback ingredients: use main_ingredients_pt, or extract from description_pt
+  const fallbackIngredients = meal.main_ingredients_pt || meal.description_pt || "";
 
   useEffect(() => {
     async function fetchMealImage() {
@@ -278,10 +281,12 @@ export default function MealCard({
             </div>
           </div>
 
-          <div>
-            <h5 className="font-bold mb-1 text-xs uppercase text-muted-foreground">{t("dashboard", "ingredients")}</h5>
-            <p className="text-xs">{meal.main_ingredients_pt}</p>
-          </div>
+          {fallbackIngredients && (
+            <div>
+              <h5 className="font-bold mb-1 text-xs uppercase text-muted-foreground">{t("dashboard", "ingredients")}</h5>
+              <p className="text-xs">{fallbackIngredients}</p>
+            </div>
+          )}
 
           <div className="flex gap-2 mt-2">
             {onMealSwapped && (
@@ -380,12 +385,12 @@ export default function MealCard({
                       </table>
                     </div>
                   </div>
-                ) : meal.main_ingredients_pt && (
+                ) : fallbackIngredients && (
                   <div className="bg-muted/50 rounded-lg p-3 space-y-2">
                     <h5 className="font-bold text-sm">
                       {language === "pt" ? "Ingredientes" : "Ingredients"}
                     </h5>
-                    <p className="text-xs text-muted-foreground">{meal.main_ingredients_pt}</p>
+                    <p className="text-xs text-muted-foreground">{fallbackIngredients}</p>
                   </div>
                 )}
                 <div className="bg-muted/50 rounded-lg p-3 space-y-2">
