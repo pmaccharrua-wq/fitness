@@ -17,6 +17,25 @@ export const exerciseLibrary = pgTable("exercise_library", {
   instructionsPt: text("instructions_pt"), // Brief exercise instructions in Portuguese
 });
 
+// Exercise Candidates - Staging table for new exercises detected from AI plans
+export const exerciseCandidates = pgTable("exercise_candidates", {
+  id: serial("id").primaryKey(),
+  exerciseId: text("exercise_id").notNull().unique(), // Canonical ID slug (e.g., "step_ups")
+  name: text("name"), // English name
+  namePt: text("name_pt"), // Portuguese name (from AI plan)
+  primaryMuscles: text("primary_muscles").array(),
+  equipment: text("equipment"),
+  difficulty: text("difficulty"),
+  imageUrl: text("image_url"), // Pexels image
+  videoUrl: text("video_url"), // YouTube video
+  instructions: text("instructions"), // AI-generated English instructions
+  instructionsPt: text("instructions_pt"), // AI-generated Portuguese instructions
+  status: text("status").default("pending").notNull(), // pending, enriched, promoted, rejected
+  sourceContext: text("source_context"), // Original context from AI plan
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  promotedAt: timestamp("promoted_at"),
+});
+
 // Notification Settings - User preferences for reminders
 export const notificationSettings = pgTable("notification_settings", {
   id: serial("id").primaryKey(),
@@ -108,6 +127,9 @@ export type InsertExerciseProgress = z.infer<typeof insertExerciseProgressSchema
 export type ExerciseLibraryItem = typeof exerciseLibrary.$inferSelect;
 export type InsertExerciseLibraryItem = z.infer<typeof insertExerciseLibrarySchema>;
 
+export type ExerciseCandidate = typeof exerciseCandidates.$inferSelect;
+export type InsertExerciseCandidate = z.infer<typeof insertExerciseCandidateSchema>;
+
 export type NotificationSettingsType = typeof notificationSettings.$inferSelect;
 export type InsertNotificationSettings = z.infer<typeof insertNotificationSettingsSchema>;
 
@@ -132,6 +154,12 @@ export const insertExerciseProgressSchema = createInsertSchema(exerciseProgress)
 });
 
 export const insertExerciseLibrarySchema = createInsertSchema(exerciseLibrary);
+
+export const insertExerciseCandidateSchema = createInsertSchema(exerciseCandidates).omit({
+  id: true,
+  createdAt: true,
+  promotedAt: true,
+});
 
 export const insertNotificationSettingsSchema = createInsertSchema(notificationSettings).omit({
   id: true,
