@@ -547,59 +547,176 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const unmatched: string[] = [];
       const matchDetails: { name: string; matchedTo?: string; hasVideo: boolean; hasImage: boolean; hasInstructions: boolean }[] = [];
       
-      // Exercise synonym mapping for better matching
+      // Comprehensive exercise synonym mapping for better matching
       const exerciseSynonyms: Record<string, string[]> = {
-        "afundos em caminhada": ["avanço caminhando", "avanços caminhando", "lunges caminhando", "walking lunge"],
-        "afundos": ["avanços", "lunges", "lunge"],
-        "agachamento livre": ["agachamento", "squat", "squats", "agachamento sem peso"],
-        "agachamento com barra": ["back squat", "agachamento barra"],
+        // Legs
+        "afundos em caminhada": ["avanço caminhando", "avanços caminhando", "lunges caminhando", "walking lunge", "walking lunges", "lunge walk"],
+        "afundos": ["avanços", "lunges", "lunge", "afundo", "avanço"],
+        "agachamento livre": ["agachamento", "squat", "squats", "agachamento sem peso", "bodyweight squat", "air squat"],
+        "agachamento com barra": ["back squat", "agachamento barra", "barbell squat"],
+        "agachamento goblet": ["goblet squat", "agachamento com kettlebell"],
         "prensa de pernas": ["leg press", "prensa pernas"],
-        "levantamento terra romeno": ["romanian deadlift", "rdl", "levantamento romeno"],
-        "elevação de gémeos": ["calf raise", "elevação gémeos", "panturrilha"],
-        "supino reto": ["bench press", "supino", "press peito"],
-        "supino inclinado": ["incline bench", "supino inclinado halteres"],
-        "flexões": ["push ups", "pushups", "flexão", "push-ups"],
-        "remada curvada": ["bent over row", "remada", "row"],
-        "puxada alta": ["lat pulldown", "puxada", "pulldown"],
-        "elevação lateral": ["lateral raise", "elevações laterais"],
-        "desenvolvimento": ["shoulder press", "press ombros", "military press"],
-        "rosca bíceps": ["bicep curl", "rosca", "curl bíceps"],
-        "tríceps corda": ["tricep pushdown", "extensão tríceps"],
-        "prancha": ["plank", "prancha abdominal"],
-        "abdominal": ["crunch", "sit up", "abdominais"],
+        "levantamento terra romeno": ["romanian deadlift", "rdl", "levantamento romeno", "stiff leg deadlift"],
+        "levantamento terra": ["deadlift", "conventional deadlift", "levantamento terra convencional"],
+        "elevação de gémeos": ["calf raise", "elevação gémeos", "panturrilha", "standing calf raise", "elevação de gémeos em pé"],
+        "extensão de pernas": ["leg extension", "extensões de pernas"],
+        "curl de pernas": ["leg curl", "hamstring curl", "flexão de pernas"],
+        // Chest
+        "supino reto": ["bench press", "supino", "press peito", "flat bench press", "barbell bench press"],
+        "supino inclinado": ["incline bench", "supino inclinado halteres", "incline press", "incline dumbbell press"],
+        "supino declinado": ["decline bench", "decline press"],
+        "flexões": ["push ups", "pushups", "flexão", "push-ups", "push up", "flexão de braços"],
+        "flexões declinadas": ["decline push-up", "decline push ups", "flexão declinada"],
+        "flexões inclinadas": ["incline push-up", "incline push ups", "flexão inclinada"],
+        "crucifixo": ["chest fly", "fly", "dumbbell fly", "pec fly", "crucifixo com halteres"],
+        // Back
+        "remada curvada": ["bent over row", "remada", "row", "barbell row", "remada com barra"],
+        "remada unilateral": ["one arm row", "single arm row", "remada com haltere", "dumbbell row"],
+        "puxada alta": ["lat pulldown", "puxada", "pulldown", "puxada na polia"],
+        "barra fixa": ["pull up", "pull-up", "pullup", "chin up"],
+        // Shoulders
+        "elevação lateral": ["lateral raise", "elevações laterais", "side raise"],
+        "elevação frontal": ["front raise", "elevação frontal com halteres"],
+        "desenvolvimento": ["shoulder press", "press ombros", "military press", "overhead press", "desenvolvimento com halteres"],
+        "desenvolvimento com barra": ["barbell overhead press", "barbell shoulder press"],
+        "encolhimento": ["shrug", "shrugs", "trapézio"],
+        // Arms
+        "rosca bíceps": ["bicep curl", "rosca", "curl bíceps", "dumbbell curl", "rosca direta"],
+        "rosca martelo": ["hammer curl", "rosca alternada"],
+        "tríceps corda": ["tricep pushdown", "extensão tríceps", "tricep extension"],
+        "mergulho de tríceps": ["triceps dip", "dips", "tricep dip", "bench dip"],
+        "extensão de tríceps": ["skull crusher", "tricep extension", "extensão tríceps deitado"],
+        // Core
+        "prancha": ["plank", "prancha abdominal", "forearm plank"],
+        "prancha lateral": ["side plank", "prancha de lado"],
+        "abdominal": ["crunch", "sit up", "abdominais", "crunches"],
+        "rotação russa": ["russian twist", "twist russo", "torção russa"],
+        "elevação de pernas": ["leg raise", "hanging leg raise", "leg raises"],
+        "bicicleta": ["bicycle crunch", "abdominal bicicleta"],
+        // Cardio
         "burpees": ["burpee"],
-        "mountain climbers": ["escaladores", "mountain climber"],
-        "polichinelos": ["jumping jacks", "polichinelo"],
+        "mountain climbers": ["escaladores", "mountain climber", "escalador"],
+        "polichinelos": ["jumping jacks", "polichinelo", "jumping jack"],
+        "joelhos altos": ["high knees", "corrida no lugar", "high knee"],
         "corrida estacionária": ["running in place", "corrida no lugar"],
+        "saltos": ["jump", "jumping", "box jump"],
+        "skipping": ["skip", "pular corda", "rope jump"],
+        // Stretching
         "alongamento quadríceps": ["quad stretch", "alongar quadríceps"],
         "alongamento isquiotibiais": ["hamstring stretch", "alongar posterior coxa"],
+      };
+      
+      // Direct name-to-ID mapping for common exercises (most reliable)
+      const exerciseNameToId: Record<string, string> = {
+        "push-up": "pushup", "push up": "pushup", "pushup": "pushup", "flexão": "pushup", "flexões": "pushup",
+        "decline push-up": "pushup_decline", "flexões declinadas": "pushup_decline", "flexão declinada": "pushup_decline",
+        "incline push-up": "pushup_incline", "flexões inclinadas": "pushup_incline",
+        "bodyweight squat": "squat_bodyweight", "agachamento livre": "squat_bodyweight", "agachamento": "squat_bodyweight",
+        "goblet squat": "squat_goblet", "agachamento goblet": "squat_goblet",
+        "walking lunge": "lunge_walking", "walking lunges": "lunge_walking", "afundos em caminhada": "lunge_walking", "avanço caminhando": "lunge_walking",
+        "lunge": "lunge_static", "afundos": "lunge_static", "afundo": "lunge_static",
+        "plank": "plank", "prancha": "plank",
+        "side plank": "plank_side", "prancha lateral": "plank_side",
+        "crunch": "crunch", "abdominal": "crunch", "abdominais": "crunch",
+        "russian twist": "russian_twist", "rotação russa": "russian_twist",
+        "mountain climber": "mountain_climber", "mountain climbers": "mountain_climber", "escalador": "mountain_climber", "escaladores": "mountain_climber",
+        "burpee": "burpee", "burpees": "burpee",
+        "jumping jack": "jumping_jack", "jumping jacks": "jumping_jack", "polichinelo": "jumping_jack", "polichinelos": "jumping_jack",
+        "high knees": "high_knees", "joelhos altos": "high_knees",
+        "pull-up": "pullup", "pull up": "pullup", "barra fixa": "pullup",
+        "lat pulldown": "lat_pulldown", "puxada alta": "lat_pulldown", "puxada na polia alta": "lat_pulldown",
+        "triceps dip": "triceps_dip", "tricep dip": "triceps_dip", "mergulho de tríceps": "triceps_dip", "dips": "triceps_dip",
+        "calf raise": "calf_raise", "standing calf raise": "calf_raise", "elevação de gémeos": "calf_raise", "elevação de gémeos em pé": "calf_raise",
+        "leg raise": "leg_raise", "elevação de pernas": "leg_raise",
+        "bicycle crunch": "bicycle_crunch", "bicicleta": "bicycle_crunch", "abdominal bicicleta": "bicycle_crunch",
+        "superman": "superman",
+        "glute bridge": "glute_bridge", "ponte de glúteos": "glute_bridge",
+        "deadlift": "deadlift_conventional", "conventional deadlift": "deadlift_conventional", "levantamento terra": "deadlift_conventional",
+        "romanian deadlift": "deadlift_romanian", "rdl": "deadlift_romanian", "levantamento terra romeno": "deadlift_romanian",
+        "bent over row": "row_barbell", "remada curvada": "row_barbell", "barbell row": "row_barbell",
+        "dumbbell row": "row_dumbbell", "one-arm dumbbell row": "row_dumbbell", "remada unilateral": "row_dumbbell",
+        "bench press": "bench_press_barbell", "supino reto": "bench_press_barbell", "barbell bench press": "bench_press_barbell",
+        "dumbbell bench press": "bench_press_dumbbell", "supino com halteres": "bench_press_dumbbell",
+        "incline dumbbell press": "incline_press_dumbbell", "supino inclinado": "incline_press_dumbbell",
+        "overhead press": "overhead_press_barbell", "shoulder press": "overhead_press_dumbbell", "desenvolvimento": "overhead_press_dumbbell",
+        "lateral raise": "lateral_raise", "elevação lateral": "lateral_raise",
+        "bicep curl": "bicep_curl_dumbbell", "rosca bíceps": "bicep_curl_dumbbell", "dumbbell curl": "bicep_curl_dumbbell",
+        "hammer curl": "hammer_curl", "rosca martelo": "hammer_curl",
+        "tricep pushdown": "tricep_pushdown", "tríceps corda": "tricep_pushdown",
+        "chest fly": "chest_fly_dumbbell", "dumbbell fly": "chest_fly_dumbbell", "crucifixo": "chest_fly_dumbbell",
+        "face pull": "face_pull",
+        "hip thrust": "hip_thrust", "elevação de quadril": "hip_thrust",
       };
 
       function findSynonymMatch(name: string, exercises: any[]): any | null {
         const normalized = name.toLowerCase().trim();
+        
+        // Step 1: Try direct ID lookup first (most reliable)
+        const directId = exerciseNameToId[normalized];
+        if (directId) {
+          const idMatch = exercises.find(ex => ex.id === directId);
+          if (idMatch) {
+            console.log(`[match] ID lookup: "${name}" -> ${idMatch.name} (ID: ${directId})`);
+            return idMatch;
+          }
+        }
+        
+        // Step 2: Exact match by name or namePt
+        for (const ex of exercises) {
+          const exNameLower = ex.name.toLowerCase();
+          const exNamePtLower = ex.namePt.toLowerCase();
+          if (exNameLower === normalized || exNamePtLower === normalized) {
+            console.log(`[match] Exact: "${name}" -> ${ex.name}`);
+            return ex;
+          }
+        }
+        
+        // Step 3: Partial match (one contains the other)
         for (const ex of exercises) {
           const exNameLower = ex.name.toLowerCase();
           const exNamePtLower = ex.namePt.toLowerCase();
           if (exNameLower.includes(normalized) || normalized.includes(exNameLower) ||
               exNamePtLower.includes(normalized) || normalized.includes(exNamePtLower)) {
+            console.log(`[match] Partial: "${name}" -> ${ex.name}`);
             return ex;
           }
+        }
+        
+        // Step 4: Synonym matching
+        for (const ex of exercises) {
+          const exNameLower = ex.name.toLowerCase();
+          const exNamePtLower = ex.namePt.toLowerCase();
+          
           for (const [canonical, synonyms] of Object.entries(exerciseSynonyms)) {
-            if (exNamePtLower.includes(canonical) || exNameLower.includes(canonical)) {
-              for (const syn of synonyms) {
-                if (normalized.includes(syn) || syn.includes(normalized)) {
-                  return ex;
-                }
-              }
-            }
-            for (const syn of synonyms) {
-              if ((exNamePtLower.includes(syn) || exNameLower.includes(syn)) &&
-                  (normalized.includes(canonical) || synonyms.some(s => normalized.includes(s)))) {
+            // Check if exercise matches canonical or any synonym
+            const exerciseMatchesCanonical = exNamePtLower.includes(canonical) || exNameLower.includes(canonical) ||
+                                              synonyms.some(s => exNameLower.includes(s) || exNamePtLower.includes(s));
+            
+            if (exerciseMatchesCanonical) {
+              // Check if input matches canonical or any synonym
+              if (normalized.includes(canonical) || canonical.includes(normalized) ||
+                  synonyms.some(s => normalized.includes(s) || s.includes(normalized))) {
+                console.log(`[match] Synonym: "${name}" -> ${ex.name} (via ${canonical})`);
                 return ex;
               }
             }
           }
         }
+        
+        // Step 5: Word-based fuzzy matching (match if 2+ words match)
+        const inputWords = normalized.split(/[\s\-_]+/).filter(w => w.length > 2);
+        if (inputWords.length > 0) {
+          for (const ex of exercises) {
+            const exWords = [...ex.name.toLowerCase().split(/[\s\-_]+/), ...ex.namePt.toLowerCase().split(/[\s\-_]+/)];
+            const matchingWords = inputWords.filter(w => exWords.some(ew => ew.includes(w) || w.includes(ew)));
+            if (matchingWords.length >= Math.min(2, inputWords.length)) {
+              console.log(`[match] Fuzzy: "${name}" -> ${ex.name} (${matchingWords.length} words)`);
+              return ex;
+            }
+          }
+        }
+        
+        console.log(`[match] FAILED: "${name}" - no match found`);
         return null;
       }
       
