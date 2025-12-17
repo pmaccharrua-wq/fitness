@@ -174,7 +174,7 @@ async function callAzureOpenAI(systemPrompt: string, userPrompt: string, maxToke
     headers: { "Content-Type": "application/json", "api-key": apiKey },
     body: JSON.stringify({
       messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
-      max_completion_tokens: maxTokens,
+      max_tokens: maxTokens,
       temperature: 0.7
     })
   });
