@@ -1208,7 +1208,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 }`
                   }
                 ],
-                max_completion_tokens: 600,
+                max_completion_tokens: 2000,
                 temperature: 1
               })
             }
@@ -1216,7 +1216,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           
           if (aiResponse.ok) {
             const aiData = await aiResponse.json();
+            const finishReason = aiData.choices?.[0]?.finish_reason;
+            const usage = aiData.usage;
             const content = aiData.choices?.[0]?.message?.content || "";
+            
+            console.log(`[enrich-single] Azure response for ${searchName}:`, {
+              finishReason,
+              reasoningTokens: usage?.completion_tokens_details?.reasoning_tokens,
+              completionTokens: usage?.completion_tokens,
+              contentLength: content.length,
+              contentPreview: content.substring(0, 100)
+            });
+            
+            if (finishReason === "length") {
+              console.log(`[enrich-single] WARNING: Response truncated (finish_reason=length) for ${searchName}`);
+            }
+            
+            if (!content || content.trim() === "") {
+              console.log(`[enrich-single] WARNING: Empty content from Azure for ${searchName}, full response:`, JSON.stringify(aiData, null, 2));
+            }
+            
             try {
               const jsonMatch = content.match(/\{[\s\S]*\}/);
               if (jsonMatch) {
@@ -1229,10 +1248,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 result.secondaryMuscles = parsed.secondary_muscles || [];
                 result.equipment = parsed.equipment || "bodyweight";
                 result.difficulty = parsed.difficulty || "intermediate";
-                console.log(`[enrich-single] AI generated data for: ${searchName}`);
+                console.log(`[enrich-single] AI generated data for: ${searchName}, instructions: ${result.instructions ? 'YES' : 'NO'}`);
+              } else {
+                console.log(`[enrich-single] No JSON found in content for ${searchName}:`, content);
               }
             } catch (parseErr) {
-              console.log(`[enrich-single] Could not parse AI response for ${searchName}:`, parseErr);
+              console.log(`[enrich-single] Could not parse AI response for ${searchName}:`, parseErr, content);
             }
           } else {
             console.log(`[enrich-single] AI response not OK:`, await aiResponse.text());
