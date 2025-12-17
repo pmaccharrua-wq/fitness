@@ -50,6 +50,21 @@ export interface ProgressData {
   difficulty: "easy" | "just right" | "hard";
 }
 
+export interface UserCheckResponse {
+  success: boolean;
+  exists: boolean;
+  userId?: number;
+}
+
+export async function checkUserExists(phoneNumber: string, firstName: string): Promise<UserCheckResponse> {
+  const response = await fetch("/api/users/check", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phoneNumber, firstName }),
+  });
+  return response.json();
+}
+
 export async function submitOnboarding(data: OnboardingData): Promise<OnboardingResponse> {
   const response = await fetch("/api/onboarding", {
     method: "POST",

@@ -13,7 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Check, ChevronRight, ChevronLeft, Loader2, Globe, AlertTriangle, CheckCircle, Info } from "lucide-react";
-import { submitOnboardingWithChunks, saveUserId } from "@/lib/api";
+import { submitOnboardingWithChunks, saveUserId, checkUserExists } from "@/lib/api";
 import { toast } from "sonner";
 
 interface GoalValidation {
@@ -141,6 +141,32 @@ export default function Onboarding() {
   };
 
   const nextStep = async () => {
+    // Check for existing user when leaving step 2 (personal info: name + phone)
+    if (currentStep === 2) {
+      const formData = form.getValues();
+      const phoneNumber = formData.phoneNumber?.startsWith("+351") ? formData.phoneNumber : `+351${formData.phoneNumber || ""}`;
+      const firstName = formData.firstName?.trim();
+      
+      if (firstName && phoneNumber.length > 4) {
+        try {
+          const checkResult = await checkUserExists(phoneNumber, firstName);
+          if (checkResult.exists) {
+            toast.error(
+              t(
+                "Já existe uma conta com este nome e número de telefone. Por favor, faça login.",
+                "An account already exists with this name and phone number. Please log in."
+              ),
+              { duration: 5000 }
+            );
+            setTimeout(() => setLocation("/login"), 2000);
+            return;
+          }
+        } catch (error) {
+          console.error("Error checking user:", error);
+        }
+      }
+    }
+    
     if (currentStep < steps.length) {
       setDirection(1);
       setCurrentStep(s => s + 1);
@@ -178,6 +204,15 @@ export default function Onboarding() {
           saveUserId(response.userId);
           toast.success(t("O seu plano personalizado foi gerado!", "Your personalized plan has been generated!"));
           setLocation("/dashboard");
+        } else if (response.error === "duplicate") {
+          toast.error(
+            t(
+              "Já existe uma conta com este nome e número de telefone. Por favor, faça login.",
+              "An account already exists with this name and phone number. Please log in."
+            ),
+            { duration: 5000 }
+          );
+          setTimeout(() => setLocation("/login"), 2000);
         } else {
           toast.error(response.error || t("Falha ao gerar o plano", "Failed to generate plan"));
         }

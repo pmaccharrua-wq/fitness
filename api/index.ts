@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { pgTable, text, integer, serial, jsonb, timestamp, boolean } from "drizzle-orm/pg-core";
 
 function parseConnectionString(url: string) {
@@ -278,10 +278,54 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    // Check if user already exists by phone + name
+    if (method === "POST" && path === "/api/users/check") {
+      const { phoneNumber, firstName } = req.body;
+      if (!phoneNumber || !firstName) {
+        return res.status(400).json({ success: false, error: "Phone number and name required" });
+      }
+      
+      const existing = await db.select()
+        .from(userProfiles)
+        .where(
+          and(
+            eq(userProfiles.phoneNumber, phoneNumber),
+            sql`LOWER(${userProfiles.firstName}) = LOWER(${firstName})`
+          )
+        )
+        .limit(1);
+      
+      return res.json({ 
+        success: true, 
+        exists: existing.length > 0,
+        userId: existing.length > 0 ? existing[0].id : null
+      });
+    }
+
     // Onboarding - create user profile and start chunked plan generation
     if (method === "POST" && path === "/api/onboarding") {
       const profileData = req.body;
       profileData.equipment = AVAILABLE_EQUIPMENT;
+      
+      // Check for existing user with same phone + name
+      const existing = await db.select()
+        .from(userProfiles)
+        .where(
+          and(
+            eq(userProfiles.phoneNumber, profileData.phoneNumber),
+            sql`LOWER(${userProfiles.firstName}) = LOWER(${profileData.firstName})`
+          )
+        )
+        .limit(1);
+      
+      if (existing.length > 0) {
+        return res.status(409).json({ 
+          success: false, 
+          error: "duplicate",
+          message: "User already exists with this phone number and name",
+          userId: existing[0].id
+        });
+      }
       
       // Create user profile
       const [userProfile] = await db.insert(userProfiles)
