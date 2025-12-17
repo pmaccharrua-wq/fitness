@@ -1008,6 +1008,71 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     videoUrl: "https://www.youtube.com/watch?v=4aoUZEZFJF8",
     instructions: "Raise arm overhead, bend elbow, use other hand to gently push elbow down",
     instructionsPt: "Levante o braço acima da cabeça, dobre o cotovelo, use a outra mão para empurrar suavemente o cotovelo para baixo"
+  },
+  {
+    id: "arm_circles",
+    name: "Arm Circles",
+    namePt: "Rotações de Braços",
+    primaryMuscles: ["shoulders"],
+    secondaryMuscles: ["arms"],
+    equipment: "bodyweight",
+    difficulty: "beginner",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/10/arm-circles.gif",
+    videoUrl: "https://www.youtube.com/watch?v=140RTia5KlM",
+    instructions: "Extend arms out to sides, make small circles forward then backward",
+    instructionsPt: "Estenda os braços para os lados, faça pequenos círculos para frente e depois para trás"
+  },
+  {
+    id: "quad_stretch",
+    name: "Quadriceps Stretch",
+    namePt: "Alongamento de Quadríceps",
+    primaryMuscles: ["quadriceps"],
+    secondaryMuscles: ["hip flexors"],
+    equipment: "bodyweight",
+    difficulty: "beginner",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/08/standing-quad-stretch.gif",
+    videoUrl: "https://www.youtube.com/watch?v=pMJd9RXq1Vw",
+    instructions: "Stand on one leg, grab ankle behind you, pull heel to glutes, hold 20-30 seconds",
+    instructionsPt: "Fique num pé, agarre o tornozelo atrás de si, puxe o calcanhar ao glúteo, segure 20-30 segundos"
+  },
+  {
+    id: "chest_stretch",
+    name: "Chest Stretch",
+    namePt: "Alongamento de Peito",
+    primaryMuscles: ["chest"],
+    secondaryMuscles: ["shoulders"],
+    equipment: "bodyweight",
+    difficulty: "beginner",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/08/doorway-chest-stretch.gif",
+    videoUrl: "https://www.youtube.com/watch?v=S1zF6VjfA_s",
+    instructions: "Place arm on doorway or wall, rotate body away to stretch chest, hold 20-30 seconds",
+    instructionsPt: "Coloque o braço na porta ou parede, rode o corpo para alongar o peito, segure 20-30 segundos"
+  },
+  {
+    id: "back_stretch",
+    name: "Back Stretch",
+    namePt: "Alongamento de Costas",
+    primaryMuscles: ["back"],
+    secondaryMuscles: ["shoulders"],
+    equipment: "bodyweight",
+    difficulty: "beginner",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/08/cat-cow-stretch.gif",
+    videoUrl: "https://www.youtube.com/watch?v=kqnua4rHVVA",
+    instructions: "On hands and knees, arch back up like a cat, then curve down, repeat slowly",
+    instructionsPt: "De quatro, arqueie as costas para cima como um gato, depois curve para baixo, repita lentamente"
+  },
+  {
+    id: "deep_breathing",
+    name: "Deep Breathing",
+    namePt: "Respiração Profunda",
+    primaryMuscles: ["diaphragm"],
+    secondaryMuscles: ["core"],
+    equipment: "bodyweight",
+    difficulty: "beginner",
+    imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/04/diaphragmatic-breathing.gif",
+    videoUrl: "https://www.youtube.com/watch?v=UB3tSaiEbNY",
+    instructions: "Breathe in slowly through nose, expand belly, hold briefly, exhale slowly through mouth",
+    instructionsPt: "Inspire lentamente pelo nariz, expanda a barriga, segure brevemente, expire lentamente pela boca"
   }
 ];
 
@@ -1019,6 +1084,7 @@ export const exerciseIdsByCategory = {
   arms: ["bicep_curl_dumbbell", "hammer_curl", "tricep_pushdown", "tricep_dip", "skull_crusher", "cable_tricep_extension", "db_french_press"],
   core: ["plank", "crunch", "russian_twist", "leg_raise", "mountain_climber", "gym_ball_crunch", "homegym_cable_crunch", "gc_ball_pass", "gc_plank"],
   cardio: ["burpee", "jumping_jack", "high_knees", "jump_squat", "box_jump", "treadmill_hiit", "treadmill_incline_walk", "step_machine", "stationary_bike"],
-  warmup: ["hip_circles", "ankle_mobility"],
-  stretch: ["hamstring_stretch", "pigeon_stretch", "calf_stretch", "bicep_wall_stretch", "tricep_overhead_stretch"]
+  warmup: ["hip_circles", "ankle_mobility", "arm_circles", "high_knees"],
+  stretch: ["hamstring_stretch", "pigeon_stretch", "calf_stretch", "bicep_wall_stretch", "tricep_overhead_stretch", "quad_stretch", "chest_stretch", "back_stretch"],
+  breathing: ["deep_breathing"]
 };
