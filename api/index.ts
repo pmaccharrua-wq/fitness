@@ -163,24 +163,28 @@ function calculateUserMetrics(userProfile: any) {
   return { bmr, tdee, targetCalories, waterTarget };
 }
 
-async function callAzureOpenAI(systemPrompt: string, userPrompt: string): Promise<any> {
+async function callAzureOpenAI(systemPrompt: string, userPrompt: string, maxTokens: number = 3000): Promise<any> {
   const { apiKey, endpoint, deployment, apiVersion } = getAzureConfig();
   const url = `${endpoint}/openai/deployments/${deployment}/chat/completions?api-version=${apiVersion}`;
-  console.log("Calling Azure URL:", url);
+  const startTime = Date.now();
+  console.log("Calling Azure OpenAI...");
   
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json", "api-key": apiKey },
     body: JSON.stringify({
       messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
-      max_completion_tokens: 8000,
-      temperature: 1
+      max_completion_tokens: maxTokens,
+      temperature: 0.7
     })
   });
 
+  const elapsed = Date.now() - startTime;
+  console.log(`Azure response in ${elapsed}ms`);
+
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Azure OpenAI error: ${response.status} - ${errorText}`);
+    throw new Error(`Azure error: ${response.status} - ${errorText}`);
   }
 
   const data = await response.json();
@@ -191,23 +195,26 @@ async function callAzureOpenAI(systemPrompt: string, userPrompt: string): Promis
   return JSON.parse(jsonMatch[0]);
 }
 
+// Generate plan in 6 smaller chunks (3 days each for workout, plus nutrition)
 async function generatePlanChunk(userProfile: any, step: number): Promise<any> {
   const { targetCalories, waterTarget } = calculateUserMetrics(userProfile);
-  const goalPt: Record<string, string> = { loss: "Perda de Peso", muscle: "Ganho de Massa Muscular", gain: "Ganho de Peso", endurance: "Resistência" };
-  const profileInfo = `Perfil: ${userProfile.sex === "Male" ? "Masculino" : "Feminino"}, ${userProfile.age} anos, ${userProfile.weight}kg, ${userProfile.height}cm. Objetivo: ${goalPt[userProfile.goal] || "Fitness Geral"}. Calorias: ${targetCalories} kcal. Equipamento: ${AVAILABLE_EQUIPMENT.slice(0,6).join(", ")}. Impedimentos: ${userProfile.impediments || "Nenhum"}`;
+  const goalPt: Record<string, string> = { loss: "Perda de Peso", muscle: "Ganho Muscular", gain: "Ganho de Peso", endurance: "Resistência" };
+  const profile = `${userProfile.sex === "Male" ? "M" : "F"}, ${userProfile.age}a, ${userProfile.weight}kg, ${userProfile.height}cm. Obj: ${goalPt[userProfile.goal] || "Fitness"}. Cal: ${targetCalories}. Equip: ${AVAILABLE_EQUIPMENT.slice(0,5).join(",")}. Limitações: ${userProfile.impediments || "Nenhuma"}`;
+  
+  const dayStructure = `[{"day":N,"is_rest_day":false,"workout_name_pt":"","duration_minutes":30,"estimated_calories_burnt":200,"focus_pt":"","warmup_pt":"","warmup_exercises":[{"name_pt":"","duration_seconds":30}],"cooldown_pt":"","cooldown_exercises":[{"name_pt":"","duration_seconds":30}],"exercises":[{"name_pt":"","sequence_order":1,"sets":3,"reps_or_time":"12","equipment_used":""}]}]`;
 
-  if (step === 1) {
-    const prompt = `${profileInfo}\n\nGera APENAS dias 1-5 do plano fitness. Retorna JSON array:\n[{"day":1,"is_rest_day":false,"workout_name_pt":"","duration_minutes":45,"estimated_calories_burnt":300,"focus_pt":"","warmup_pt":"5 min aquecimento","warmup_exercises":[{"name":"","name_pt":"","duration_seconds":60,"description_pt":""}],"cooldown_pt":"5 min alongamento","cooldown_exercises":[{"name":"","name_pt":"","duration_seconds":60,"description_pt":""}],"exercises":[{"name":"","name_pt":"","sequence_order":1,"sets":3,"reps_or_time":"12","equipment_used":""}]}]`;
-    return await callAzureOpenAI("Coach de Fitness. Gera dias 1-5 do plano. Retorna APENAS JSON array válido.", prompt);
-  } else if (step === 2) {
-    const prompt = `${profileInfo}\n\nGera APENAS dias 6-10 do plano fitness (continuação). Retorna JSON array com mesma estrutura dos dias 1-5.`;
-    return await callAzureOpenAI("Coach de Fitness. Gera dias 6-10 do plano. Retorna APENAS JSON array válido.", prompt);
-  } else if (step === 3) {
-    const prompt = `${profileInfo}\n\nGera APENAS dias 11-15 do plano fitness (final). Retorna JSON array com mesma estrutura.`;
-    return await callAzureOpenAI("Coach de Fitness. Gera dias 11-15 do plano. Retorna APENAS JSON array válido.", prompt);
-  } else if (step === 4) {
-    const prompt = `${profileInfo}\n\nGera plano nutrição 7 dias. Meta: ${targetCalories} kcal/dia. Retorna JSON:\n{"plan_summary_pt":"resumo","nutrition_plan_7_days":[{"day":1,"total_daily_calories":${targetCalories},"total_daily_macros":"P:Xg,C:Xg,G:Xg","meals":[{"meal_time_pt":"Pequeno Almoço","description_pt":"","main_ingredients_pt":"","recipe_pt":"","calories":0,"protein_g":0,"carbs_g":0,"fat_g":0}]}],"hydration_guidelines_pt":{"water_target_ml":${waterTarget},"notification_schedule_pt":"A cada 90 minutos"}}`;
-    return await callAzureOpenAI("Nutricionista. Gera plano 7 dias. Retorna APENAS JSON válido.", prompt);
+  // Steps 1-5: Generate 3 workout days each
+  if (step >= 1 && step <= 5) {
+    const dayRanges = [[1,3], [4,6], [7,9], [10,12], [13,15]];
+    const [start, end] = dayRanges[step - 1];
+    const prompt = `${profile}\n\nGera dias ${start}-${end} treino. JSON array:\n${dayStructure}`;
+    return await callAzureOpenAI(`Fitness coach. Dias ${start}-${end}. JSON array only.`, prompt, 2500);
+  }
+  // Step 6: Nutrition plan
+  else if (step === 6) {
+    const nutritionStructure = `{"plan_summary_pt":"","nutrition_plan_7_days":[{"day":1,"total_daily_calories":${targetCalories},"meals":[{"meal_time_pt":"Pequeno Almoço","description_pt":"","calories":0,"protein_g":0,"carbs_g":0,"fat_g":0}]}],"hydration_guidelines_pt":{"water_target_ml":${waterTarget}}}`;
+    const prompt = `${profile}\n\nGera nutrição 7 dias. ${targetCalories} kcal/dia. JSON:\n${nutritionStructure}`;
+    return await callAzureOpenAI("Nutricionista. 7 dias. JSON only.", prompt, 4000);
   }
   throw new Error("Invalid step");
 }
@@ -275,13 +282,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       console.log("Created user profile:", userProfile.id, "- Starting chunked generation");
       
-      // Create generation status tracker
+      // Create generation status tracker (6 steps: 5 workout chunks + 1 nutrition)
       const [status] = await db.insert(planGenerationStatus)
         .values({
           userId: userProfile.id,
           status: "generating",
           currentStep: 0,
-          totalSteps: 4,
+          totalSteps: 6,
           partialData: { fitness_plan_15_days: [], nutrition_plan_7_days: [], plan_summary_pt: "", hydration_guidelines_pt: null }
         })
         .returning();
@@ -292,7 +299,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         statusId: status.id,
         status: "generating",
         currentStep: 0,
-        totalSteps: 4,
+        totalSteps: 6,
         message: "Profile created. Call /api/generate-chunk to continue."
       });
     }
@@ -310,22 +317,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!userProfile) return res.status(404).json({ success: false, error: "User not found" });
 
       const nextStep = status.currentStep + 1;
-      console.log(`Generating chunk ${nextStep}/4 for user ${userId}`);
+      console.log(`Generating chunk ${nextStep}/6 for user ${userId}`);
 
       try {
         const chunkData = await generatePlanChunk(userProfile, nextStep);
         const partial = (status.partialData || {}) as any;
 
-        if (nextStep <= 3) {
+        // Steps 1-5: Workout days (3 days each)
+        if (nextStep <= 5) {
           const days = Array.isArray(chunkData) ? chunkData : [];
           partial.fitness_plan_15_days = [...(partial.fitness_plan_15_days || []), ...days];
-        } else {
+        } 
+        // Step 6: Nutrition plan
+        else {
           partial.plan_summary_pt = chunkData.plan_summary_pt || "";
           partial.nutrition_plan_7_days = chunkData.nutrition_plan_7_days || [];
           partial.hydration_guidelines_pt = chunkData.hydration_guidelines_pt || null;
         }
 
-        if (nextStep >= 4) {
+        if (nextStep >= 6) {
           // All chunks done - save final plan
           const [fitnessPlan] = await db.insert(fitnessPlans)
             .values({
@@ -338,7 +348,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             .returning();
 
           await db.update(planGenerationStatus)
-            .set({ status: "completed", currentStep: 4, partialData: partial, planId: fitnessPlan.id, updatedAt: new Date() })
+            .set({ status: "completed", currentStep: 6, partialData: partial, planId: fitnessPlan.id, updatedAt: new Date() })
             .where(eq(planGenerationStatus.id, statusId));
 
           return res.json({ success: true, status: "completed", planId: fitnessPlan.id, plan: partial });
@@ -347,7 +357,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             .set({ currentStep: nextStep, partialData: partial, updatedAt: new Date() })
             .where(eq(planGenerationStatus.id, statusId));
 
-          return res.json({ success: true, status: "generating", currentStep: nextStep, totalSteps: 4 });
+          return res.json({ success: true, status: "generating", currentStep: nextStep, totalSteps: 6 });
         }
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : "Generation failed";

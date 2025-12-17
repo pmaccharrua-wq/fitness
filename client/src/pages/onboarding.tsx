@@ -63,7 +63,7 @@ export default function Onboarding() {
   const [direction, setDirection] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [generationStep, setGenerationStep] = useState(0);
-  const [generationTotal, setGenerationTotal] = useState(4);
+  const [generationTotal, setGenerationTotal] = useState(6);
   const [goalValidation, setGoalValidation] = useState<GoalValidation | null>(null);
   const [isValidatingGoal, setIsValidatingGoal] = useState(false);
 

@@ -106,7 +106,7 @@ export async function submitOnboardingWithChunks(
 
   const userId = initial.userId;
   const statusId = initial.statusId;
-  const totalSteps = initial.totalSteps || 4;
+  const totalSteps = initial.totalSteps || 6;
 
   for (let step = 1; step <= totalSteps; step++) {
     onProgress?.(step, totalSteps);
