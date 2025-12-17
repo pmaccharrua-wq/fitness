@@ -17,10 +17,7 @@ import { submitOnboardingWithChunks, saveUserId, checkUserExists } from "@/lib/a
 import { toast } from "sonner";
 
 interface GoalValidation {
-  isRealistic: boolean;
-  feedback: string;
-  recommendedWeeks?: number;
-  healthRisk: "none" | "low" | "medium" | "high";
+  status: "possible" | "challenging" | "not_possible";
 }
 
 const formSchema = z.object({
@@ -126,12 +123,7 @@ export default function Onboarding() {
       });
       const data = await response.json();
       if (data.success) {
-        setGoalValidation({
-          isRealistic: data.isRealistic,
-          feedback: data.feedback,
-          recommendedWeeks: data.recommendedWeeks,
-          healthRisk: data.healthRisk,
-        });
+        setGoalValidation({ status: data.status });
       }
     } catch (error) {
       console.error("Error validating goal:", error);
@@ -520,33 +512,27 @@ export default function Onboarding() {
 
                         {goalValidation && !isValidatingGoal && (
                           <div className={`p-3 rounded-lg border ${
-                            goalValidation.healthRisk === "high" 
+                            goalValidation.status === "not_possible" 
                               ? "bg-red-500/10 border-red-500/30" 
-                              : goalValidation.healthRisk === "medium"
+                              : goalValidation.status === "challenging"
                               ? "bg-yellow-500/10 border-yellow-500/30"
                               : "bg-green-500/10 border-green-500/30"
                           }`}>
-                            <div className="flex items-start gap-2">
-                              {goalValidation.isRealistic ? (
-                                <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                              ) : goalValidation.healthRisk === "high" ? (
-                                <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                            <div className="flex items-center gap-2">
+                              {goalValidation.status === "possible" ? (
+                                <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+                              ) : goalValidation.status === "not_possible" ? (
+                                <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0" />
                               ) : (
-                                <Info className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+                                <Info className="w-5 h-5 text-yellow-500 flex-shrink-0" />
                               )}
-                              <div className="space-y-1">
-                                <p className="text-sm font-medium">
-                                  {goalValidation.isRealistic 
-                                    ? t("Objetivo Realista", "Realistic Goal") 
-                                    : t("Objetivo Desafiador", "Challenging Goal")}
-                                </p>
-                                <p className="text-xs text-muted-foreground">{goalValidation.feedback}</p>
-                                {!goalValidation.isRealistic && goalValidation.recommendedWeeks && (
-                                  <p className="text-xs font-medium mt-1">
-                                    {t("Prazo recomendado:", "Recommended timeframe:")} {goalValidation.recommendedWeeks} {t("semanas", "weeks")}
-                                  </p>
-                                )}
-                              </div>
+                              <p className="text-sm font-medium">
+                                {goalValidation.status === "possible" 
+                                  ? t("Possível", "Possible")
+                                  : goalValidation.status === "challenging"
+                                  ? t("Desafiador", "Challenging")
+                                  : t("Não possível", "Not possible")}
+                              </p>
                             </div>
                           </div>
                         )}
