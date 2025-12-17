@@ -1,11 +1,31 @@
 import { Link, useLocation } from "wouter";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, User, Activity, Calendar, LogOut, Home } from "lucide-react";
+import { LayoutDashboard, User, Activity, Calendar, LogOut, Home, Maximize2, Minimize2 } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
 import { clearUserId } from "@/lib/api";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
+
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(err => {
+        console.log("Fullscreen not supported:", err);
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  }
 
   function handleLogout() {
     clearUserId();
@@ -27,7 +47,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <h1 className="text-2xl font-heading font-bold text-primary tracking-tighter">
             AI<span className="text-foreground">FITNESS</span>
           </h1>
-          <NotificationBell />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleFullscreen}
+              className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+              data-testid="button-fullscreen"
+              title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            >
+              {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+            </button>
+            <NotificationBell />
+          </div>
         </div>
         
         <nav className="flex-1 px-4 space-y-2">
@@ -65,7 +95,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
            <h1 className="text-lg font-heading font-bold text-primary">
             AI<span className="text-foreground">FITNESS</span>
           </h1>
-          <NotificationBell />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleFullscreen}
+              className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+              data-testid="button-fullscreen-mobile"
+              title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            >
+              {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+            </button>
+            <NotificationBell />
+          </div>
         </div>
 
         <div className="p-3 sm:p-4 md:p-8 max-w-7xl mx-auto">
