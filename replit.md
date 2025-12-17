@@ -38,6 +38,10 @@ Preferred communication style: Simple, everyday language.
 - **Purpose**: Generates personalized fitness and nutrition plans
 - **Configuration**: Environment variables for API key, endpoint, deployment name, and version
 - **Output Format**: Structured JSON following a defined schema for parsing
+- **CRITICAL RULE - GPT-5 Parameters**:
+  - Use `max_completion_tokens` (NOT `max_tokens`)
+  - Use `temperature: 1` (required for GPT-5)
+  - API version: `2025-01-01-preview`
 
 ### Key Design Patterns
 - **Monorepo Structure**: `client/`, `server/`, `shared/` directories
