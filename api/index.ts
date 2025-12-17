@@ -1220,13 +1220,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             const usage = aiData.usage;
             const content = aiData.choices?.[0]?.message?.content || "";
             
-            console.log(`[enrich-single] Azure response for ${searchName}:`, {
+            const debugInfo = {
               finishReason,
               reasoningTokens: usage?.completion_tokens_details?.reasoning_tokens,
               completionTokens: usage?.completion_tokens,
               contentLength: content.length,
               contentPreview: content.substring(0, 100)
-            });
+            };
+            console.log(`[enrich-single] Azure response for ${searchName}:`, debugInfo);
+            result._debug = debugInfo;
             
             if (finishReason === "length") {
               console.log(`[enrich-single] WARNING: Response truncated (finish_reason=length) for ${searchName}`);
@@ -1341,7 +1343,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       
       console.log(`[enrich-single] Returning response for: ${generatedId}, success: true`);
-      return res.json({ success: true, exercise: result });
+      return res.json({ success: true, exercise: result, _debug: result._debug });
     }
 
     if (method === "POST" && path === "/api/progress") {
