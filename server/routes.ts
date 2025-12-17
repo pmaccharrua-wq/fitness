@@ -102,6 +102,34 @@ export async function registerRoutes(
     }
   });
 
+  // Check if user already exists (by phone + name)
+  app.post("/api/users/check", async (req: Request, res: Response) => {
+    try {
+      const { phoneNumber, firstName } = req.body;
+
+      if (!phoneNumber || !firstName) {
+        return res.status(400).json({
+          success: false,
+          error: "Phone number and name are required",
+        });
+      }
+
+      const existing = await storage.checkUserExists(phoneNumber, firstName);
+
+      res.json({
+        success: true,
+        exists: existing !== null,
+        userId: existing?.id || null,
+      });
+    } catch (error) {
+      console.error("Error checking user:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to check user",
+      });
+    }
+  });
+
   // Get user's latest fitness plan
   app.get("/api/plan/:userId", async (req: Request, res: Response) => {
     try {

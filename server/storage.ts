@@ -22,13 +22,14 @@ import {
   type InsertCustomMeal,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, inArray } from "drizzle-orm";
+import { eq, and, desc, inArray, sql } from "drizzle-orm";
 
 export interface IStorage {
   // User Profile Operations
   createUserProfile(data: InsertUserProfile): Promise<UserProfile>;
   getUserProfile(id: number): Promise<UserProfile | undefined>;
   getUserByPhoneAndPin(phoneNumber: string, pin: string): Promise<UserProfile | undefined>;
+  checkUserExists(phoneNumber: string, firstName: string): Promise<UserProfile | null>;
   updateUserProfile(id: number, data: Partial<InsertUserProfile>): Promise<UserProfile | undefined>;
   
   // Fitness Plan Operations
@@ -102,6 +103,20 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(userProfiles.id))
       .limit(1);
     return profile;
+  }
+
+  async checkUserExists(phoneNumber: string, firstName: string): Promise<UserProfile | null> {
+    const [profile] = await db
+      .select()
+      .from(userProfiles)
+      .where(
+        and(
+          eq(userProfiles.phoneNumber, phoneNumber),
+          sql`LOWER(${userProfiles.firstName}) = LOWER(${firstName})`
+        )
+      )
+      .limit(1);
+    return profile || null;
   }
 
   async updateUserProfile(id: number, data: Partial<InsertUserProfile>): Promise<UserProfile | undefined> {
