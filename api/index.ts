@@ -968,8 +968,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 }`
                       }
                     ],
-                    max_tokens: 500,
-                    temperature: 0.7
+                    max_completion_tokens: 600,
+                    temperature: 1
                   })
                 }
               );
