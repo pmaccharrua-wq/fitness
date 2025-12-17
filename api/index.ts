@@ -898,6 +898,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ success: false, error: "currentWeight, targetWeight, and weeks are required" });
       }
       
+      const isPt = language === "pt";
       const weightDiff = Math.abs(targetWeight - currentWeight);
       const weeklyChange = weightDiff / weeks;
       
@@ -929,12 +930,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       }
       
+      // Localized messages
+      const messages = {
+        possible: {
+          pt: `Excelente! Perder ${weightDiff.toFixed(1)}kg em ${weeks} semanas (${weeklyChange.toFixed(2)}kg/semana) é um objetivo saudável e alcançável.`,
+          en: `Excellent! Losing ${weightDiff.toFixed(1)}kg in ${weeks} weeks (${weeklyChange.toFixed(2)}kg/week) is a healthy and achievable goal.`
+        },
+        challenging: {
+          pt: `${isLoss ? "Perder" : "Ganhar"} ${weightDiff.toFixed(1)}kg em ${weeks} semanas (${weeklyChange.toFixed(2)}kg/semana) é desafiador mas possível com dedicação.`,
+          en: `${isLoss ? "Losing" : "Gaining"} ${weightDiff.toFixed(1)}kg in ${weeks} weeks (${weeklyChange.toFixed(2)}kg/week) is challenging but possible with dedication.`
+        },
+        not_possible: {
+          pt: `${isLoss ? "Perder" : "Ganhar"} ${weightDiff.toFixed(1)}kg em ${weeks} semanas (${weeklyChange.toFixed(2)}kg/semana) não é recomendado. Sugerimos um período mais longo ou um objetivo mais moderado.`,
+          en: `${isLoss ? "Losing" : "Gaining"} ${weightDiff.toFixed(1)}kg in ${weeks} weeks (${weeklyChange.toFixed(2)}kg/week) is not recommended. We suggest a longer timeframe or a more moderate goal.`
+        }
+      };
+      
+      const statusLabels = {
+        possible: { pt: "Possível", en: "Possible" },
+        challenging: { pt: "Desafiador", en: "Challenging" },
+        not_possible: { pt: "Não recomendado", en: "Not recommended" }
+      };
+      
       console.log(`[validate-weight-goal] ${currentWeight}kg -> ${targetWeight}kg in ${weeks} weeks = ${weeklyChange.toFixed(2)} kg/week -> ${status}`);
       
       return res.json({
         success: true,
         status,
-        weeklyChange: Math.round(weeklyChange * 100) / 100
+        statusLabel: isPt ? statusLabels[status].pt : statusLabels[status].en,
+        message: isPt ? messages[status].pt : messages[status].en,
+        weeklyChange: Math.round(weeklyChange * 100) / 100,
+        weightDiff: Math.round(weightDiff * 10) / 10,
+        weeks
       });
     }
 
