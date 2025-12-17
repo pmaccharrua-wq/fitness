@@ -891,31 +891,50 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Weight goal validation endpoint
     if (method === "POST" && path === "/api/validate-weight-goal") {
-      const { currentWeight, goalWeight, height, age, gender, activityLevel } = req.body;
+      const { currentWeight, targetWeight, weeks, sex, age, height, goal, activityLevel, language } = req.body;
       
-      // Basic validation - check if goal is realistic
-      const weightDiff = Math.abs(currentWeight - goalWeight);
-      const maxWeeklyChange = 1; // kg per week is safe
-      const weeksNeeded = Math.ceil(weightDiff / maxWeeklyChange);
+      // Validate inputs
+      if (!currentWeight || !targetWeight || !weeks) {
+        return res.status(400).json({ success: false, error: "currentWeight, targetWeight, and weeks are required" });
+      }
       
-      // Calculate BMI for reference
-      const heightInMeters = height / 100;
-      const currentBMI = currentWeight / (heightInMeters * heightInMeters);
-      const goalBMI = goalWeight / (heightInMeters * heightInMeters);
+      const weightDiff = Math.abs(targetWeight - currentWeight);
+      const weeklyChange = weightDiff / weeks;
       
-      const isRealistic = weightDiff <= 30 && goalBMI >= 18.5 && goalBMI <= 30;
+      // Scientific guidelines:
+      // - Healthy weight loss: 0.5-1 kg/week (0.75 = comfortable, 1.2 = challenging but doable)
+      // - Weight/muscle gain: 0.25-0.5 kg/week
+      
+      let status: "possible" | "challenging" | "not_possible";
+      
+      const isLoss = goal === "loss" || targetWeight < currentWeight;
+      
+      if (isLoss) {
+        // Weight loss thresholds
+        if (weeklyChange <= 0.75) {
+          status = "possible";
+        } else if (weeklyChange <= 1.2) {
+          status = "challenging";
+        } else {
+          status = "not_possible";
+        }
+      } else {
+        // Weight/muscle gain thresholds
+        if (weeklyChange <= 0.4) {
+          status = "possible";
+        } else if (weeklyChange <= 0.6) {
+          status = "challenging";
+        } else {
+          status = "not_possible";
+        }
+      }
+      
+      console.log(`[validate-weight-goal] ${currentWeight}kg -> ${targetWeight}kg in ${weeks} weeks = ${weeklyChange.toFixed(2)} kg/week -> ${status}`);
       
       return res.json({
         success: true,
-        isRealistic,
-        currentBMI: Math.round(currentBMI * 10) / 10,
-        goalBMI: Math.round(goalBMI * 10) / 10,
-        weeksNeeded,
-        recommendations: isRealistic ? [] : [
-          goalBMI < 18.5 ? "Goal weight may be too low for your height" : "",
-          goalBMI > 30 ? "Consider a more ambitious weight loss goal" : "",
-          weightDiff > 30 ? "Consider setting intermediate goals" : ""
-        ].filter(Boolean)
+        status,
+        weeklyChange: Math.round(weeklyChange * 100) / 100
       });
     }
 
