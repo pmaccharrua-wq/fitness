@@ -1281,6 +1281,8 @@ OUTPUT JSON (no explanations):
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error("[coaching] Azure error response:", errorText);
       throw new Error(`Azure OpenAI API error: ${response.status}`);
     }
 
@@ -1288,6 +1290,7 @@ OUTPUT JSON (no explanations):
     const content = data.choices?.[0]?.message?.content;
 
     if (!content) {
+      console.error("[coaching] Unexpected Azure response structure:", JSON.stringify(data, null, 2));
       throw new Error("No content in Azure OpenAI response");
     }
 
