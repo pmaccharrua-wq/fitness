@@ -691,6 +691,62 @@ export async function registerRoutes(
     }
   });
 
+  // Exercise synonym mapping for better matching
+  const exerciseSynonyms: Record<string, string[]> = {
+    "afundos em caminhada": ["avanço caminhando", "avanços caminhando", "lunges caminhando", "walking lunge"],
+    "afundos": ["avanços", "lunges", "lunge"],
+    "agachamento livre": ["agachamento", "squat", "squats", "agachamento sem peso"],
+    "agachamento com barra": ["back squat", "agachamento barra"],
+    "prensa de pernas": ["leg press", "prensa pernas"],
+    "levantamento terra romeno": ["romanian deadlift", "rdl", "levantamento romeno"],
+    "elevação de gémeos": ["calf raise", "elevação gémeos", "panturrilha"],
+    "supino reto": ["bench press", "supino", "press peito"],
+    "supino inclinado": ["incline bench", "supino inclinado halteres"],
+    "flexões": ["push ups", "pushups", "flexão", "push-ups"],
+    "remada curvada": ["bent over row", "remada", "row"],
+    "puxada alta": ["lat pulldown", "puxada", "pulldown"],
+    "elevação lateral": ["lateral raise", "elevações laterais"],
+    "desenvolvimento": ["shoulder press", "press ombros", "military press"],
+    "rosca bíceps": ["bicep curl", "rosca", "curl bíceps"],
+    "tríceps corda": ["tricep pushdown", "extensão tríceps"],
+    "prancha": ["plank", "prancha abdominal"],
+    "abdominal": ["crunch", "sit up", "abdominais"],
+    "burpees": ["burpee"],
+    "mountain climbers": ["escaladores", "mountain climber"],
+    "polichinelos": ["jumping jacks", "polichinelo"],
+    "corrida estacionária": ["running in place", "corrida no lugar"],
+    "alongamento quadríceps": ["quad stretch", "alongar quadríceps"],
+    "alongamento isquiotibiais": ["hamstring stretch", "alongar posterior coxa"],
+  };
+
+  function findSynonymMatch(name: string, exercises: any[]): any | null {
+    const normalized = name.toLowerCase().trim();
+    for (const ex of exercises) {
+      const exNameLower = ex.name.toLowerCase();
+      const exNamePtLower = ex.namePt.toLowerCase();
+      if (exNameLower.includes(normalized) || normalized.includes(exNameLower) ||
+          exNamePtLower.includes(normalized) || normalized.includes(exNamePtLower)) {
+        return ex;
+      }
+      for (const [canonical, synonyms] of Object.entries(exerciseSynonyms)) {
+        if (exNamePtLower.includes(canonical) || exNameLower.includes(canonical)) {
+          for (const syn of synonyms) {
+            if (normalized.includes(syn) || syn.includes(normalized)) {
+              return ex;
+            }
+          }
+        }
+        for (const syn of synonyms) {
+          if ((exNamePtLower.includes(syn) || exNameLower.includes(syn)) &&
+              (normalized.includes(canonical) || synonyms.some(s => normalized.includes(s)))) {
+            return ex;
+          }
+        }
+      }
+    }
+    return null;
+  }
+
   // Get exercises by IDs (for matching workout exercises)
   app.post("/api/exercises/match", async (req: Request, res: Response) => {
     try {
@@ -705,13 +761,7 @@ export async function registerRoutes(
       const matchDetails: { name: string; matchedTo?: string; hasVideo: boolean; hasImage: boolean; hasInstructions: boolean }[] = [];
       
       for (const name of exerciseNames) {
-        const normalizedName = name.toLowerCase().trim();
-        const match = allExercises.find(ex => 
-          ex.name.toLowerCase().includes(normalizedName) ||
-          normalizedName.includes(ex.name.toLowerCase()) ||
-          ex.namePt.toLowerCase().includes(normalizedName) ||
-          normalizedName.includes(ex.namePt.toLowerCase())
-        );
+        const match = findSynonymMatch(name, allExercises);
         if (match) {
           // Fetch Pexels image for this exercise
           try {
