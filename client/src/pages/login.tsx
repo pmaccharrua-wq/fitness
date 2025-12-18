@@ -45,7 +45,19 @@ export default function Login() {
         saveUserId(data.userId);
         localStorage.setItem("language", data.language || "pt");
         toast.success(t("Login com sucesso!", "Login successful!"));
-        setLocation("/dashboard");
+        
+        // Check if user has any plans - if not, go to profile
+        try {
+          const plansResponse = await fetch(`/api/plans/${data.userId}`);
+          const plansData = await plansResponse.json();
+          if (plansData.success && plansData.plans && plansData.plans.length > 0) {
+            setLocation("/dashboard");
+          } else {
+            setLocation("/profile");
+          }
+        } catch {
+          setLocation("/profile");
+        }
       } else {
         toast.error(data.error || t("Credenciais inválidas", "Invalid credentials"));
       }
