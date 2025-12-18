@@ -877,8 +877,12 @@ export async function registerRoutes(
   // Get exercises by IDs (for matching workout exercises)
   app.post("/api/exercises/match", async (req: Request, res: Response) => {
     try {
-      const { exerciseNames } = req.body;
-      if (!exerciseNames || !Array.isArray(exerciseNames)) {
+      // Support both old format (exerciseNames: string[]) and new format (exercises: {name, exerciseId}[])
+      let exerciseNames: string[] = req.body.exerciseNames;
+      if (!exerciseNames && req.body.exercises && Array.isArray(req.body.exercises)) {
+        exerciseNames = req.body.exercises.map((e: any) => e.name || e.exerciseId || "").filter((n: string) => n);
+      }
+      if (!exerciseNames || !Array.isArray(exerciseNames) || exerciseNames.length === 0) {
         return res.status(400).json({ success: false, error: "exerciseNames array required" });
       }
       
@@ -935,7 +939,15 @@ export async function registerRoutes(
         })));
       }
       
-      res.json({ success: true, exercises: matched });
+      // Also build exercisesById for ID-based lookups
+      const exercisesById: Record<string, any> = {};
+      for (const ex of Object.values(matched)) {
+        if (ex && ex.id) {
+          exercisesById[ex.id] = ex;
+        }
+      }
+      
+      res.json({ success: true, exercises: matched, exercisesById });
     } catch (error) {
       console.error("[exercises/match] Error:", error);
       res.status(500).json({ success: false, error: "Failed to match exercises" });
