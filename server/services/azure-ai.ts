@@ -1477,10 +1477,28 @@ TOPICS YOU CAN HELP WITH:
     }
 
     const data = await response.json();
-    const content = data.choices[0]?.message?.content;
+    
+    // Log the response structure for debugging
+    if (!data.choices || data.choices.length === 0) {
+      console.error("Azure OpenAI response missing choices:", JSON.stringify(data, null, 2));
+      throw new Error("No choices in Azure OpenAI response");
+    }
+    
+    const choice = data.choices[0];
+    const content = choice?.message?.content;
 
+    // Check for content filter or other finish reasons
     if (!content) {
-      throw new Error("No content in Azure OpenAI response");
+      const finishReason = choice?.finish_reason;
+      console.error("Azure OpenAI empty content. Finish reason:", finishReason, "Full choice:", JSON.stringify(choice, null, 2));
+      
+      if (finishReason === "content_filter") {
+        return input.language === "pt" 
+          ? "Desculpe, não posso responder a essa pergunta. Por favor, reformule sua questão sobre fitness ou nutrição."
+          : "Sorry, I can't respond to that question. Please rephrase your fitness or nutrition question.";
+      }
+      
+      throw new Error(`No content in Azure OpenAI response. Finish reason: ${finishReason}`);
     }
 
     return content;
