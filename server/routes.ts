@@ -163,6 +163,13 @@ export async function registerRoutes(
       const endDate = plan.endDate || new Date(new Date(startDate).getTime() + durationDays * 24 * 60 * 60 * 1000);
       const isExpired = new Date() > endDate;
 
+      // Compute actual generated days from plan data for accuracy (handles legacy plans)
+      const planData = (plan.planData || {}) as any;
+      const workoutDays = planData.fitness_plan_7_days || planData.fitness_plan_15_days || [];
+      const nutritionDays = planData.nutrition_plan_7_days || [];
+      const actualWorkoutDays = Array.isArray(workoutDays) ? workoutDays.length : (plan.generatedWorkoutDays || 7);
+      const actualNutritionDays = Array.isArray(nutritionDays) ? nutritionDays.length : (plan.generatedNutritionDays || 7);
+
       res.json({
         success: true,
         plan: plan.planData,
@@ -173,6 +180,9 @@ export async function registerRoutes(
         endDate,
         isExpired,
         progress,
+        generatedWorkoutDays: actualWorkoutDays,
+        generatedNutritionDays: actualNutritionDays,
+        generationStatus: plan.generationStatus || "idle",
       });
     } catch (error) {
       console.error("Error fetching plan:", error);
