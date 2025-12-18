@@ -648,12 +648,17 @@ export default function Plan() {
               {Array.from({ length: totalDays }, (_, i) => i + 1).map((dayNum) => {
                 const dayIdx = (dayNum - 1) % planLength;
                 const dayPlan = fitnessPlan[dayIdx];
+                // Find nutrition day for this specific day
+                const nutritionIdx = nutritionPlan.findIndex((n: any) => n.day === dayNum);
+                const dayNutrition = nutritionIdx >= 0 
+                  ? nutritionPlan[nutritionIdx] 
+                  : nutritionPlan[(dayNum - 1) % nutritionPlan.length];
                 const dayData = {
                   day: dayNum,
                   workout_name: dayPlan?.workout_name_pt || "",
                   estimated_calories_burnt: dayPlan?.estimated_calories_burnt || 0,
                   exercises: dayPlan?.exercises || [],
-                  meals: nutritionPlan[0]?.meals || [],
+                  meals: dayNutrition?.meals || [],
                 };
                 const isCompleted = progress.some(p => p.day === dayNum);
                 return (

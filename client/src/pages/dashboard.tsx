@@ -663,15 +663,25 @@ export default function Dashboard() {
           </TabsContent>
 
           <TabsContent value="nutrition">
-            {nutritionPlan.length > 0 && (
+            {nutritionPlan.length > 0 && (() => {
+              // Find nutrition day matching selected day, or use modulo for cycling
+              const nutritionDayIndex = nutritionPlan.findIndex((n: any) => n.day === selectedDay);
+              const selectedNutritionDay = nutritionDayIndex >= 0 
+                ? nutritionPlan[nutritionDayIndex] 
+                : nutritionPlan[(selectedDay - 1) % nutritionPlan.length];
+              const dayIndexForMeals = nutritionDayIndex >= 0 ? nutritionDayIndex : (selectedDay - 1) % nutritionPlan.length;
+              
+              return (
               <>
                 <div className="mb-6">
                   <Card className="bg-card/50 border-primary/20">
                     <CardContent className="p-6">
-                      <h3 className="font-heading text-xl mb-4" data-testid="text-daily-targets">{t("dashboard", "dailyTargets")}</h3>
+                      <h3 className="font-heading text-xl mb-4" data-testid="text-daily-targets">
+                        {t("dashboard", "dailyTargets")} - {language === "pt" ? "Dia" : "Day"} {selectedDay}
+                      </h3>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div>
-                          <div className="text-2xl font-bold text-primary" data-testid="text-calorie-target">{nutritionPlan[0]?.total_daily_calories}</div>
+                          <div className="text-2xl font-bold text-primary" data-testid="text-calorie-target">{selectedNutritionDay?.total_daily_calories}</div>
                           <div className="text-xs text-muted-foreground">{t("dashboard", "calories")}</div>
                         </div>
                         <div>
@@ -679,11 +689,11 @@ export default function Dashboard() {
                           <div className="text-xs text-muted-foreground">{language === "pt" ? "Água/dia" : "Water/day"}</div>
                         </div>
                         <div>
-                          <div className="text-lg font-bold">{nutritionPlan[0]?.total_daily_macros?.split(",")[0] || ""}</div>
+                          <div className="text-lg font-bold">{selectedNutritionDay?.total_daily_macros?.split(",")[0] || ""}</div>
                           <div className="text-xs text-muted-foreground">{t("dashboard", "protein")}</div>
                         </div>
                         <div>
-                          <div className="text-lg font-bold">{nutritionPlan[0]?.total_daily_macros?.split(",")[1] || ""}</div>
+                          <div className="text-lg font-bold">{selectedNutritionDay?.total_daily_macros?.split(",")[1] || ""}</div>
                           <div className="text-xs text-muted-foreground">{t("dashboard", "carbs")}</div>
                         </div>
                       </div>
@@ -695,9 +705,9 @@ export default function Dashboard() {
                     <AIMealBuilder
                       userId={getUserId()!}
                       planId={planId}
-                      dayIndex={0}
+                      dayIndex={dayIndexForMeals}
                       defaultTargets={{
-                        calories: Math.round((nutritionPlan[0]?.total_daily_calories || 2000) / 5),
+                        calories: Math.round((selectedNutritionDay?.total_daily_calories || 2000) / 5),
                         protein: 30,
                         carbs: 50,
                         fat: 15,
@@ -707,15 +717,15 @@ export default function Dashboard() {
                   )}
                 </div>
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {nutritionPlan[0]?.meals?.map((meal: any, idx: number) => {
-                    const { meal: displayMeal, isCustom, customMealId } = getMealForSlot(0, nutritionPlan[0]?.meals || [], idx);
+                  {selectedNutritionDay?.meals?.map((meal: any, idx: number) => {
+                    const { meal: displayMeal, isCustom, customMealId } = getMealForSlot(dayIndexForMeals, selectedNutritionDay?.meals || [], idx);
                     const userId = getUserId();
                     return (
                       <MealCard
                         key={idx}
                         meal={displayMeal}
                         index={idx}
-                        dayIndex={0}
+                        dayIndex={dayIndexForMeals}
                         userId={userId || undefined}
                         planId={planId || undefined}
                         isCustomMeal={isCustom}
@@ -727,7 +737,7 @@ export default function Dashboard() {
                   })}
                 </div>
               </>
-            )}
+            );})()}
           </TabsContent>
 
           <TabsContent value="progress">
@@ -744,12 +754,17 @@ export default function Dashboard() {
                 const dayNum = i + 1;
                 const dayIdx = i % planLength;
                 const dayPlan = fitnessPlan[dayIdx];
+                // Find nutrition day for this specific day
+                const nutritionIdx = nutritionPlan.findIndex((n: any) => n.day === dayNum);
+                const dayNutrition = nutritionIdx >= 0 
+                  ? nutritionPlan[nutritionIdx] 
+                  : nutritionPlan[(dayNum - 1) % nutritionPlan.length];
                 const dayData = {
                   day: dayNum,
                   workout_name: dayPlan?.workout_name_pt || "",
                   estimated_calories_burnt: dayPlan?.estimated_calories_burnt || 0,
                   exercises: dayPlan?.exercises || [],
-                  meals: nutritionPlan[0]?.meals || [],
+                  meals: dayNutrition?.meals || [],
                 };
                 const isCompleted = progress.some(p => p.day === dayNum);
                 return (
