@@ -1525,7 +1525,7 @@ TOPICS YOU CAN HELP WITH:
       body: JSON.stringify({
         messages,
         temperature: 1,
-        max_completion_tokens: 2500,
+        max_completion_tokens: 8000,
       }),
     });
     
