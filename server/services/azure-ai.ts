@@ -1466,7 +1466,7 @@ TOPICS YOU CAN HELP WITH:
       },
       body: JSON.stringify({
         messages,
-        temperature: 0.8,
+        temperature: 1,
         max_completion_tokens: 500,
       }),
     });
