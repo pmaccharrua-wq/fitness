@@ -419,3 +419,46 @@ export async function enrichExercise(
   }
   return { success: false, error: "Failed after retries", exercise: null as any };
 }
+
+// Virtual Coach API functions
+export interface CoachMessage {
+  id: number;
+  userId: number;
+  role: "user" | "assistant";
+  content: string;
+  createdAt: string;
+}
+
+export interface CoachMessagesResponse {
+  success: boolean;
+  messages: CoachMessage[];
+  error?: string;
+}
+
+export interface CoachChatResponse {
+  success: boolean;
+  userMessage: CoachMessage;
+  assistantMessage: CoachMessage;
+  error?: string;
+}
+
+export async function getCoachMessages(userId: number): Promise<CoachMessagesResponse> {
+  const response = await fetch(`/api/coach/${userId}/messages`);
+  return response.json();
+}
+
+export async function sendCoachMessage(userId: number, message: string): Promise<CoachChatResponse> {
+  const response = await fetch(`/api/coach/${userId}/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message }),
+  });
+  return response.json();
+}
+
+export async function clearCoachMessages(userId: number): Promise<{ success: boolean }> {
+  const response = await fetch(`/api/coach/${userId}/messages`, {
+    method: "DELETE",
+  });
+  return response.json();
+}

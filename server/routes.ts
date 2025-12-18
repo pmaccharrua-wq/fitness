@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { generateFitnessPlan, AVAILABLE_EQUIPMENT, generateMealSwapAlternatives, generateMealFromIngredients, validateWeightGoal, generateCoachingTips } from "./services/azure-ai";
+import { generateFitnessPlan, AVAILABLE_EQUIPMENT, generateMealSwapAlternatives, generateMealFromIngredients, validateWeightGoal, generateCoachingTips, generateCoachResponse } from "./services/azure-ai";
 import { insertUserProfileSchema, insertCustomMealSchema } from "@shared/schema";
 import { exerciseLibrary as exerciseData } from "./exerciseData";
 import { checkWaterReminder, createWaterReminder, getUnreadNotifications } from "./services/notifications";
@@ -1242,6 +1242,104 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error getting coaching tips:", error);
       res.status(500).json({ success: false, error: "Failed to get coaching tips" });
+    }
+  });
+
+  // Virtual Coach Chat - Get conversation history
+  app.get("/api/coach/:userId/messages", async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ success: false, error: "Invalid user ID" });
+      }
+
+      const messages = await storage.getCoachMessages(userId);
+      res.json({ success: true, messages });
+    } catch (error) {
+      console.error("Error getting coach messages:", error);
+      res.status(500).json({ success: false, error: "Failed to get messages" });
+    }
+  });
+
+  // Virtual Coach Chat - Send message and get AI response
+  app.post("/api/coach/:userId/chat", async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ success: false, error: "Invalid user ID" });
+      }
+
+      const { message } = req.body;
+      if (!message || typeof message !== "string" || message.trim().length === 0) {
+        return res.status(400).json({ success: false, error: "Message is required" });
+      }
+
+      // Get user profile
+      const profile = await storage.getUserProfile(userId);
+      if (!profile) {
+        return res.status(404).json({ success: false, error: "User not found" });
+      }
+
+      // Save user message
+      const userMessage = await storage.createCoachMessage({
+        userId,
+        role: "user",
+        content: message.trim(),
+      });
+
+      // Get conversation history
+      const history = await storage.getCoachMessages(userId);
+      const conversationHistory = history.map(m => ({
+        role: m.role,
+        content: m.content,
+      }));
+
+      // Generate AI response
+      const aiResponse = await generateCoachResponse({
+        userMessage: message.trim(),
+        conversationHistory: conversationHistory.slice(0, -1),
+        userProfile: {
+          firstName: profile.firstName,
+          goal: profile.goal,
+          weight: profile.weight,
+          targetWeight: profile.targetWeight || undefined,
+          equipment: profile.equipment || undefined,
+          impediments: profile.impediments || undefined,
+        },
+        language: profile.language || "pt",
+      });
+
+      // Save AI response
+      const assistantMessage = await storage.createCoachMessage({
+        userId,
+        role: "assistant",
+        content: aiResponse,
+      });
+
+      res.json({
+        success: true,
+        userMessage,
+        assistantMessage,
+      });
+    } catch (error) {
+      console.error("Error in coach chat:", error);
+      res.status(500).json({ success: false, error: "Failed to get coach response" });
+    }
+  });
+
+  // Virtual Coach Chat - Clear conversation history
+  app.delete("/api/coach/:userId/messages", async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ success: false, error: "Invalid user ID" });
+      }
+
+      await storage.clearCoachMessages(userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error clearing coach messages:", error);
+      res.status(500).json({ success: false, error: "Failed to clear messages" });
     }
   });
 

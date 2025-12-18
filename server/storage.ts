@@ -6,6 +6,7 @@ import {
   notificationSettings,
   notificationLog,
   customMeals,
+  coachMessages,
   type UserProfile,
   type InsertUserProfile,
   type FitnessPlan,
@@ -20,6 +21,8 @@ import {
   type InsertNotificationLog,
   type CustomMeal,
   type InsertCustomMeal,
+  type CoachMessage,
+  type InsertCoachMessage,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, inArray, sql } from "drizzle-orm";
@@ -70,6 +73,11 @@ export interface IStorage {
   getCustomMeal(userId: number, planId: number, dayIndex: number, mealSlot: number): Promise<CustomMeal | undefined>;
   getCustomMealsForPlan(userId: number, planId: number): Promise<CustomMeal[]>;
   deleteCustomMeal(id: number): Promise<void>;
+
+  // Coach Messages Operations
+  createCoachMessage(data: InsertCoachMessage): Promise<CoachMessage>;
+  getCoachMessages(userId: number, limit?: number): Promise<CoachMessage[]>;
+  clearCoachMessages(userId: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -404,6 +412,30 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(customMeals)
       .where(eq(customMeals.id, id));
+  }
+
+  // Coach Messages Operations
+  async createCoachMessage(data: InsertCoachMessage): Promise<CoachMessage> {
+    const [message] = await db
+      .insert(coachMessages)
+      .values(data)
+      .returning();
+    return message;
+  }
+
+  async getCoachMessages(userId: number, limit: number = 50): Promise<CoachMessage[]> {
+    return await db
+      .select()
+      .from(coachMessages)
+      .where(eq(coachMessages.userId, userId))
+      .orderBy(coachMessages.createdAt)
+      .limit(limit);
+  }
+
+  async clearCoachMessages(userId: number): Promise<void> {
+    await db
+      .delete(coachMessages)
+      .where(eq(coachMessages.userId, userId));
   }
 }
 

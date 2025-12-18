@@ -196,3 +196,20 @@ export const insertCustomMealSchema = createInsertSchema(customMeals).omit({
   id: true,
   createdAt: true,
 });
+
+// Virtual Coach Chat Messages
+export const coachMessages = pgTable("coach_messages", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => userProfiles.id),
+  role: text("role").notNull(), // "user" or "assistant"
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type CoachMessage = typeof coachMessages.$inferSelect;
+export type InsertCoachMessage = z.infer<typeof insertCoachMessageSchema>;
+
+export const insertCoachMessageSchema = createInsertSchema(coachMessages).omit({
+  id: true,
+  createdAt: true,
+});

@@ -1360,3 +1360,132 @@ function generateFallbackCoachingTips(input: CoachingTipsInput, progressPercenta
     progressPercentage
   };
 }
+
+// Virtual Coach Chat - Conversational AI for fitness advice
+export interface CoachChatInput {
+  userMessage: string;
+  conversationHistory: Array<{ role: string; content: string }>;
+  userProfile?: {
+    firstName: string;
+    goal: string;
+    weight: number;
+    targetWeight?: number;
+    equipment?: string[];
+    impediments?: string;
+  };
+  language?: string;
+}
+
+export async function generateCoachResponse(input: CoachChatInput): Promise<string> {
+  const isPt = input.language === "pt";
+  const profile = input.userProfile;
+  
+  const goalMap: Record<string, string> = {
+    loss: isPt ? "perda de peso" : "weight loss",
+    muscle: isPt ? "ganho de massa muscular" : "muscle gain",
+    endurance: isPt ? "resistência" : "endurance",
+    gain: isPt ? "ganho de peso" : "weight gain",
+  };
+  
+  const userGoal = profile?.goal ? (goalMap[profile.goal] || profile.goal) : (isPt ? "melhoria geral" : "general improvement");
+  
+  const systemPrompt = isPt
+    ? `És o Coach Virtual do AI Fitness Planner - um assistente de fitness e nutrição amigável e conhecedor. O teu nome é "Coach".
+
+SOBRE O UTILIZADOR:
+- Nome: ${profile?.firstName || "Utilizador"}
+- Objetivo: ${userGoal}
+- Peso atual: ${profile?.weight ? profile.weight + "kg" : "não especificado"}
+- Peso alvo: ${profile?.targetWeight ? profile.targetWeight + "kg" : "não especificado"}
+- Equipamento disponível: ${profile?.equipment?.join(", ") || "peso corporal"}
+- Limitações físicas: ${profile?.impediments || "nenhuma"}
+
+REGRAS IMPORTANTES:
+1. Responde SEMPRE em Português (pt-PT)
+2. Sê motivador, positivo e encorajador
+3. Dá conselhos práticos e acionáveis
+4. Mantém respostas concisas (máximo 3-4 parágrafos)
+5. Não faças diagnósticos médicos - recomenda consultar profissionais de saúde para questões médicas
+6. Baseia os conselhos no objetivo e limitações do utilizador
+7. Usa linguagem informal mas respeitosa (tu)
+8. Podes usar emojis ocasionalmente para ser mais amigável 💪
+
+TÓPICOS QUE PODES AJUDAR:
+- Dúvidas sobre exercícios e técnica
+- Motivação e consistência
+- Nutrição básica e hidratação
+- Recuperação e descanso
+- Adaptação de exercícios para limitações
+- Progressão de treino`
+    : `You are the Virtual Coach of AI Fitness Planner - a friendly and knowledgeable fitness and nutrition assistant. Your name is "Coach".
+
+ABOUT THE USER:
+- Name: ${profile?.firstName || "User"}
+- Goal: ${userGoal}
+- Current weight: ${profile?.weight ? profile.weight + "kg" : "not specified"}
+- Target weight: ${profile?.targetWeight ? profile.targetWeight + "kg" : "not specified"}
+- Available equipment: ${profile?.equipment?.join(", ") || "bodyweight"}
+- Physical limitations: ${profile?.impediments || "none"}
+
+IMPORTANT RULES:
+1. ALWAYS respond in English
+2. Be motivating, positive and encouraging
+3. Give practical, actionable advice
+4. Keep responses concise (max 3-4 paragraphs)
+5. Don't make medical diagnoses - recommend consulting health professionals for medical questions
+6. Base advice on user's goal and limitations
+7. Use informal but respectful language
+8. You can use emojis occasionally to be friendlier 💪
+
+TOPICS YOU CAN HELP WITH:
+- Exercise questions and technique
+- Motivation and consistency
+- Basic nutrition and hydration
+- Recovery and rest
+- Adapting exercises for limitations
+- Training progression`;
+
+  const messages = [
+    { role: "system", content: systemPrompt },
+    ...input.conversationHistory.slice(-10).map(m => ({
+      role: m.role as "user" | "assistant",
+      content: m.content
+    })),
+    { role: "user", content: input.userMessage }
+  ];
+
+  try {
+    const apiVersion = config.apiVersion || "2024-08-01-preview";
+    const url = `${config.endpoint}openai/deployments/${config.deployment}/chat/completions?api-version=${apiVersion}`;
+    
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "api-key": config.apiKey,
+      },
+      body: JSON.stringify({
+        messages,
+        temperature: 0.8,
+        max_completion_tokens: 500,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Azure OpenAI API error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices[0]?.message?.content;
+
+    if (!content) {
+      throw new Error("No content in Azure OpenAI response");
+    }
+
+    return content;
+  } catch (error) {
+    console.error("Error generating coach response:", error);
+    throw error;
+  }
+}
