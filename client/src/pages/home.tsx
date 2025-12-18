@@ -10,12 +10,12 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-hidden font-sans">
-      <nav className="absolute top-0 w-full p-4 sm:p-6 flex justify-between items-center z-50">
+      <nav className="absolute top-0 w-full p-4 sm:p-6 flex flex-col items-center z-50">
         <h1 className="text-xl sm:text-2xl font-heading font-bold text-primary tracking-tighter">
             AI<span className="text-foreground">FITNESS</span>
         </h1>
-        <Link href="/login">
-          <Button variant="ghost" className="text-foreground hover:text-primary text-sm sm:text-base" data-testid="button-login">
+        <Link href="/login" className="mt-4">
+          <Button className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-2 rounded-full font-semibold text-sm sm:text-base shadow-[0_0_15px_rgba(16,185,129,0.3)]" data-testid="button-login">
             {t("home", "login")}
           </Button>
         </Link>

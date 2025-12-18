@@ -462,3 +462,11 @@ export async function clearCoachMessages(userId: number): Promise<{ success: boo
   });
   return response.json();
 }
+
+// Delete user account and all related data
+export async function deleteUserAccount(userId: number): Promise<{ success: boolean; error?: string }> {
+  const response = await fetch(`/api/users/${userId}`, {
+    method: "DELETE",
+  });
+  return response.json();
+}

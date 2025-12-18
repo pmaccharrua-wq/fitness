@@ -1343,5 +1343,29 @@ export async function registerRoutes(
     }
   });
 
+  // Delete user account and all related data
+  app.delete("/api/users/:userId", async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ success: false, error: "Invalid user ID" });
+      }
+
+      // Verify user exists
+      const profile = await storage.getUserProfile(userId);
+      if (!profile) {
+        return res.status(404).json({ success: false, error: "User not found" });
+      }
+
+      // Delete user and all related data
+      await storage.deleteUserAndAllData(userId);
+
+      res.json({ success: true, message: "Account deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({ success: false, error: "Failed to delete account" });
+    }
+  });
+
   return httpServer;
 }

@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, User, Target, Activity, Scale, Ruler, LogOut, Edit2, Save, X, RefreshCw, Info, Brain, Dumbbell, Utensils, Maximize2, Sparkles } from "lucide-react";
-import { getUserProfile, getUserId, clearUserId, updateUserProfile } from "@/lib/api";
+import { Loader2, User, Target, Activity, Scale, Ruler, LogOut, Edit2, Save, X, RefreshCw, Info, Brain, Dumbbell, Utensils, Maximize2, Sparkles, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { getUserProfile, getUserId, clearUserId, updateUserProfile, deleteUserAccount } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
 import { toast } from "sonner";
 
@@ -17,6 +18,7 @@ export default function Profile() {
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [editData, setEditData] = useState<any>({});
   const { language } = useTranslation();
   const txt = (pt: string, en: string) => language === "pt" ? pt : en;
@@ -91,6 +93,28 @@ export default function Profile() {
   function handleLogout() {
     clearUserId();
     setLocation("/");
+  }
+
+  async function handleDeleteAccount() {
+    const userId = getUserId();
+    if (!userId) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await deleteUserAccount(userId);
+      if (response.success) {
+        clearUserId();
+        toast.success(txt("Conta eliminada com sucesso", "Account deleted successfully"));
+        setLocation("/");
+      } else {
+        toast.error(response.error || txt("Erro ao eliminar conta", "Error deleting account"));
+      }
+    } catch (error) {
+      console.error("Error deleting account:", error);
+      toast.error(txt("Erro ao eliminar conta", "Error deleting account"));
+    } finally {
+      setIsDeleting(false);
+    }
   }
 
   function cancelEdit() {
@@ -552,6 +576,70 @@ export default function Profile() {
                 <li>{txt("Padrões ISSN/DGA para nutrição desportiva", "ISSN/DGA standards for sports nutrition")}</li>
               </ul>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Danger Zone - Delete Account */}
+        <Card className="bg-destructive/5 border-destructive/30">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="w-5 h-5" />
+              {txt("Zona de Perigo", "Danger Zone")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-muted-foreground">
+              {txt(
+                "Ao eliminar a sua conta, todos os seus dados serão permanentemente apagados, incluindo o seu perfil, planos de treino, planos nutricionais, refeições personalizadas e histórico de progresso. Esta ação não pode ser revertida.",
+                "By deleting your account, all your data will be permanently deleted, including your profile, workout plans, nutrition plans, custom meals and progress history. This action cannot be undone."
+              )}
+            </p>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  variant="destructive" 
+                  disabled={isDeleting}
+                  data-testid="button-delete-account"
+                >
+                  {isDeleting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      {txt("A eliminar...", "Deleting...")}
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      {txt("Eliminar Conta", "Delete Account")}
+                    </>
+                  )}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="text-destructive">
+                    {txt("Eliminar Conta Permanentemente?", "Delete Account Permanently?")}
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {txt(
+                      "Tem a certeza que quer eliminar a sua conta? Esta ação irá apagar permanentemente todos os seus dados, incluindo planos de treino, planos nutricionais e histórico de progresso. Esta ação NÃO pode ser revertida.",
+                      "Are you sure you want to delete your account? This will permanently delete all your data, including workout plans, nutrition plans and progress history. This action CANNOT be undone."
+                    )}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel data-testid="button-cancel-delete">
+                    {txt("Cancelar", "Cancel")}
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDeleteAccount}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    data-testid="button-confirm-delete"
+                  >
+                    {txt("Sim, Eliminar Conta", "Yes, Delete Account")}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </CardContent>
         </Card>
       </div>

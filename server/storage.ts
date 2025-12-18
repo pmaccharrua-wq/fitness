@@ -34,6 +34,7 @@ export interface IStorage {
   getUserByPhoneAndPin(phoneNumber: string, pin: string): Promise<UserProfile | undefined>;
   checkUserExists(phoneNumber: string, firstName: string): Promise<UserProfile | null>;
   updateUserProfile(id: number, data: Partial<InsertUserProfile>): Promise<UserProfile | undefined>;
+  deleteUserAndAllData(userId: number): Promise<void>;
   
   // Fitness Plan Operations
   createFitnessPlan(data: InsertFitnessPlan): Promise<FitnessPlan>;
@@ -134,6 +135,36 @@ export class DatabaseStorage implements IStorage {
       .where(eq(userProfiles.id, id))
       .returning();
     return profile;
+  }
+
+  async deleteUserAndAllData(userId: number): Promise<void> {
+    // Delete in order respecting foreign key constraints
+    // 1. Delete coach messages
+    await db.delete(coachMessages).where(eq(coachMessages.userId, userId));
+    
+    // 2. Delete notification logs
+    await db.delete(notificationLog).where(eq(notificationLog.userId, userId));
+    
+    // 3. Delete notification settings
+    await db.delete(notificationSettings).where(eq(notificationSettings.userId, userId));
+    
+    // 4. Get all user plans to delete related data
+    const userPlans = await db.select({ id: fitnessPlans.id }).from(fitnessPlans).where(eq(fitnessPlans.userId, userId));
+    const planIds = userPlans.map(p => p.id);
+    
+    if (planIds.length > 0) {
+      // 5. Delete custom meals for all plans
+      await db.delete(customMeals).where(eq(customMeals.userId, userId));
+      
+      // 6. Delete exercise progress for all plans
+      await db.delete(exerciseProgress).where(eq(exerciseProgress.userId, userId));
+      
+      // 7. Delete all fitness plans
+      await db.delete(fitnessPlans).where(eq(fitnessPlans.userId, userId));
+    }
+    
+    // 8. Finally delete the user profile
+    await db.delete(userProfiles).where(eq(userProfiles.id, userId));
   }
 
   // Fitness Plan Operations
