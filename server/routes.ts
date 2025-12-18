@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { generateFitnessPlan, AVAILABLE_EQUIPMENT, generateMealSwapAlternatives, generateMealFromIngredients, validateWeightGoal, generateCoachingTips, generateCoachResponse } from "./services/azure-ai";
+import { generateFitnessPlan, generateSimpleCoachPlan, AVAILABLE_EQUIPMENT, generateMealSwapAlternatives, generateMealFromIngredients, validateWeightGoal, generateCoachingTips, generateCoachResponse } from "./services/azure-ai";
 import { insertUserProfileSchema, insertCustomMealSchema } from "@shared/schema";
 import { exerciseLibrary as exerciseData } from "./exerciseData";
 import { checkWaterReminder, createWaterReminder, getUnreadNotifications } from "./services/notifications";
@@ -1394,13 +1394,12 @@ export async function registerRoutes(
           : "Perfect! I'm generating a new personalized 7-day plan for you. Just a moment... 🏋️",
       });
 
-      // Generate new AI fitness plan with coach context
+      // Generate new AI fitness plan with coach context (using simplified version for speed)
       console.log("Coach generating new AI plan for user:", userId);
-      const aiPlan = await generateFitnessPlan(userProfile, {
-        timePerDay: userProfile.timePerDay || 30,
-        difficulty: userProfile.difficulty || "Médio",
-        lastFeedback: coachContext || "User requested new plan via Virtual Coach",
-      });
+      const aiPlan = await generateSimpleCoachPlan(
+        userProfile,
+        coachContext || "User requested new plan via Virtual Coach"
+      );
 
       // Create new plan
       const startDate = new Date();
