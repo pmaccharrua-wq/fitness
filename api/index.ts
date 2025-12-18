@@ -548,11 +548,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.json({ success: true, status: "extending", message: "Extension already in progress" });
       }
       
-      const startDay = (plan.generatedWorkoutDays || 7) + 1;
+      // Compute startDay from actual data, not just the counter (handles legacy plans)
+      const planData = (plan.planData || {}) as any;
+      const workoutDays = planData.fitness_plan_7_days || planData.fitness_plan_15_days || [];
+      const actualWorkoutDays = Array.isArray(workoutDays) ? workoutDays.length : 0;
+      const startDay = actualWorkoutDays + 1;
       
-      // Mark plan as extending
+      // Check if already at max
+      if (actualWorkoutDays >= 30) {
+        return res.status(400).json({ success: false, error: "Plan already has maximum 30 days" });
+      }
+      
+      // Mark plan as extending with updated timestamp
       await db.update(fitnessPlans)
-        .set({ generationStatus: "extending" } as any)
+        .set({ 
+          generationStatus: "extending",
+          updatedAt: new Date()
+        } as any)
         .where(eq(fitnessPlans.id, planId));
       
       return res.json({
@@ -575,24 +587,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const [userProfile] = await db.select().from(userProfiles).where(eq(userProfiles.id, plan.userId));
       if (!userProfile) return res.status(404).json({ success: false, error: "User not found" });
       
-      const startDay = (plan.generatedWorkoutDays || 7) + 1;
+      const planData = (plan.planData || {}) as any;
+      
+      // Detect which key format is used (legacy vs new) and normalize to new format
+      const legacyKey = 'fitness_plan_15_days';
+      const newKey = 'fitness_plan_7_days';
+      const usesLegacyKey = planData[legacyKey] && !planData[newKey];
+      
+      // Get existing workout days from whichever key exists
+      let workoutDays = planData[newKey] || planData[legacyKey] || [];
+      if (!Array.isArray(workoutDays)) workoutDays = [];
+      
+      // Compute startDay from actual data length
+      const startDay = workoutDays.length + 1;
+      
+      const nutritionDays = planData.nutrition_plan_7_days || [];
       
       try {
-        console.log(`Generating extension chunk ${step}/3 for plan ${planId}, starting day ${startDay}`);
+        console.log(`Generating extension chunk ${step}/3 for plan ${planId}, starting day ${startDay}, current days: ${workoutDays.length}`);
         const chunkData = await generateExtensionChunk(userProfile, step, startDay);
         console.log("Extension chunk data received, type:", Array.isArray(chunkData) ? "array" : typeof chunkData);
-        
-        const planData = (plan.planData || {}) as any;
-        const workoutDays = planData.fitness_plan_7_days || planData.fitness_plan_15_days || [];
-        const nutritionDays = planData.nutrition_plan_7_days || [];
         
         // Steps 1-2: Add new workout days
         if (step <= 2) {
           const newDays = Array.isArray(chunkData) ? chunkData : [];
-          planData.fitness_plan_7_days = [...workoutDays, ...newDays];
+          const updatedWorkoutDays = [...workoutDays, ...newDays];
+          
+          // Always use the new key format and remove legacy key if present
+          planData[newKey] = updatedWorkoutDays;
+          if (usesLegacyKey) {
+            delete planData[legacyKey];
+          }
           
           await db.update(fitnessPlans)
-            .set({ planData } as any)
+            .set({ 
+              planData,
+              updatedAt: new Date()
+            } as any)
             .where(eq(fitnessPlans.id, planId));
           
           return res.json({ success: true, status: "extending", step, totalSteps: 3 });
@@ -602,9 +633,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           const newNutritionDays = chunkData.nutrition_plan_7_days || [];
           planData.nutrition_plan_7_days = [...nutritionDays, ...newNutritionDays];
           
-          const newGeneratedWorkoutDays = (plan.generatedWorkoutDays || 7) + 7;
-          const newGeneratedNutritionDays = (plan.generatedNutritionDays || 7) + 7;
-          const newDurationDays = (plan.durationDays || 7) + 7;
+          // Compute counters from actual data
+          const finalWorkoutDays = planData[newKey] || [];
+          const finalNutritionDays = planData.nutrition_plan_7_days || [];
+          const newGeneratedWorkoutDays = Array.isArray(finalWorkoutDays) ? finalWorkoutDays.length : 7;
+          const newGeneratedNutritionDays = Array.isArray(finalNutritionDays) ? finalNutritionDays.length : 7;
+          const newDurationDays = Math.max(newGeneratedWorkoutDays, plan.durationDays || 30);
           
           await db.update(fitnessPlans)
             .set({
@@ -612,7 +646,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               durationDays: newDurationDays,
               generatedWorkoutDays: newGeneratedWorkoutDays,
               generatedNutritionDays: newGeneratedNutritionDays,
-              generationStatus: "idle"
+              generationStatus: "idle",
+              updatedAt: new Date()
             } as any)
             .where(eq(fitnessPlans.id, planId));
           
@@ -626,8 +661,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : "Extension failed";
+        console.error("Extension error:", error);
         await db.update(fitnessPlans)
-          .set({ generationStatus: "error" } as any)
+          .set({ 
+            generationStatus: "error",
+            updatedAt: new Date()
+          } as any)
           .where(eq(fitnessPlans.id, planId));
         return res.status(500).json({ success: false, error: errorMsg });
       }
@@ -669,6 +708,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const startDate = plan.startDate || plan.createdAt;
       const endDate = plan.endDate || new Date(new Date(startDate).getTime() + durationDays * 24 * 60 * 60 * 1000);
       const isExpired = new Date() > endDate;
+      
+      // Compute actual generated days from plan data for accuracy (handles legacy plans)
+      const planData = (plan.planData || {}) as any;
+      const workoutDays = planData.fitness_plan_7_days || planData.fitness_plan_15_days || [];
+      const nutritionDays = planData.nutrition_plan_7_days || [];
+      const actualWorkoutDays = Array.isArray(workoutDays) ? workoutDays.length : (plan.generatedWorkoutDays || 7);
+      const actualNutritionDays = Array.isArray(nutritionDays) ? nutritionDays.length : (plan.generatedNutritionDays || 7);
+      
       return res.json({
         success: true,
         plan: plan.planData,
@@ -679,8 +726,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         endDate,
         isExpired,
         progress,
-        generatedWorkoutDays: plan.generatedWorkoutDays || durationDays,
-        generatedNutritionDays: plan.generatedNutritionDays || 7,
+        generatedWorkoutDays: actualWorkoutDays,
+        generatedNutritionDays: actualNutritionDays,
         generationStatus: plan.generationStatus || "idle",
       });
     }
