@@ -76,7 +76,7 @@ export default function Plan() {
   }, []);
 
   useEffect(() => {
-    const fitnessPlanData = planData?.fitness_plan_15_days || planData?.fitness_plan_7_days;
+    const fitnessPlanData = planData?.fitness_plan_7_days || planData?.fitness_plan_15_days;
     if (fitnessPlanData) {
       latestDayRef.current = currentDay;
       loadExerciseMatches(currentDay);
@@ -84,7 +84,7 @@ export default function Plan() {
   }, [currentDay, planData]);
 
   async function loadExerciseMatches(day: number) {
-    const fitnessPlanData = planData?.fitness_plan_15_days || planData?.fitness_plan_7_days;
+    const fitnessPlanData = planData?.fitness_plan_7_days || planData?.fitness_plan_15_days;
     const planLength = fitnessPlanData?.length || 15;
     const dayIndex = ((day - 1) % planLength);
     const todaysPlan = fitnessPlanData?.[dayIndex] || fitnessPlanData?.[0];
@@ -240,7 +240,7 @@ export default function Plan() {
     );
   }
 
-  const fitnessPlan = planData?.fitness_plan_15_days || planData?.fitness_plan_7_days;
+  const fitnessPlan = planData?.fitness_plan_7_days || planData?.fitness_plan_15_days;
   const planLength = fitnessPlan?.length || 15;
   const totalDays = durationDays;
 

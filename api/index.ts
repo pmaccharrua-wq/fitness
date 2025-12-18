@@ -251,7 +251,7 @@ async function callAzureOpenAI(systemPrompt: string, userPrompt: string, maxToke
   }
 }
 
-// Generate plan in 6 smaller chunks (3 days each for workout, plus nutrition)
+// Generate plan in 3 smaller chunks (7 workout days + 7 nutrition days)
 async function generatePlanChunk(userProfile: any, step: number): Promise<any> {
   const { targetCalories, waterTarget } = calculateUserMetrics(userProfile);
   const goalPt: Record<string, string> = { loss: "Perda de Peso", muscle: "Ganho Muscular", gain: "Ganho de Peso", endurance: "Resistência" };
@@ -259,20 +259,54 @@ async function generatePlanChunk(userProfile: any, step: number): Promise<any> {
   
   const dayStructure = `[{"day":N,"is_rest_day":false,"workout_name_pt":"","duration_minutes":30,"estimated_calories_burnt":200,"focus_pt":"","warmup_pt":"","warmup_exercises":[{"name_pt":"","duration_seconds":30}],"cooldown_pt":"","cooldown_exercises":[{"name_pt":"","duration_seconds":30}],"exercises":[{"name_pt":"","sequence_order":1,"sets":3,"reps_or_time":"12","equipment_used":""}]}]`;
 
-  // Steps 1-5: Generate 3 workout days each
-  if (step >= 1 && step <= 5) {
-    const dayRanges = [[1,3], [4,6], [7,9], [10,12], [13,15]];
-    const [start, end] = dayRanges[step - 1];
-    const prompt = `${profile}\n\nGera dias ${start}-${end} treino. JSON array:\n${dayStructure}`;
-    return await callAzureOpenAI(`Fitness coach. Dias ${start}-${end}. JSON array only.`, prompt, 8000);
+  // Step 1: Generate workout days 1-4
+  if (step === 1) {
+    const prompt = `${profile}\n\nGera dias 1-4 treino. JSON array:\n${dayStructure}`;
+    return await callAzureOpenAI(`Fitness coach. Dias 1-4. JSON array only.`, prompt, 8000);
   }
-  // Step 6: Nutrition plan
-  else if (step === 6) {
+  // Step 2: Generate workout days 5-7
+  else if (step === 2) {
+    const prompt = `${profile}\n\nGera dias 5-7 treino. JSON array:\n${dayStructure}`;
+    return await callAzureOpenAI(`Fitness coach. Dias 5-7. JSON array only.`, prompt, 8000);
+  }
+  // Step 3: Nutrition plan
+  else if (step === 3) {
     const nutritionStructure = `{"plan_summary_pt":"","nutrition_plan_7_days":[{"day":1,"total_daily_calories":${targetCalories},"meals":[{"meal_time_pt":"Pequeno Almoço","description_pt":"","calories":0,"protein_g":0,"carbs_g":0,"fat_g":0}]}],"hydration_guidelines_pt":{"water_target_ml":${waterTarget}}}`;
     const prompt = `${profile}\n\nGera nutrição 7 dias. ${targetCalories} kcal/dia. JSON:\n${nutritionStructure}`;
     return await callAzureOpenAI("Nutricionista. 7 dias. JSON only.", prompt, 10000);
   }
   throw new Error("Invalid step");
+}
+
+// Generate extension chunk for next 7 days (workout + nutrition)
+async function generateExtensionChunk(userProfile: any, step: number, startDay: number): Promise<any> {
+  const { targetCalories, waterTarget } = calculateUserMetrics(userProfile);
+  const goalPt: Record<string, string> = { loss: "Perda de Peso", muscle: "Ganho Muscular", gain: "Ganho de Peso", endurance: "Resistência" };
+  const profile = `${userProfile.sex === "Male" ? "M" : "F"}, ${userProfile.age}a, ${userProfile.weight}kg, ${userProfile.height}cm. Obj: ${goalPt[userProfile.goal] || "Fitness"}. Cal: ${targetCalories}. Equip: ${AVAILABLE_EQUIPMENT.slice(0,5).join(",")}. Limitações: ${userProfile.impediments || "Nenhuma"}`;
+  
+  const dayStructure = `[{"day":N,"is_rest_day":false,"workout_name_pt":"","duration_minutes":30,"estimated_calories_burnt":200,"focus_pt":"","warmup_pt":"","warmup_exercises":[{"name_pt":"","duration_seconds":30}],"cooldown_pt":"","cooldown_exercises":[{"name_pt":"","duration_seconds":30}],"exercises":[{"name_pt":"","sequence_order":1,"sets":3,"reps_or_time":"12","equipment_used":""}]}]`;
+
+  const endDay = startDay + 6;
+  
+  // Step 1: Generate workout days (first 4)
+  if (step === 1) {
+    const midDay = startDay + 3;
+    const prompt = `${profile}\n\nGera dias ${startDay}-${midDay} treino (continuação do plano). JSON array:\n${dayStructure}`;
+    return await callAzureOpenAI(`Fitness coach. Dias ${startDay}-${midDay}. JSON array only.`, prompt, 8000);
+  }
+  // Step 2: Generate remaining workout days (3 days)
+  else if (step === 2) {
+    const fromDay = startDay + 4;
+    const prompt = `${profile}\n\nGera dias ${fromDay}-${endDay} treino (continuação do plano). JSON array:\n${dayStructure}`;
+    return await callAzureOpenAI(`Fitness coach. Dias ${fromDay}-${endDay}. JSON array only.`, prompt, 8000);
+  }
+  // Step 3: Nutrition plan for next 7 days
+  else if (step === 3) {
+    const nutritionStructure = `{"nutrition_plan_7_days":[{"day":${startDay},"total_daily_calories":${targetCalories},"meals":[{"meal_time_pt":"Pequeno Almoço","description_pt":"","calories":0,"protein_g":0,"carbs_g":0,"fat_g":0}]}]}`;
+    const prompt = `${profile}\n\nGera nutrição para dias ${startDay}-${endDay}. ${targetCalories} kcal/dia. JSON:\n${nutritionStructure}`;
+    return await callAzureOpenAI("Nutricionista. 7 dias. JSON only.", prompt, 10000);
+  }
+  throw new Error("Invalid extension step");
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -382,14 +416,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       console.log("Created user profile:", userProfile.id, "- Starting chunked generation");
       
-      // Create generation status tracker (6 steps: 5 workout chunks + 1 nutrition)
+      // Create generation status tracker (3 steps: 2 workout chunks + 1 nutrition = 7 days each)
       const [status] = await db.insert(planGenerationStatus)
         .values({
           userId: userProfile.id,
           status: "generating",
           currentStep: 0,
-          totalSteps: 6,
-          partialData: { fitness_plan_15_days: [], nutrition_plan_7_days: [], plan_summary_pt: "", hydration_guidelines_pt: null }
+          totalSteps: 3,
+          partialData: { fitness_plan_7_days: [], nutrition_plan_7_days: [], plan_summary_pt: "", hydration_guidelines_pt: null }
         } as any)
         .returning();
 
@@ -399,12 +433,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         statusId: status.id,
         status: "generating",
         currentStep: 0,
-        totalSteps: 6,
+        totalSteps: 3,
         message: "Profile created. Call /api/generate-chunk to continue."
       });
     }
 
-    // Generate next chunk of the plan
+    // Generate next chunk of the plan (3 steps: days 1-4, days 5-7, nutrition)
     if (method === "POST" && path === "/api/generate-chunk") {
       const { userId, statusId } = req.body;
       
@@ -417,7 +451,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!userProfile) return res.status(404).json({ success: false, error: "User not found" });
 
       const nextStep = status.currentStep + 1;
-      console.log(`Generating chunk ${nextStep}/6 for user ${userId}`);
+      console.log(`Generating chunk ${nextStep}/3 for user ${userId}`);
 
       try {
         console.log("Calling generatePlanChunk for step", nextStep);
@@ -425,32 +459,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         console.log("Chunk data received, type:", Array.isArray(chunkData) ? "array" : typeof chunkData);
         const partial = (status.partialData || {}) as any;
 
-        // Steps 1-5: Workout days (3 days each)
-        if (nextStep <= 5) {
+        // Steps 1-2: Workout days (4 + 3 days = 7 total)
+        if (nextStep <= 2) {
           const days = Array.isArray(chunkData) ? chunkData : [];
-          partial.fitness_plan_15_days = [...(partial.fitness_plan_15_days || []), ...days];
+          partial.fitness_plan_7_days = [...(partial.fitness_plan_7_days || []), ...days];
         } 
-        // Step 6: Nutrition plan
+        // Step 3: Nutrition plan
         else {
           partial.plan_summary_pt = chunkData.plan_summary_pt || "";
           partial.nutrition_plan_7_days = chunkData.nutrition_plan_7_days || [];
           partial.hydration_guidelines_pt = chunkData.hydration_guidelines_pt || null;
         }
 
-        if (nextStep >= 6) {
-          // All chunks done - save final plan
+        if (nextStep >= 3) {
+          // All chunks done - save final plan with 7 days initially
           const [fitnessPlan] = await db.insert(fitnessPlans)
             .values({
               userId: userProfile.id,
               planData: partial,
               currentDay: 1,
-              durationDays: 15,
+              durationDays: 7,
+              generatedWorkoutDays: 7,
+              generatedNutritionDays: 7,
+              generationStatus: "idle",
               isActive: true,
             } as any)
             .returning();
 
           await db.update(planGenerationStatus)
-            .set({ status: "completed", currentStep: 6, partialData: partial, planId: fitnessPlan.id, updatedAt: new Date() } as any)
+            .set({ status: "completed", currentStep: 3, partialData: partial, planId: fitnessPlan.id, updatedAt: new Date() } as any)
             .where(eq(planGenerationStatus.id, statusId));
 
           return res.json({ success: true, status: "completed", planId: fitnessPlan.id, plan: partial });
@@ -459,7 +496,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             .set({ currentStep: nextStep, partialData: partial, updatedAt: new Date() } as any)
             .where(eq(planGenerationStatus.id, statusId));
 
-          return res.json({ success: true, status: "generating", currentStep: nextStep, totalSteps: 6 });
+          return res.json({ success: true, status: "generating", currentStep: nextStep, totalSteps: 3 });
         }
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : "Generation failed";
@@ -499,6 +536,118 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.json({ success: true, userId: user.id, language: user.language });
     }
 
+    // Start extending the plan by 7 more days
+    if (method === "POST" && path.match(/^\/api\/plans\/\d+\/extend$/)) {
+      const planId = parseInt(path.split("/")[3]);
+      
+      const [plan] = await db.select().from(fitnessPlans).where(eq(fitnessPlans.id, planId));
+      if (!plan) return res.status(404).json({ success: false, error: "Plan not found" });
+      
+      // Check if extension is already in progress
+      if (plan.generationStatus === "extending") {
+        return res.json({ success: true, status: "extending", message: "Extension already in progress" });
+      }
+      
+      const startDay = (plan.generatedWorkoutDays || 7) + 1;
+      
+      // Mark plan as extending
+      await db.update(fitnessPlans)
+        .set({ generationStatus: "extending" } as any)
+        .where(eq(fitnessPlans.id, planId));
+      
+      return res.json({
+        success: true,
+        status: "extending",
+        planId,
+        startDay,
+        message: "Extension started. Call /api/plans/:id/extend-chunk to continue."
+      });
+    }
+
+    // Generate next chunk of the extension
+    if (method === "POST" && path.match(/^\/api\/plans\/\d+\/extend-chunk$/)) {
+      const planId = parseInt(path.split("/")[3]);
+      const { step = 1 } = req.body;
+      
+      const [plan] = await db.select().from(fitnessPlans).where(eq(fitnessPlans.id, planId));
+      if (!plan) return res.status(404).json({ success: false, error: "Plan not found" });
+      
+      const [userProfile] = await db.select().from(userProfiles).where(eq(userProfiles.id, plan.userId));
+      if (!userProfile) return res.status(404).json({ success: false, error: "User not found" });
+      
+      const startDay = (plan.generatedWorkoutDays || 7) + 1;
+      
+      try {
+        console.log(`Generating extension chunk ${step}/3 for plan ${planId}, starting day ${startDay}`);
+        const chunkData = await generateExtensionChunk(userProfile, step, startDay);
+        console.log("Extension chunk data received, type:", Array.isArray(chunkData) ? "array" : typeof chunkData);
+        
+        const planData = (plan.planData || {}) as any;
+        const workoutDays = planData.fitness_plan_7_days || planData.fitness_plan_15_days || [];
+        const nutritionDays = planData.nutrition_plan_7_days || [];
+        
+        // Steps 1-2: Add new workout days
+        if (step <= 2) {
+          const newDays = Array.isArray(chunkData) ? chunkData : [];
+          planData.fitness_plan_7_days = [...workoutDays, ...newDays];
+          
+          await db.update(fitnessPlans)
+            .set({ planData } as any)
+            .where(eq(fitnessPlans.id, planId));
+          
+          return res.json({ success: true, status: "extending", step, totalSteps: 3 });
+        }
+        // Step 3: Add nutrition days and finalize
+        else {
+          const newNutritionDays = chunkData.nutrition_plan_7_days || [];
+          planData.nutrition_plan_7_days = [...nutritionDays, ...newNutritionDays];
+          
+          const newGeneratedWorkoutDays = (plan.generatedWorkoutDays || 7) + 7;
+          const newGeneratedNutritionDays = (plan.generatedNutritionDays || 7) + 7;
+          const newDurationDays = (plan.durationDays || 7) + 7;
+          
+          await db.update(fitnessPlans)
+            .set({
+              planData,
+              durationDays: newDurationDays,
+              generatedWorkoutDays: newGeneratedWorkoutDays,
+              generatedNutritionDays: newGeneratedNutritionDays,
+              generationStatus: "idle"
+            } as any)
+            .where(eq(fitnessPlans.id, planId));
+          
+          return res.json({
+            success: true,
+            status: "completed",
+            generatedWorkoutDays: newGeneratedWorkoutDays,
+            generatedNutritionDays: newGeneratedNutritionDays,
+            durationDays: newDurationDays
+          });
+        }
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : "Extension failed";
+        await db.update(fitnessPlans)
+          .set({ generationStatus: "error" } as any)
+          .where(eq(fitnessPlans.id, planId));
+        return res.status(500).json({ success: false, error: errorMsg });
+      }
+    }
+
+    // Check plan extension status
+    if (method === "GET" && path.match(/^\/api\/plans\/\d+\/status$/)) {
+      const planId = parseInt(path.split("/")[3]);
+      const [plan] = await db.select().from(fitnessPlans).where(eq(fitnessPlans.id, planId));
+      if (!plan) return res.status(404).json({ success: false, error: "Plan not found" });
+      
+      return res.json({
+        success: true,
+        generationStatus: plan.generationStatus || "idle",
+        generatedWorkoutDays: plan.generatedWorkoutDays || plan.durationDays || 7,
+        generatedNutritionDays: plan.generatedNutritionDays || 7,
+        durationDays: plan.durationDays || 7
+      });
+    }
+
     if (method === "GET" && path.match(/^\/api\/plan\/\d+$/)) {
       const userId = parseInt(path.split("/").pop() || "");
       let [plan] = await db.select().from(fitnessPlans)
@@ -530,6 +679,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         endDate,
         isExpired,
         progress,
+        generatedWorkoutDays: plan.generatedWorkoutDays || durationDays,
+        generatedNutritionDays: plan.generatedNutritionDays || 7,
+        generationStatus: plan.generationStatus || "idle",
       });
     }
 

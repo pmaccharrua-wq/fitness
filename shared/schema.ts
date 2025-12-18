@@ -95,6 +95,10 @@ export const fitnessPlans = pgTable("fitness_plans", {
   planData: jsonb("plan_data").notNull(), // Stores the entire plan from Azure AI
   currentDay: integer("current_day").default(1).notNull(),
   durationDays: integer("duration_days").default(30).notNull(), // Plan duration: 30, 60, or 90 days
+  generatedWorkoutDays: integer("generated_workout_days").default(7).notNull(), // How many workout days have been generated
+  generatedNutritionDays: integer("generated_nutrition_days").default(7).notNull(), // How many nutrition days have been generated
+  generationStatus: text("generation_status").default("idle").notNull(), // idle, generating, failed
+  generationStartedAt: timestamp("generation_started_at"), // When extension generation started (for timeout detection)
   startDate: timestamp("start_date").defaultNow().notNull(), // When the plan started
   endDate: timestamp("end_date"), // When the plan ends (calculated from startDate + durationDays)
   isActive: boolean("is_active").default(true).notNull(), // Whether this is the active plan

@@ -43,6 +43,20 @@ Preferred communication style: Simple, everyday language.
   - Use `temperature: 1` (required for GPT-5)
   - API version: `2025-01-01-preview`
 
+### Incremental Plan Generation (7-day chunks)
+- **Initial Generation**: Creates 7 days of workout + 7 days of nutrition in 3 steps
+  - Step 1: Workout days 1-4
+  - Step 2: Workout days 5-7
+  - Step 3: Nutrition plan (7 days)
+- **Extension Generation**: User can request +7 more days on-demand
+  - API: `POST /api/plans/:id/extend` to start, `POST /api/plans/:id/extend-chunk` for each step
+  - Same 3-step pattern for extensions
+- **Plan Schema Fields**:
+  - `generatedWorkoutDays` - Number of workout days generated so far
+  - `generatedNutritionDays` - Number of nutrition days generated so far
+  - `generationStatus` - "idle", "extending", "error"
+- **Frontend Trigger**: "Gerar +7 Dias" button appears when user is within 2 days of generated limit
+
 ### Key Design Patterns
 - **Monorepo Structure**: `client/`, `server/`, `shared/` directories
 - **Path Aliases**: `@/` for client source, `@shared/` for shared code

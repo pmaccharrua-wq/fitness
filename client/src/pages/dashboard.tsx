@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlayCircle, Flame, Clock, Trophy, Loader2, Trash2, CheckCircle, ChevronLeft, ChevronRight, RefreshCw, Calendar } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getUserPlan, getUserId, recordProgress, matchExercises, getUserPlans, activatePlan, deletePlan, getCustomMeals, deleteCustomMeal, renewPlan } from "@/lib/api";
+import { getUserPlan, getUserId, recordProgress, matchExercises, getUserPlans, activatePlan, deletePlan, getCustomMeals, deleteCustomMeal, renewPlan, extendPlanWithChunks } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
 import { toast } from "sonner";
 
@@ -42,6 +42,9 @@ export default function Dashboard() {
   const [isExpired, setIsExpired] = useState(false);
   const [isRenewing, setIsRenewing] = useState(false);
   const [selectedDay, setSelectedDay] = useState(1);
+  const [isExtending, setIsExtending] = useState(false);
+  const [extendProgress, setExtendProgress] = useState({ step: 0, total: 3 });
+  const [generatedWorkoutDays, setGeneratedWorkoutDays] = useState(7);
   const latestDayRef = useRef<number>(1);
   const { t, language } = useTranslation();
 
@@ -81,7 +84,7 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    const fitnessPlanData = planData?.fitness_plan_15_days || planData?.fitness_plan_7_days;
+    const fitnessPlanData = planData?.fitness_plan_7_days || planData?.fitness_plan_15_days;
     if (fitnessPlanData) {
       latestDayRef.current = selectedDay;
       loadExerciseMatches(selectedDay);
@@ -89,7 +92,7 @@ export default function Dashboard() {
   }, [selectedDay, planData]);
 
   async function loadExerciseMatches(day: number) {
-    const fitnessPlanData = planData?.fitness_plan_15_days || planData?.fitness_plan_7_days;
+    const fitnessPlanData = planData?.fitness_plan_7_days || planData?.fitness_plan_15_days;
     const planLength = fitnessPlanData?.length || 15;
     const dayIndex = ((day - 1) % planLength);
     const todaysPlan = fitnessPlanData?.[dayIndex] || fitnessPlanData?.[0];
@@ -127,6 +130,7 @@ export default function Dashboard() {
         setProgress(planResponse.progress || []);
         setDurationDays(planResponse.durationDays || 30);
         setIsExpired(planResponse.isExpired || false);
+        setGeneratedWorkoutDays(planResponse.generatedWorkoutDays || planResponse.durationDays || 7);
         
         // Fetch custom meals for this plan
         const customMealsResponse = await getCustomMeals(userId, planResponse.planId);
@@ -227,6 +231,28 @@ export default function Dashboard() {
     }
   }
 
+  async function handleExtendPlan() {
+    if (!planId) return;
+    setIsExtending(true);
+    setExtendProgress({ step: 0, total: 3 });
+    try {
+      await extendPlanWithChunks(planId, (step, total) => {
+        setExtendProgress({ step, total });
+      });
+      const userId = getUserId();
+      if (userId) {
+        await loadPlan(userId);
+      }
+      toast.success(language === "pt" ? "Mais 7 dias gerados!" : "7 more days generated!");
+    } catch (error) {
+      console.error("Error extending plan:", error);
+      toast.error(language === "pt" ? "Erro ao gerar mais dias" : "Error generating more days");
+    } finally {
+      setIsExtending(false);
+      setExtendProgress({ step: 0, total: 3 });
+    }
+  }
+
   function handleDayChange(day: number) {
     if (day >= 1 && day <= durationDays) {
       setSelectedDay(day);
@@ -269,7 +295,7 @@ export default function Dashboard() {
     );
   }
 
-  const fitnessPlan = planData?.fitness_plan_15_days || planData?.fitness_plan_7_days;
+  const fitnessPlan = planData?.fitness_plan_7_days || planData?.fitness_plan_15_days;
   const planLength = fitnessPlan?.length || 15;
   const totalDays = durationDays;
 
@@ -375,6 +401,46 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Generate More Days - show when approaching end of generated days */}
+        {selectedDay >= generatedWorkoutDays - 2 && generatedWorkoutDays < 30 && (
+          <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/30">
+            <CardContent className="p-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="font-bold text-primary" data-testid="text-extend-plan">
+                    {language === "pt" ? "Queres mais 7 dias de treino?" : "Want 7 more days of training?"}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {language === "pt" 
+                      ? `Tens ${generatedWorkoutDays} dias gerados. Clica para gerar os próximos 7 dias.`
+                      : `You have ${generatedWorkoutDays} days generated. Click to generate the next 7 days.`}
+                  </p>
+                </div>
+                <Button 
+                  onClick={handleExtendPlan} 
+                  disabled={isExtending}
+                  data-testid="button-extend-plan"
+                  className="whitespace-nowrap"
+                >
+                  {isExtending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      {language === "pt" 
+                        ? `A gerar... (${extendProgress.step}/${extendProgress.total})`
+                        : `Generating... (${extendProgress.step}/${extendProgress.total})`}
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      {language === "pt" ? "Gerar +7 Dias" : "Generate +7 Days"}
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {allPlans && allPlans.length > 1 && (
           <Card className="bg-card/50 border-primary/20">

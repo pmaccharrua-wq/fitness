@@ -40,6 +40,9 @@ export interface PlanResponse {
   endDate?: string;
   isExpired?: boolean;
   progress: any[];
+  generatedWorkoutDays?: number;
+  generatedNutritionDays?: number;
+  generationStatus?: string;
   error?: string;
 }
 
@@ -177,6 +180,51 @@ export async function renewPlan(userId: number, durationDays: number = 30): Prom
     body: JSON.stringify({ userId, durationDays }),
   });
   return response.json();
+}
+
+export async function startPlanExtension(planId: number): Promise<any> {
+  const response = await fetch(`/api/plans/${planId}/extend`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  });
+  return response.json();
+}
+
+export async function extendPlanChunk(planId: number, step: number): Promise<any> {
+  const response = await fetch(`/api/plans/${planId}/extend-chunk`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ step }),
+  });
+  return response.json();
+}
+
+export async function getPlanStatus(planId: number): Promise<any> {
+  const response = await fetch(`/api/plans/${planId}/status`);
+  return response.json();
+}
+
+export async function extendPlanWithChunks(planId: number, onProgress?: (step: number, total: number) => void): Promise<any> {
+  // Start extension
+  const startResult = await startPlanExtension(planId);
+  if (!startResult.success) {
+    throw new Error(startResult.error || "Failed to start extension");
+  }
+
+  // Generate 3 chunks (2 workout + 1 nutrition)
+  for (let step = 1; step <= 3; step++) {
+    onProgress?.(step, 3);
+    const chunkResult = await extendPlanChunk(planId, step);
+    if (!chunkResult.success) {
+      throw new Error(chunkResult.error || `Failed to generate extension step ${step}`);
+    }
+    if (chunkResult.status === "completed") {
+      return chunkResult;
+    }
+  }
+
+  // Get final status
+  return await getPlanStatus(planId);
 }
 
 export async function recordProgress(data: ProgressData): Promise<any> {
