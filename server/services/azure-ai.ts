@@ -1455,8 +1455,11 @@ TOPICS YOU CAN HELP WITH:
   ];
 
   try {
-    const apiVersion = config.apiVersion || "2024-08-01-preview";
+    const apiVersion = config.apiVersion || "2025-01-01-preview";
     const url = `${config.endpoint}openai/deployments/${config.deployment}/chat/completions?api-version=${apiVersion}`;
+    
+    console.log("Coach API call - URL:", url.replace(config.apiKey, "***"));
+    console.log("Coach API call - Messages count:", messages.length);
     
     const response = await fetch(url, {
       method: "POST",
@@ -1467,9 +1470,11 @@ TOPICS YOU CAN HELP WITH:
       body: JSON.stringify({
         messages,
         temperature: 1,
-        max_completion_tokens: 500,
+        max_completion_tokens: 1000,
       }),
     });
+    
+    console.log("Coach API response status:", response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
