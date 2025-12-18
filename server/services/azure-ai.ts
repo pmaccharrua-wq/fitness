@@ -632,12 +632,13 @@ CONTEXTO DO COACH: ${coachContext || "Novo plano solicitado"}
 GERA UM PLANO SIMPLES DE 7 DIAS:
 - 7 dias de treino (inclui 2-3 dias de descanso)
 - 7 dias de nutrição com 6 refeições/dia (só descrição e macros, sem receitas detalhadas)
+- OBRIGATÓRIO: Cada dia de treino DEVE ter 3-5 exercícios de aquecimento em "warmup_exercises" e 3-5 exercícios de arrefecimento em "cooldown_exercises"
 
 OUTPUT JSON:
 {
   "plan_summary_pt": "Resumo breve",
   "fitness_plan_15_days": [
-    {"day": 1, "is_rest_day": false, "workout_name_pt": "Nome", "duration_minutes": ${workoutTimePerDay}, "estimated_calories_burnt": 200, "focus_pt": "Full Body", "warmup_pt": "5 min aquecimento", "warmup_exercises": [], "cooldown_pt": "5 min alongamento", "cooldown_exercises": [], "exercises": [{"name": "Exercise", "name_pt": "Exercício", "sequence_order": 1, "sets": 3, "reps_or_time": "12 reps", "equipment_used": "Peso corporal"}]}
+    {"day": 1, "is_rest_day": false, "workout_name_pt": "Nome", "duration_minutes": ${workoutTimePerDay}, "estimated_calories_burnt": 200, "focus_pt": "Full Body", "warmup_pt": "5 min aquecimento dinâmico", "warmup_exercises": [{"name": "High Knees", "name_pt": "Joelhos Altos", "duration_seconds": 60, "description_pt": "Correr no lugar elevando os joelhos"}, {"name": "Arm Circles", "name_pt": "Rotações de Braços", "duration_seconds": 45, "description_pt": "Rotações circulares com os braços"}, {"name": "Hip Circles", "name_pt": "Rotações de Anca", "duration_seconds": 45, "description_pt": "Rotações circulares das ancas"}], "cooldown_pt": "5 min alongamento estático", "cooldown_exercises": [{"name": "Quad Stretch", "name_pt": "Alongamento de Quadríceps", "duration_seconds": 45, "description_pt": "Puxar pé para trás, alongando coxa"}, {"name": "Hamstring Stretch", "name_pt": "Alongamento de Isquiotibiais", "duration_seconds": 45, "description_pt": "Inclinar tronco para tocar nos pés"}, {"name": "Deep Breathing", "name_pt": "Respiração Profunda", "duration_seconds": 60, "description_pt": "Inspirar e expirar profundamente"}], "exercises": [{"name": "Exercise", "name_pt": "Exercício", "sequence_order": 1, "sets": 3, "reps_or_time": "12 reps", "equipment_used": "Peso corporal"}]}
   ],
   "nutrition_plan_7_days": [
     {"day": 1, "total_daily_calories": ${targetCalories}, "total_daily_macros": "P:Xg, C:Xg, G:Xg", "meals": [{"meal_time_pt": "Pequeno Almoço", "description_pt": "Descrição", "main_ingredients_pt": "Ingredientes", "recipe_pt": "Preparação simples", "calories": X, "protein_g": X, "carbs_g": X, "fat_g": X}]}
@@ -742,11 +743,12 @@ TREINOS RECENTES: ${recentWorkouts}
 GERA EXTENSÃO DOS DIAS ${startFromDay} A ${endDay}:
 - 7 dias de treino (inclui 2 dias de descanso)
 - 7 dias de nutrição com 6 refeições/dia
+- OBRIGATÓRIO: Cada dia de treino DEVE ter 3-5 exercícios de aquecimento em "warmup_exercises" e 3-5 exercícios de arrefecimento em "cooldown_exercises"
 
 OUTPUT JSON:
 {
   "workout_days": [
-    {"day": ${startFromDay}, "is_rest_day": false, "workout_name_pt": "Nome", "duration_minutes": ${workoutTimePerDay}, "estimated_calories_burnt": 200, "focus_pt": "Full Body", "warmup_pt": "5 min aquecimento", "warmup_exercises": [], "cooldown_pt": "5 min alongamento", "cooldown_exercises": [], "exercises": [{"name": "Exercise", "name_pt": "Exercício", "sequence_order": 1, "sets": 3, "reps_or_time": "12 reps", "equipment_used": "Peso corporal"}]}
+    {"day": ${startFromDay}, "is_rest_day": false, "workout_name_pt": "Nome", "duration_minutes": ${workoutTimePerDay}, "estimated_calories_burnt": 200, "focus_pt": "Full Body", "warmup_pt": "5 min aquecimento dinâmico", "warmup_exercises": [{"name": "High Knees", "name_pt": "Joelhos Altos", "duration_seconds": 60, "description_pt": "Correr no lugar elevando os joelhos"}, {"name": "Arm Circles", "name_pt": "Rotações de Braços", "duration_seconds": 45, "description_pt": "Rotações circulares com os braços"}], "cooldown_pt": "5 min alongamento estático", "cooldown_exercises": [{"name": "Quad Stretch", "name_pt": "Alongamento de Quadríceps", "duration_seconds": 45, "description_pt": "Puxar pé para trás"}, {"name": "Deep Breathing", "name_pt": "Respiração Profunda", "duration_seconds": 60, "description_pt": "Inspirar e expirar profundamente"}], "exercises": [{"name": "Exercise", "name_pt": "Exercício", "sequence_order": 1, "sets": 3, "reps_or_time": "12 reps", "equipment_used": "Peso corporal"}]}
   ],
   "nutrition_days": [
     {"day": ${startFromDay}, "total_daily_calories": ${targetCalories}, "total_daily_macros": "P:Xg, C:Xg, G:Xg", "meals": [{"meal_time_pt": "Pequeno Almoço", "description_pt": "Descrição", "main_ingredients_pt": "Ingredientes", "recipe_pt": "Preparação", "calories": X, "protein_g": X, "carbs_g": X, "fat_g": X}]}
