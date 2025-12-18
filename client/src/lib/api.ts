@@ -482,3 +482,11 @@ export async function regeneratePlanViaCoach(userId: number, coachContext?: stri
   });
   return response.json();
 }
+
+export async function extendPlan(planId: number): Promise<{ success: boolean; message?: string; generatedWorkoutDays?: number; generatedNutritionDays?: number; error?: string }> {
+  const response = await fetch(`/api/plans/${planId}/extend`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  });
+  return response.json();
+}

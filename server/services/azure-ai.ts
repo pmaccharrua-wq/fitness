@@ -689,6 +689,118 @@ OUTPUT JSON:
   }
 }
 
+// Extend existing plan with 7 more days (both workout and nutrition)
+export async function extendCoachPlan(
+  userProfile: UserProfile,
+  existingPlan: any,
+  startFromDay: number,
+  generationContext?: string
+): Promise<{ workoutDays: any[]; nutritionDays: any[] }> {
+  const sex = userProfile.sex === "Male" ? "Masculino" : "Feminino";
+  const userGoal = userProfile.goal || "maintenance";
+  const userGoalPt = userGoal === "loss" ? "perda de gordura" : userGoal === "gain" ? "ganho de massa muscular" : "manutenção";
+  
+  const weight = userProfile.weight || 70;
+  const height = userProfile.height || 170;
+  const age = userProfile.age || 30;
+  const activityLevel = userProfile.activityLevel || "sedentary";
+  
+  const activityMultiplier = {
+    sedentary: 1.2,
+    light: 1.375,
+    moderate: 1.55,
+    active: 1.725,
+    veryActive: 1.9,
+  }[activityLevel] || 1.375;
+  
+  const bmr = sex === "Masculino"
+    ? 10 * weight + 6.25 * height - 5 * age + 5
+    : 10 * weight + 6.25 * height - 5 * age - 161;
+  
+  const tdee = Math.round(bmr * activityMultiplier);
+  const calorieAdjustment = userGoal === "loss" ? -500 : userGoal === "gain" ? 300 : 0;
+  const targetCalories = tdee + calorieAdjustment;
+  
+  const workoutTimePerDay = userProfile.timePerDay || 30;
+  const endDay = startFromDay + 6; // Generate 7 days (startFromDay to startFromDay+6)
+  
+  // Get summary of recent workouts for context
+  const recentWorkouts = existingPlan.fitness_plan_15_days?.slice(-3).map((d: any) => 
+    `Dia ${d.day}: ${d.workout_name_pt || 'Descanso'}`
+  ).join(", ") || "Sem histórico";
+  
+  const systemPrompt = `És um Personal Trainer certificado. Gera uma EXTENSÃO de plano de treino e nutrição.`;
+  
+  const userPrompt = `
+PERFIL: ${userProfile.firstName}, ${sex}, ${age} anos, ${weight}kg
+OBJETIVO: ${userGoalPt}
+META CALÓRICA: ${targetCalories} kcal/dia
+TEMPO/DIA: ${workoutTimePerDay} min
+CONTEXTO ORIGINAL: ${generationContext || "Plano personalizado"}
+TREINOS RECENTES: ${recentWorkouts}
+
+GERA EXTENSÃO DOS DIAS ${startFromDay} A ${endDay}:
+- 7 dias de treino (inclui 2 dias de descanso)
+- 7 dias de nutrição com 6 refeições/dia
+
+OUTPUT JSON:
+{
+  "workout_days": [
+    {"day": ${startFromDay}, "is_rest_day": false, "workout_name_pt": "Nome", "duration_minutes": ${workoutTimePerDay}, "estimated_calories_burnt": 200, "focus_pt": "Full Body", "warmup_pt": "5 min aquecimento", "warmup_exercises": [], "cooldown_pt": "5 min alongamento", "cooldown_exercises": [], "exercises": [{"name": "Exercise", "name_pt": "Exercício", "sequence_order": 1, "sets": 3, "reps_or_time": "12 reps", "equipment_used": "Peso corporal"}]}
+  ],
+  "nutrition_days": [
+    {"day": ${startFromDay}, "total_daily_calories": ${targetCalories}, "total_daily_macros": "P:Xg, C:Xg, G:Xg", "meals": [{"meal_time_pt": "Pequeno Almoço", "description_pt": "Descrição", "main_ingredients_pt": "Ingredientes", "recipe_pt": "Preparação", "calories": X, "protein_g": X, "carbs_g": X, "fat_g": X}]}
+  ]
+}`;
+
+  try {
+    const apiVersion = config.apiVersion || "2025-01-01-preview";
+    const url = `${config.endpoint}openai/deployments/${config.deployment}/chat/completions?api-version=${apiVersion}`;
+    
+    console.log(`[Extend Plan] Generating days ${startFromDay}-${endDay}...`);
+    
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "api-key": config.apiKey,
+      },
+      body: JSON.stringify({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        temperature: 1,
+        max_completion_tokens: 12000,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Azure OpenAI API error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices[0]?.message?.content;
+
+    if (!content) {
+      const finishReason = data.choices?.[0]?.finish_reason;
+      console.error("[Extend Plan] Empty response. Finish reason:", finishReason);
+      throw new Error(`No content in Azure OpenAI response. Finish reason: ${finishReason}`);
+    }
+
+    console.log("[Extend Plan] Successfully generated extension");
+    const result = JSON.parse(content);
+    return {
+      workoutDays: result.workout_days || [],
+      nutritionDays: result.nutrition_days || [],
+    };
+  } catch (error) {
+    console.error("[Extend Plan] Error:", error);
+    throw error;
+  }
+}
+
 // Interface for meal data
 export interface MealData {
   meal_time_pt: string;

@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { generateFitnessPlan, generateSimpleCoachPlan, AVAILABLE_EQUIPMENT, generateMealSwapAlternatives, generateMealFromIngredients, validateWeightGoal, generateCoachingTips, generateCoachResponse } from "./services/azure-ai";
+import { generateFitnessPlan, generateSimpleCoachPlan, extendCoachPlan, AVAILABLE_EQUIPMENT, generateMealSwapAlternatives, generateMealFromIngredients, validateWeightGoal, generateCoachingTips, generateCoachResponse } from "./services/azure-ai";
 import { insertUserProfileSchema, insertCustomMealSchema } from "@shared/schema";
 import { exerciseLibrary as exerciseData } from "./exerciseData";
 import { checkWaterReminder, createWaterReminder, getUnreadNotifications } from "./services/notifications";
@@ -1401,15 +1401,19 @@ export async function registerRoutes(
         coachContext || "User requested new plan via Virtual Coach"
       );
 
-      // Create new plan
+      // Create new plan with generation context for future extensions
       const startDate = new Date();
       const endDate = new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+      const contextToStore = coachContext || "User requested new plan via Virtual Coach";
 
       const fitnessPlan = await storage.createFitnessPlan({
         userId: userProfile.id,
         planData: aiPlan as any,
         currentDay: 1,
         durationDays: 30,
+        generatedWorkoutDays: 7,
+        generatedNutritionDays: 7,
+        generationContext: contextToStore,
         startDate,
         endDate,
       });
@@ -1433,6 +1437,102 @@ export async function registerRoutes(
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : "Failed to regenerate plan",
+      });
+    }
+  });
+
+  // Virtual Coach - Extend plan with 7 more days from last completed day
+  app.post("/api/plans/:planId/extend", async (req: Request, res: Response) => {
+    try {
+      const planId = parseInt(req.params.planId);
+      if (isNaN(planId)) {
+        return res.status(400).json({ success: false, error: "Invalid plan ID" });
+      }
+
+      // Get the plan
+      const plan = await storage.getFitnessPlan(planId);
+      if (!plan) {
+        return res.status(404).json({ success: false, error: "Plan not found" });
+      }
+
+      // Get user profile
+      const userProfile = await storage.getUserProfile(plan.userId);
+      if (!userProfile) {
+        return res.status(404).json({ success: false, error: "User profile not found" });
+      }
+
+      // Get progress to find last completed day
+      const progress = await storage.getUserProgress(plan.userId, planId);
+      const completedDays = progress.filter(p => p.completed === 1).map(p => p.day);
+      const lastCompletedDay = completedDays.length > 0 ? Math.max(...completedDays) : 0;
+      
+      // Start generating from day after last completed
+      const startFromDay = lastCompletedDay + 1;
+      
+      // Don't extend if already have enough days
+      const currentGeneratedDays = plan.generatedWorkoutDays || 7;
+      if (startFromDay <= currentGeneratedDays - 2) {
+        return res.json({
+          success: true,
+          message: "No extension needed - still have days available",
+          generatedWorkoutDays: currentGeneratedDays,
+        });
+      }
+
+      console.log(`[Extend Plan] Plan ${planId}: extending from day ${startFromDay}, currently have ${currentGeneratedDays} days`);
+
+      // Use stored context or default
+      const generationContext = plan.generationContext || "Plano personalizado";
+      const planData = plan.planData as any;
+
+      // Generate extension
+      const extension = await extendCoachPlan(
+        userProfile,
+        planData,
+        startFromDay,
+        generationContext
+      );
+
+      // Merge new days into existing plan
+      const existingWorkoutDays = planData.fitness_plan_15_days || [];
+      const existingNutritionDays = planData.nutrition_plan_7_days || [];
+      
+      // Remove any days that will be replaced (from startFromDay onwards)
+      const keptWorkoutDays = existingWorkoutDays.filter((d: any) => d.day < startFromDay);
+      const keptNutritionDays = existingNutritionDays.filter((d: any) => d.day < startFromDay);
+      
+      // Add new days
+      const newPlanData = {
+        ...planData,
+        fitness_plan_15_days: [...keptWorkoutDays, ...extension.workoutDays],
+        nutrition_plan_7_days: [...keptNutritionDays, ...extension.nutritionDays],
+      };
+
+      // Calculate new generated counts
+      const newWorkoutDaysCount = newPlanData.fitness_plan_15_days.length;
+      const newNutritionDaysCount = newPlanData.nutrition_plan_7_days.length;
+
+      // Update plan in database
+      await storage.updateFitnessPlan(planId, {
+        planData: newPlanData,
+        generatedWorkoutDays: newWorkoutDaysCount,
+        generatedNutritionDays: newNutritionDaysCount,
+      });
+
+      const isPt = userProfile.language === "pt";
+      res.json({
+        success: true,
+        message: isPt 
+          ? `Plano estendido! Adicionados dias ${startFromDay} a ${startFromDay + 6}.`
+          : `Plan extended! Added days ${startFromDay} to ${startFromDay + 6}.`,
+        generatedWorkoutDays: newWorkoutDaysCount,
+        generatedNutritionDays: newNutritionDaysCount,
+      });
+    } catch (error) {
+      console.error("Error extending plan:", error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to extend plan",
       });
     }
   });

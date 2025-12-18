@@ -43,6 +43,7 @@ export interface IStorage {
   getUserActivePlan(userId: number): Promise<FitnessPlan | undefined>;
   getUserPlans(userId: number): Promise<FitnessPlan[]>;
   updatePlanCurrentDay(planId: number, day: number): Promise<void>;
+  updateFitnessPlan(planId: number, data: Partial<FitnessPlan>): Promise<FitnessPlan | undefined>;
   setActivePlan(userId: number, planId: number): Promise<void>;
   deactivatePlan(planId: number): Promise<void>;
   deletePlan(planId: number): Promise<void>;
@@ -217,6 +218,15 @@ export class DatabaseStorage implements IStorage {
       .update(fitnessPlans)
       .set({ currentDay: day, updatedAt: new Date() })
       .where(eq(fitnessPlans.id, planId));
+  }
+
+  async updateFitnessPlan(planId: number, data: Partial<FitnessPlan>): Promise<FitnessPlan | undefined> {
+    const [updated] = await db
+      .update(fitnessPlans)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(fitnessPlans.id, planId))
+      .returning();
+    return updated;
   }
 
   async setActivePlan(userId: number, planId: number): Promise<void> {

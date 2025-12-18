@@ -99,6 +99,7 @@ export const fitnessPlans = pgTable("fitness_plans", {
   generatedNutritionDays: integer("generated_nutrition_days").default(7).notNull(), // How many nutrition days have been generated
   generationStatus: text("generation_status").default("idle").notNull(), // idle, generating, failed
   generationStartedAt: timestamp("generation_started_at"), // When extension generation started (for timeout detection)
+  generationContext: text("generation_context"), // Original context from coach for consistent extensions
   startDate: timestamp("start_date").defaultNow().notNull(), // When the plan started
   endDate: timestamp("end_date"), // When the plan ends (calculated from startDate + durationDays)
   isActive: boolean("is_active").default(true).notNull(), // Whether this is the active plan

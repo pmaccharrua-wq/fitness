@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlayCircle, Flame, Clock, Trophy, Loader2, Trash2, CheckCircle, ChevronLeft, ChevronRight, RefreshCw, Calendar } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getUserPlan, getUserId, recordProgress, matchExercises, getUserPlans, activatePlan, deletePlan, getCustomMeals, deleteCustomMeal, renewPlan, extendPlanWithChunks } from "@/lib/api";
+import { getUserPlan, getUserId, recordProgress, matchExercises, getUserPlans, activatePlan, deletePlan, getCustomMeals, deleteCustomMeal, renewPlan, extendPlan } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
 import { toast } from "sonner";
 
@@ -44,7 +44,6 @@ export default function Dashboard() {
   const [isRenewing, setIsRenewing] = useState(false);
   const [selectedDay, setSelectedDay] = useState(1);
   const [isExtending, setIsExtending] = useState(false);
-  const [extendProgress, setExtendProgress] = useState({ step: 0, total: 3 });
   const [generatedWorkoutDays, setGeneratedWorkoutDays] = useState(7);
   const latestDayRef = useRef<number>(1);
   const { t, language } = useTranslation();
@@ -235,22 +234,22 @@ export default function Dashboard() {
   async function handleExtendPlan() {
     if (!planId) return;
     setIsExtending(true);
-    setExtendProgress({ step: 0, total: 3 });
     try {
-      await extendPlanWithChunks(planId, (step, total) => {
-        setExtendProgress({ step, total });
-      });
-      const userId = getUserId();
-      if (userId) {
-        await loadPlan(userId);
+      const result = await extendPlan(planId);
+      if (result.success) {
+        const userId = getUserId();
+        if (userId) {
+          await loadPlan(userId);
+        }
+        toast.success(result.message || (language === "pt" ? "Mais 7 dias gerados!" : "7 more days generated!"));
+      } else {
+        throw new Error(result.error);
       }
-      toast.success(language === "pt" ? "Mais 7 dias gerados!" : "7 more days generated!");
     } catch (error) {
       console.error("Error extending plan:", error);
       toast.error(language === "pt" ? "Erro ao gerar mais dias" : "Error generating more days");
     } finally {
       setIsExtending(false);
-      setExtendProgress({ step: 0, total: 3 });
     }
   }
 
@@ -427,9 +426,7 @@ export default function Dashboard() {
                   {isExtending ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                      {language === "pt" 
-                        ? `A gerar... (${extendProgress.step}/${extendProgress.total})`
-                        : `Generating... (${extendProgress.step}/${extendProgress.total})`}
+                      {language === "pt" ? "A gerar..." : "Generating..."}
                     </>
                   ) : (
                     <>
