@@ -42,6 +42,10 @@ Preferred communication style: Simple, everyday language.
   - Use `max_completion_tokens` (NOT `max_tokens`)
   - Use `temperature: 1` (required for GPT-5)
   - API version: `2025-01-01-preview`
+- **Token Limits by Function**:
+  - `generateSimpleCoachPlan`: 32000 tokens (7-day plan with warmup/cooldown)
+  - `extendCoachPlan`: 12000 tokens (7-day extension)
+  - Coach chat: 8000 tokens
 
 ### Incremental Plan Generation (7-day chunks)
 - **Initial Generation**: Creates 7 days of workout + 7 days of nutrition in 3 steps

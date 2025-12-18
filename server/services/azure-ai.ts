@@ -664,7 +664,7 @@ OUTPUT JSON:
           { role: "user", content: userPrompt },
         ],
         temperature: 1,
-        max_completion_tokens: 16000,
+        max_completion_tokens: 32000,
       }),
     });
 
