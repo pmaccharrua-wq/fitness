@@ -33,10 +33,15 @@ export default function VirtualCoach({ className }: VirtualCoachProps) {
   }, [isOpen, userId]);
 
   useEffect(() => {
+    // Auto-scroll to bottom when messages change or when chat opens
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      setTimeout(() => {
+        if (scrollRef.current) {
+          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+      }, 100);
     }
-  }, [messages]);
+  }, [messages, isOpen, isLoadingHistory]);
 
   useEffect(() => {
     if (isOpen && inputRef.current) {
