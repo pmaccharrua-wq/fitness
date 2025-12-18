@@ -1287,6 +1287,7 @@ export async function registerRoutes(
       
       // Classify user intent
       const intent = classifyUserIntent(message.trim(), profile.language || "pt");
+      console.log(`[Coach] Intent classification for "${message.trim()}":`, intent);
 
       // Save user message
       const userMessage = await storage.createCoachMessage({
