@@ -402,8 +402,8 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Generate More Days - show when approaching end of generated days */}
-        {selectedDay >= generatedWorkoutDays - 2 && generatedWorkoutDays < 30 && (
+        {/* Generate More Days - always show if plan can be extended */}
+        {generatedWorkoutDays < 30 && (
           <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/30">
             <CardContent className="p-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
