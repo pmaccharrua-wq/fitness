@@ -1188,7 +1188,8 @@ export async function registerRoutes(
       let currentStreak = 0;
       if (progress.length > 0) {
         // Sort progress by day in ascending order and dedupe
-        const sortedDays = [...new Set(progress.map((p: any) => p.day))].sort((a, b) => a - b);
+        const uniqueDays = Array.from(new Set(progress.map((p: any) => p.day as number)));
+        const sortedDays = uniqueDays.sort((a, b) => a - b);
         
         // Count consecutive days from the end (most recent)
         currentStreak = 1;
@@ -1280,6 +1281,13 @@ export async function registerRoutes(
         return res.status(404).json({ success: false, error: "User not found" });
       }
 
+      // Get plan context for the coach
+      const { getCoachContext, classifyUserIntent } = await import("./services/coach-context");
+      const planContext = await getCoachContext(userId, profile.language || "pt");
+      
+      // Classify user intent
+      const intent = classifyUserIntent(message.trim(), profile.language || "pt");
+
       // Save user message
       const userMessage = await storage.createCoachMessage({
         userId,
@@ -1307,6 +1315,14 @@ export async function registerRoutes(
           impediments: profile.impediments || undefined,
         },
         language: profile.language || "pt",
+        planContext: {
+          hasPlan: planContext.hasPlan,
+          planSummary: planContext.planSummary,
+          completionStats: planContext.completionStats,
+          recentProgress: planContext.recentProgress,
+          nutritionSummary: planContext.nutritionSummary,
+          canCreateNewPlan: planContext.canCreateNewPlan,
+        },
       });
 
       // Save AI response
@@ -1320,6 +1336,8 @@ export async function registerRoutes(
         success: true,
         userMessage,
         assistantMessage,
+        intent: intent.intent,
+        intentConfidence: intent.confidence,
       });
     } catch (error) {
       console.error("Error in coach chat:", error);
@@ -1340,6 +1358,82 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error clearing coach messages:", error);
       res.status(500).json({ success: false, error: "Failed to clear messages" });
+    }
+  });
+
+  // Virtual Coach - Regenerate plan based on coach conversation
+  app.post("/api/coach/:userId/regenerate-plan", async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ success: false, error: "Invalid user ID" });
+      }
+
+      const { coachContext } = req.body;
+
+      // Get user profile
+      const userProfile = await storage.getUserProfile(userId);
+      if (!userProfile) {
+        return res.status(404).json({ success: false, error: "User profile not found" });
+      }
+
+      // Deactivate current active plan (keeps it for history, but no longer active)
+      const currentPlan = await storage.getUserActivePlan(userId);
+      if (currentPlan) {
+        await storage.deactivatePlan(currentPlan.id);
+      }
+
+      // Add coach message about plan creation
+      const isPt = userProfile.language === "pt";
+      await storage.createCoachMessage({
+        userId,
+        role: "assistant",
+        content: isPt 
+          ? "Perfeito! Estou a gerar um novo plano personalizado de 7 dias para ti. Aguarda um momento... 🏋️"
+          : "Perfect! I'm generating a new personalized 7-day plan for you. Just a moment... 🏋️",
+      });
+
+      // Generate new AI fitness plan with coach context
+      console.log("Coach generating new AI plan for user:", userId);
+      const aiPlan = await generateFitnessPlan(userProfile, {
+        timePerDay: userProfile.timePerDay || 30,
+        difficulty: userProfile.difficulty || "Médio",
+        lastFeedback: coachContext || "User requested new plan via Virtual Coach",
+      });
+
+      // Create new plan
+      const startDate = new Date();
+      const endDate = new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+      const fitnessPlan = await storage.createFitnessPlan({
+        userId: userProfile.id,
+        planData: aiPlan as any,
+        currentDay: 1,
+        durationDays: 30,
+        startDate,
+        endDate,
+      });
+
+      // Add success message from coach
+      await storage.createCoachMessage({
+        userId,
+        role: "assistant",
+        content: isPt 
+          ? `O teu novo plano está pronto! 🎉 Criei um plano personalizado de 7 dias com base nas nossas conversas e no teu perfil. Vai ao Dashboard para ver o teu primeiro treino!`
+          : `Your new plan is ready! 🎉 I created a personalized 7-day plan based on our conversations and your profile. Go to the Dashboard to see your first workout!`,
+      });
+
+      res.json({
+        success: true,
+        planId: fitnessPlan.id,
+        message: isPt ? "Novo plano criado com sucesso!" : "New plan created successfully!",
+      });
+    } catch (error) {
+      console.error("Error regenerating plan via coach:", error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to regenerate plan",
+      });
     }
   });
 

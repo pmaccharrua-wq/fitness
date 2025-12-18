@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageCircle, X, Send, Loader2, Trash2, Bot } from "lucide-react";
+import { MessageCircle, X, Send, Loader2, Trash2, Bot, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { getUserId, getCoachMessages, sendCoachMessage, clearCoachMessages, type CoachMessage } from "@/lib/api";
+import { getUserId, getCoachMessages, sendCoachMessage, clearCoachMessages, regeneratePlanViaCoach, type CoachMessage } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface VirtualCoachProps {
   className?: string;
@@ -17,9 +18,11 @@ export default function VirtualCoach({ className }: VirtualCoachProps) {
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const { t, language } = useTranslation();
+  const queryClient = useQueryClient();
 
   const userId = getUserId();
 
@@ -57,7 +60,7 @@ export default function VirtualCoach({ className }: VirtualCoachProps) {
   }
 
   async function handleSend() {
-    if (!userId || !inputValue.trim() || isLoading) return;
+    if (!userId || !inputValue.trim() || isLoading || isRegenerating) return;
 
     const messageText = inputValue.trim();
     setInputValue("");
@@ -79,6 +82,11 @@ export default function VirtualCoach({ className }: VirtualCoachProps) {
           const filtered = prev.filter((m) => m.id !== tempUserMessage.id);
           return [...filtered, result.userMessage, result.assistantMessage];
         });
+
+        // Check if user authorized plan creation
+        if (result.intent === "authorize_plan" && (result.intentConfidence || 0) > 0.8) {
+          await handleRegeneratePlan(messageText);
+        }
       } else {
         toast.error(result.error || (language === "pt" ? "Erro ao enviar mensagem" : "Failed to send message"));
         setMessages((prev) => prev.filter((m) => m.id !== tempUserMessage.id));
@@ -90,6 +98,38 @@ export default function VirtualCoach({ className }: VirtualCoachProps) {
       setInputValue(messageText);
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function handleRegeneratePlan(context?: string) {
+    if (!userId || isRegenerating) return;
+    
+    setIsRegenerating(true);
+    
+    try {
+      const result = await regeneratePlanViaCoach(userId, context);
+      
+      if (result.success) {
+        toast.success(
+          language === "pt" 
+            ? "Novo plano criado com sucesso!" 
+            : "New plan created successfully!"
+        );
+        
+        // Reload messages to show coach confirmation
+        await loadMessages();
+        
+        // Invalidate queries to refresh dashboard
+        queryClient.invalidateQueries({ queryKey: ["plan"] });
+        queryClient.invalidateQueries({ queryKey: ["profile"] });
+      } else {
+        toast.error(result.error || (language === "pt" ? "Erro ao criar plano" : "Failed to create plan"));
+      }
+    } catch (error) {
+      console.error("Error regenerating plan:", error);
+      toast.error(language === "pt" ? "Erro ao criar novo plano" : "Failed to create new plan");
+    } finally {
+      setIsRegenerating(false);
     }
   }
 
@@ -114,8 +154,8 @@ export default function VirtualCoach({ className }: VirtualCoachProps) {
   }
 
   const welcomeMessage = language === "pt"
-    ? "Olá! Sou o teu Coach Virtual. Estou aqui para te ajudar com dúvidas sobre exercícios, nutrição, motivação e muito mais. Como posso ajudar hoje?"
-    : "Hi! I'm your Virtual Coach. I'm here to help you with questions about exercises, nutrition, motivation and more. How can I help you today?";
+    ? "Olá! Sou o teu Coach Virtual. Estou aqui para te ajudar com dúvidas sobre exercícios, nutrição, motivação e muito mais. Posso até criar um novo plano personalizado para ti! Como posso ajudar hoje?"
+    : "Hi! I'm your Virtual Coach. I'm here to help you with questions about exercises, nutrition, motivation and more. I can even create a new personalized plan for you! How can I help you today?";
 
   const placeholderText = language === "pt"
     ? "Escreve a tua pergunta..."
@@ -207,6 +247,23 @@ export default function VirtualCoach({ className }: VirtualCoachProps) {
                         <span className="text-sm text-muted-foreground">
                           {language === "pt" ? "A pensar..." : "Thinking..."}
                         </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {isRegenerating && (
+                  <div className="flex justify-start">
+                    <div className="bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 rounded-2xl rounded-bl-sm p-4">
+                      <div className="flex items-center gap-3">
+                        <Sparkles className="w-5 h-5 text-emerald-500 animate-pulse" />
+                        <div>
+                          <p className="text-sm font-medium text-emerald-600">
+                            {language === "pt" ? "A criar o teu novo plano..." : "Creating your new plan..."}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {language === "pt" ? "Isto pode demorar alguns segundos" : "This may take a few seconds"}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>

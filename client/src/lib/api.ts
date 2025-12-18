@@ -439,6 +439,8 @@ export interface CoachChatResponse {
   success: boolean;
   userMessage: CoachMessage;
   assistantMessage: CoachMessage;
+  intent?: "none" | "suggest_plan" | "authorize_plan" | "extend_plan";
+  intentConfidence?: number;
   error?: string;
 }
 
@@ -467,6 +469,16 @@ export async function clearCoachMessages(userId: number): Promise<{ success: boo
 export async function deleteUserAccount(userId: number): Promise<{ success: boolean; error?: string }> {
   const response = await fetch(`/api/users/${userId}`, {
     method: "DELETE",
+  });
+  return response.json();
+}
+
+// Virtual Coach - Regenerate plan
+export async function regeneratePlanViaCoach(userId: number, coachContext?: string): Promise<{ success: boolean; planId?: number; message?: string; error?: string }> {
+  const response = await fetch(`/api/coach/${userId}/regenerate-plan`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ coachContext }),
   });
   return response.json();
 }

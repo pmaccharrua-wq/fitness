@@ -1374,11 +1374,26 @@ export interface CoachChatInput {
     impediments?: string;
   };
   language?: string;
+  planContext?: {
+    hasPlan: boolean;
+    planSummary: string;
+    completionStats: {
+      totalWorkoutDays: number;
+      completedDays: number;
+      completionRate: number;
+      currentDay: number;
+      daysRemaining: number;
+    } | null;
+    recentProgress: string;
+    nutritionSummary: string;
+    canCreateNewPlan: boolean;
+  };
 }
 
 export async function generateCoachResponse(input: CoachChatInput): Promise<string> {
   const isPt = input.language === "pt";
   const profile = input.userProfile;
+  const planContext = input.planContext;
   
   const goalMap: Record<string, string> = {
     loss: isPt ? "perda de peso" : "weight loss",
@@ -1389,6 +1404,42 @@ export async function generateCoachResponse(input: CoachChatInput): Promise<stri
   
   const userGoal = profile?.goal ? (goalMap[profile.goal] || profile.goal) : (isPt ? "melhoria geral" : "general improvement");
   
+  const planContextPt = planContext ? `
+ESTADO DO PLANO DO UTILIZADOR:
+${planContext.planSummary}
+${planContext.completionStats ? `- Dias de treino completados: ${planContext.completionStats.completedDays}/${planContext.completionStats.totalWorkoutDays}
+- Taxa de conclusão: ${planContext.completionStats.completionRate}%
+- Dia atual: ${planContext.completionStats.currentDay}
+- Dias restantes: ${planContext.completionStats.daysRemaining}` : ""}
+${planContext.nutritionSummary}
+${planContext.recentProgress ? `
+PROGRESSO RECENTE:
+${planContext.recentProgress}` : ""}
+
+CAPACIDADES ESPECIAIS:
+- Tens acesso ao plano de fitness e nutrição do utilizador
+- Podes sugerir criar um NOVO PLANO personalizado de 7 dias se o utilizador não estiver satisfeito ou quiser mudar
+- Se o utilizador concordar em criar um novo plano, diz-lhe para confirmar dizendo algo como "sim, cria o plano" ou "pode criar"
+- ${planContext.canCreateNewPlan ? "O utilizador está elegível para um novo plano." : "O utilizador tem um plano ativo em andamento."}` : "";
+
+  const planContextEn = planContext ? `
+USER'S PLAN STATUS:
+${planContext.planSummary}
+${planContext.completionStats ? `- Workout days completed: ${planContext.completionStats.completedDays}/${planContext.completionStats.totalWorkoutDays}
+- Completion rate: ${planContext.completionStats.completionRate}%
+- Current day: ${planContext.completionStats.currentDay}
+- Days remaining: ${planContext.completionStats.daysRemaining}` : ""}
+${planContext.nutritionSummary}
+${planContext.recentProgress ? `
+RECENT PROGRESS:
+${planContext.recentProgress}` : ""}
+
+SPECIAL CAPABILITIES:
+- You have access to the user's fitness and nutrition plan
+- You can suggest creating a NEW personalized 7-day plan if the user is not satisfied or wants to change
+- If the user agrees to create a new plan, tell them to confirm by saying something like "yes, create the plan" or "go ahead"
+- ${planContext.canCreateNewPlan ? "The user is eligible for a new plan." : "The user has an active plan in progress."}` : "";
+
   const systemPrompt = isPt
     ? `És o Coach Virtual do AI Fitness Planner - um assistente de fitness e nutrição amigável e conhecedor. O teu nome é "Coach".
 
@@ -1399,6 +1450,7 @@ SOBRE O UTILIZADOR:
 - Peso alvo: ${profile?.targetWeight ? profile.targetWeight + "kg" : "não especificado"}
 - Equipamento disponível: ${profile?.equipment?.join(", ") || "peso corporal"}
 - Limitações físicas: ${profile?.impediments || "nenhuma"}
+${planContextPt}
 
 REGRAS IMPORTANTES:
 1. Responde SEMPRE em Português (pt-PT)
@@ -1416,7 +1468,8 @@ TÓPICOS QUE PODES AJUDAR:
 - Nutrição básica e hidratação
 - Recuperação e descanso
 - Adaptação de exercícios para limitações
-- Progressão de treino`
+- Progressão de treino
+- Criar novos planos personalizados`
     : `You are the Virtual Coach of AI Fitness Planner - a friendly and knowledgeable fitness and nutrition assistant. Your name is "Coach".
 
 ABOUT THE USER:
@@ -1426,6 +1479,7 @@ ABOUT THE USER:
 - Target weight: ${profile?.targetWeight ? profile.targetWeight + "kg" : "not specified"}
 - Available equipment: ${profile?.equipment?.join(", ") || "bodyweight"}
 - Physical limitations: ${profile?.impediments || "none"}
+${planContextEn}
 
 IMPORTANT RULES:
 1. ALWAYS respond in English
@@ -1443,7 +1497,8 @@ TOPICS YOU CAN HELP WITH:
 - Basic nutrition and hydration
 - Recovery and rest
 - Adapting exercises for limitations
-- Training progression`;
+- Training progression
+- Creating new personalized plans`;
 
   const messages = [
     { role: "system", content: systemPrompt },
