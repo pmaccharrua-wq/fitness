@@ -567,7 +567,9 @@ IMPORTANTE: O total calórico de cada dia de nutrição DEVE estar dentro de ±5
     const content = data.choices[0]?.message?.content;
 
     if (!content) {
-      throw new Error("No content in Azure OpenAI response");
+      const finishReason = data.choices?.[0]?.finish_reason;
+      console.error("Azure OpenAI empty response. Finish reason:", finishReason, "Full response:", JSON.stringify(data, null, 2));
+      throw new Error(`No content in Azure OpenAI response. Finish reason: ${finishReason}`);
     }
 
     return JSON.parse(content);
