@@ -205,7 +205,9 @@ async function callAzureOpenAI(systemPrompt: string, userPrompt: string, maxToke
   const { apiKey, endpoint, deployment, apiVersion } = getAzureConfig();
   const url = `${endpoint}/openai/deployments/${deployment}/chat/completions?api-version=${apiVersion}`;
   const startTime = Date.now();
-  console.log("Calling Azure OpenAI...");
+  console.log(`[callAzureOpenAI] Starting request, maxTokens=${maxTokens}, deployment=${deployment}`);
+  console.log(`[callAzureOpenAI] System prompt (first 100): ${systemPrompt.substring(0, 100)}`);
+  console.log(`[callAzureOpenAI] User prompt length: ${userPrompt.length}`);
   
   const response = await fetch(url, {
     method: "POST",
@@ -218,13 +220,13 @@ async function callAzureOpenAI(systemPrompt: string, userPrompt: string, maxToke
   });
 
   const elapsed = Date.now() - startTime;
-  console.log(`Azure response in ${elapsed}ms, status: ${response.status}`);
+  console.log(`[callAzureOpenAI] Response in ${elapsed}ms, status: ${response.status}`);
 
   const responseText = await response.text();
-  console.log("Azure raw response length:", responseText.length);
+  console.log(`[callAzureOpenAI] Raw response length: ${responseText.length}`);
 
   if (!response.ok) {
-    console.error("Azure error response:", responseText.slice(0, 500));
+    console.error(`[callAzureOpenAI] ERROR response: ${responseText.slice(0, 500)}`);
     throw new Error(`Azure error: ${response.status} - ${responseText.slice(0, 200)}`);
   }
 
@@ -232,58 +234,91 @@ async function callAzureOpenAI(systemPrompt: string, userPrompt: string, maxToke
   try {
     data = JSON.parse(responseText);
   } catch (e) {
-    console.error("Failed to parse Azure response as JSON:", responseText.slice(0, 500));
+    console.error(`[callAzureOpenAI] JSON parse failed: ${responseText.slice(0, 500)}`);
     throw new Error("Azure response is not valid JSON");
   }
   
-  console.log("Azure parsed, choices:", data.choices?.length || 0, "error:", data.error?.message || "none");
+  // Detailed response logging
+  const finishReason = data.choices?.[0]?.finish_reason;
+  const usage = data.usage;
+  console.log(`[callAzureOpenAI] finish_reason=${finishReason}, choices=${data.choices?.length || 0}`);
+  console.log(`[callAzureOpenAI] Usage: prompt_tokens=${usage?.prompt_tokens}, completion_tokens=${usage?.completion_tokens}, reasoning_tokens=${usage?.completion_tokens_details?.reasoning_tokens || 0}`);
+  
+  if (finishReason === "length") {
+    console.warn(`[callAzureOpenAI] WARNING: Response TRUNCATED (finish_reason=length)! Need more tokens.`);
+  }
+  
+  if (data.error) {
+    console.error(`[callAzureOpenAI] API error in response: ${data.error.message}`);
+    throw new Error(`Azure API error: ${data.error.message}`);
+  }
   
   const content = data.choices?.[0]?.message?.content;
   if (!content) {
-    console.error("No content in response. Full response:", JSON.stringify(data).slice(0, 500));
+    console.error(`[callAzureOpenAI] No content! Full response: ${JSON.stringify(data).slice(0, 500)}`);
     throw new Error("No content in AI response");
   }
   
-  console.log("AI content length:", content.length);
+  console.log(`[callAzureOpenAI] Content length: ${content.length}, first 100: ${content.substring(0, 100)}`);
   const jsonMatch = content.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
   if (!jsonMatch) {
-    console.error("No JSON found in content:", content.slice(0, 300));
+    console.error(`[callAzureOpenAI] No JSON found in content: ${content.slice(0, 300)}`);
     throw new Error("No valid JSON in AI response");
   }
   
   try {
-    return JSON.parse(jsonMatch[0]);
+    const parsed = JSON.parse(jsonMatch[0]);
+    console.log(`[callAzureOpenAI] SUCCESS: Parsed JSON, type=${Array.isArray(parsed) ? 'array' : typeof parsed}`);
+    return parsed;
   } catch (parseErr) {
-    console.error("JSON parse error:", parseErr, "Content:", jsonMatch[0].slice(0, 300));
+    console.error(`[callAzureOpenAI] JSON parse error: ${parseErr}, Content: ${jsonMatch[0].slice(0, 300)}`);
     throw new Error("Failed to parse AI response as JSON");
   }
 }
 
 // Generate plan in 3 smaller chunks (7 workout days + 7 nutrition days)
 async function generatePlanChunk(userProfile: any, step: number): Promise<any> {
+  console.log(`[generatePlanChunk] Starting step ${step} for user ${userProfile.id}`);
+  
   const { targetCalories, waterTarget } = calculateUserMetrics(userProfile);
+  console.log(`[generatePlanChunk] Metrics: calories=${targetCalories}, water=${waterTarget}`);
+  
   const goalPt: Record<string, string> = { loss: "Perda de Peso", muscle: "Ganho Muscular", gain: "Ganho de Peso", endurance: "Resistência" };
   const profile = `${userProfile.sex === "Male" ? "M" : "F"}, ${userProfile.age}a, ${userProfile.weight}kg, ${userProfile.height}cm. Obj: ${goalPt[userProfile.goal] || "Fitness"}. Cal: ${targetCalories}. Equip: ${AVAILABLE_EQUIPMENT.slice(0,5).join(",")}. Limitações: ${userProfile.impediments || "Nenhuma"}`;
   
   const dayStructure = `[{"day":N,"is_rest_day":false,"workout_name_pt":"","duration_minutes":30,"estimated_calories_burnt":200,"focus_pt":"","warmup_pt":"","warmup_exercises":[{"name_pt":"","duration_seconds":30}],"cooldown_pt":"","cooldown_exercises":[{"name_pt":"","duration_seconds":30}],"exercises":[{"name_pt":"","sequence_order":1,"sets":3,"reps_or_time":"12","equipment_used":""}]}]`;
 
-  // Step 1: Generate workout days 1-4
-  if (step === 1) {
-    const prompt = `${profile}\n\nGera dias 1-4 treino. JSON array:\n${dayStructure}`;
-    return await callAzureOpenAI(`Fitness coach. Dias 1-4. JSON array only.`, prompt, 8000);
+  try {
+    // Step 1: Generate workout days 1-4
+    if (step === 1) {
+      const prompt = `${profile}\n\nGera dias 1-4 treino. JSON array:\n${dayStructure}`;
+      console.log(`[generatePlanChunk] Step 1: Calling Azure for days 1-4`);
+      const result = await callAzureOpenAI(`Fitness coach. Dias 1-4. JSON array only.`, prompt, 8000);
+      console.log(`[generatePlanChunk] Step 1: Got result, isArray=${Array.isArray(result)}, length=${Array.isArray(result) ? result.length : 'N/A'}`);
+      return result;
+    }
+    // Step 2: Generate workout days 5-7
+    else if (step === 2) {
+      const prompt = `${profile}\n\nGera dias 5-7 treino. JSON array:\n${dayStructure}`;
+      console.log(`[generatePlanChunk] Step 2: Calling Azure for days 5-7`);
+      const result = await callAzureOpenAI(`Fitness coach. Dias 5-7. JSON array only.`, prompt, 8000);
+      console.log(`[generatePlanChunk] Step 2: Got result, isArray=${Array.isArray(result)}, length=${Array.isArray(result) ? result.length : 'N/A'}`);
+      return result;
+    }
+    // Step 3: Nutrition plan
+    else if (step === 3) {
+      const nutritionStructure = `{"plan_summary_pt":"","nutrition_plan_7_days":[{"day":1,"total_daily_calories":${targetCalories},"meals":[{"meal_time_pt":"Pequeno Almoço","description_pt":"","calories":0,"protein_g":0,"carbs_g":0,"fat_g":0}]}],"hydration_guidelines_pt":{"water_target_ml":${waterTarget}}}`;
+      const prompt = `${profile}\n\nGera nutrição 7 dias. ${targetCalories} kcal/dia. JSON:\n${nutritionStructure}`;
+      console.log(`[generatePlanChunk] Step 3: Calling Azure for nutrition`);
+      const result = await callAzureOpenAI("Nutricionista. 7 dias. JSON only.", prompt, 10000);
+      console.log(`[generatePlanChunk] Step 3: Got result, hasNutrition=${!!result?.nutrition_plan_7_days}, nutritionDays=${result?.nutrition_plan_7_days?.length || 0}`);
+      return result;
+    }
+    throw new Error("Invalid step");
+  } catch (error) {
+    console.error(`[generatePlanChunk] ERROR in step ${step}:`, error);
+    throw error;
   }
-  // Step 2: Generate workout days 5-7
-  else if (step === 2) {
-    const prompt = `${profile}\n\nGera dias 5-7 treino. JSON array:\n${dayStructure}`;
-    return await callAzureOpenAI(`Fitness coach. Dias 5-7. JSON array only.`, prompt, 8000);
-  }
-  // Step 3: Nutrition plan
-  else if (step === 3) {
-    const nutritionStructure = `{"plan_summary_pt":"","nutrition_plan_7_days":[{"day":1,"total_daily_calories":${targetCalories},"meals":[{"meal_time_pt":"Pequeno Almoço","description_pt":"","calories":0,"protein_g":0,"carbs_g":0,"fat_g":0}]}],"hydration_guidelines_pt":{"water_target_ml":${waterTarget}}}`;
-    const prompt = `${profile}\n\nGera nutrição 7 dias. ${targetCalories} kcal/dia. JSON:\n${nutritionStructure}`;
-    return await callAzureOpenAI("Nutricionista. 7 dias. JSON only.", prompt, 10000);
-  }
-  throw new Error("Invalid step");
 }
 
 // Generate extension chunk for next 7 days (workout + nutrition)
