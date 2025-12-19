@@ -2636,7 +2636,7 @@ RULES:
       console.log(`[regenerate-plan] User: ${profile.firstName}, language=${isPt ? 'pt' : 'en'}`);
 
       // Parse meal count from context if provided (e.g., "3 refeições", "4 meals")
-      let mealsPerDay = (profile as any).mealsPerDay || 5;
+      let mealsPerDay = (profile as any).mealsPerDay || (profile as any).meals_per_day || 5;
       if (coachContext) {
         const mealMatch = coachContext.match(/(\d+)\s*(refeições|refeicoes|meals|meal)/i);
         if (mealMatch) {
@@ -2644,12 +2644,17 @@ RULES:
           if (parsedMeals >= 2 && parsedMeals <= 6) {
             mealsPerDay = parsedMeals;
             console.log(`[regenerate-plan] Parsed mealsPerDay=${mealsPerDay} from context`);
-            // Update profile with new meal preference (use raw SQL for snake_case column)
+            // Try to update profile - column may not exist in prod yet
             try {
               await db.execute(sql`UPDATE user_profiles SET meals_per_day = ${mealsPerDay} WHERE id = ${userId}`);
               console.log(`[regenerate-plan] Updated profile mealsPerDay to ${mealsPerDay}`);
-            } catch (updateErr) {
-              console.error(`[regenerate-plan] Failed to update mealsPerDay:`, updateErr);
+            } catch (updateErr: any) {
+              // Column doesn't exist yet - just log and continue
+              if (updateErr?.code === '42703') {
+                console.log(`[regenerate-plan] meals_per_day column not yet in prod DB, skipping update`);
+              } else {
+                console.error(`[regenerate-plan] Failed to update mealsPerDay:`, updateErr);
+              }
             }
           }
         }
