@@ -618,7 +618,22 @@ export async function generateSimpleCoachPlan(
     ? userProfile.impediments.join(", ")
     : (userProfile.impediments || "Nenhuma");
   
-  const systemPrompt = `És um Personal Trainer certificado e Nutricionista. Gera um plano SIMPLES de 7 dias.`;
+  // Extract meal count from context (default 6 if not specified)
+  const contextLower = (coachContext || "").toLowerCase();
+  let mealsPerDay = 6;
+  if (contextLower.includes("2 refeições") || contextLower.includes("2 meals") || contextLower.includes("duas refeições")) {
+    mealsPerDay = 2;
+  } else if (contextLower.includes("3 refeições") || contextLower.includes("3 meals") || contextLower.includes("três refeições") || contextLower.includes("3x") || contextLower.includes("3 vezes")) {
+    mealsPerDay = 3;
+  } else if (contextLower.includes("4 refeições") || contextLower.includes("4 meals") || contextLower.includes("quatro refeições")) {
+    mealsPerDay = 4;
+  } else if (contextLower.includes("5 refeições") || contextLower.includes("5 meals") || contextLower.includes("cinco refeições")) {
+    mealsPerDay = 5;
+  }
+  
+  console.log(`[Coach Plan] Generating plan with ${mealsPerDay} meals/day based on context`);
+  
+  const systemPrompt = `És um Personal Trainer certificado e Nutricionista. Gera um plano SIMPLES de 7 dias. SEGUE RIGOROSAMENTE as instruções do contexto do coach, especialmente sobre número de refeições e preferências alimentares.`;
   
   const userPrompt = `
 PERFIL: ${userProfile.firstName}, ${sex}, ${age} anos, ${weight}kg, ${height}cm
@@ -627,12 +642,13 @@ TEMPO/DIA: ${workoutTimePerDay} min
 EQUIPAMENTO: ${userEquipment}
 LIMITAÇÕES: ${impediments}
 META CALÓRICA: ${targetCalories} kcal/dia
-CONTEXTO DO COACH: ${coachContext || "Novo plano solicitado"}
+CONTEXTO DO COACH (SEGUIR RIGOROSAMENTE): ${coachContext || "Novo plano solicitado"}
 
 GERA UM PLANO SIMPLES DE 7 DIAS:
 - 7 dias de treino (inclui 2-3 dias de descanso)
-- 7 dias de nutrição com 6 refeições/dia (só descrição e macros, sem receitas detalhadas)
+- 7 dias de nutrição com EXATAMENTE ${mealsPerDay} refeições/dia (distribuir as ${targetCalories} kcal por ${mealsPerDay} refeições)
 - OBRIGATÓRIO: Cada dia de treino DEVE ter 3-5 exercícios de aquecimento em "warmup_exercises" e 3-5 exercícios de arrefecimento em "cooldown_exercises"
+- SEGUIR as preferências alimentares do contexto do coach (alimentos densos, calóricos, fáceis de comer, etc.)
 
 OUTPUT JSON:
 {

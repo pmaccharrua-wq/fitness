@@ -1383,7 +1383,7 @@ export async function registerRoutes(
         return res.status(400).json({ success: false, error: "Invalid user ID" });
       }
 
-      const { coachContext } = req.body;
+      const { coachContext: providedContext } = req.body;
 
       // Get user profile
       const userProfile = await storage.getUserProfile(userId);
@@ -1392,6 +1392,24 @@ export async function registerRoutes(
       }
 
       const isPt = userProfile.language === "pt";
+      
+      // Get recent coach messages to build full context
+      const recentMessages = await storage.getCoachMessages(userId);
+      const last10Messages = recentMessages.slice(-10);
+      
+      // Build conversation summary for AI context
+      let conversationSummary = "";
+      for (const msg of last10Messages) {
+        const role = msg.role === "user" ? "UTILIZADOR" : "COACH";
+        conversationSummary += `${role}: ${msg.content}\n\n`;
+      }
+      
+      // Combine provided context with conversation history
+      const fullContext = providedContext 
+        ? `${providedContext}\n\nHISTÓRICO DA CONVERSA:\n${conversationSummary}`
+        : `HISTÓRICO DA CONVERSA (seguir preferências do utilizador):\n${conversationSummary}`;
+      
+      console.log(`[Coach Regen] Building context from ${last10Messages.length} recent messages`);
       
       // Get current active plan and progress
       const currentPlan = await storage.getUserActivePlan(userId);
@@ -1439,11 +1457,11 @@ export async function registerRoutes(
             : "Perfect! I'm generating a new personalized 7-day plan for you. Just a moment... 🏋️",
       });
 
-      // Generate new AI fitness plan with coach context
-      console.log("Coach generating new AI plan for user:", userId);
+      // Generate new AI fitness plan with full coach context (includes conversation history)
+      console.log("Coach generating new AI plan for user:", userId, "with context length:", fullContext.length);
       const aiPlan = await generateSimpleCoachPlan(
         userProfile,
-        coachContext || "User requested new plan via Virtual Coach"
+        fullContext
       );
 
       // Merge preserved days with new generated days
@@ -1483,7 +1501,7 @@ export async function registerRoutes(
       // Create new plan with merged data
       const startDate = currentPlan?.startDate || new Date();
       const endDate = new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000);
-      const contextToStore = coachContext || "User requested new plan via Virtual Coach";
+      const contextToStore = fullContext;
 
       const fitnessPlan = await storage.createFitnessPlan({
         userId: userProfile.id,
