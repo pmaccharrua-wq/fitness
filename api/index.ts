@@ -2562,32 +2562,35 @@ RULES:
           throw dbErr;
         }
 
-        // Detect intent - check for plan creation requests
-        const lowerMessage = message.toLowerCase();
+        // Detect intent - check for EXPLICIT plan creation confirmation
+        const lowerMessage = message.toLowerCase().trim();
         let intent = "general";
         let confidence = 0.5;
         let shouldOfferPlanCreation = false;
         
-        // Check for plan creation intent - Portuguese and English variations
-        const planCreationKeywords = [
-          "sim", "yes", "ok", "vamos", "bora", "quero",
-          "criar", "cria", "crie", "create", "make", "gera", "gerar", "generate",
-          "plano", "plan", "treino", "workout", "novo plano", "new plan"
-        ];
+        // Only trigger plan creation on EXPLICIT short confirmations
+        // NOT when user is asking questions or describing what they want
+        const isExplicitConfirmation = [
+          "sim", "yes", "ok", "vamos", "bora", "pode", "faz", "vai", "confirmo",
+          "sim cria", "sim, cria", "yes create", "cria o plano", "gera o plano"
+        ].some(kw => lowerMessage === kw || lowerMessage.startsWith(kw + " ") || lowerMessage.startsWith(kw + ","));
         
-        const hasPlanIntent = planCreationKeywords.some(kw => lowerMessage.includes(kw));
-        const isConfirmation = ["sim", "yes", "ok", "vamos", "bora", "quero", "pode", "faz", "vai"].some(kw => lowerMessage.includes(kw));
-        const mentionsPlan = ["plano", "plan", "treino", "workout", "cria", "criar", "gera", "gerar", "create", "make"].some(kw => lowerMessage.includes(kw));
+        // Check if message is a question (should NOT trigger creation)
+        const isQuestion = lowerMessage.includes("?") || 
+          lowerMessage.startsWith("como") || lowerMessage.startsWith("o que") ||
+          lowerMessage.startsWith("quero") || lowerMessage.startsWith("gostava") ||
+          lowerMessage.startsWith("podes") || lowerMessage.startsWith("consegues");
         
-        if (mentionsPlan || (isConfirmation && !activePlan)) {
+        // Only authorize if it's a short explicit confirmation, NOT a question
+        if (isExplicitConfirmation && !isQuestion && lowerMessage.length < 50) {
           intent = "authorize_plan";
           confidence = 0.9;
           shouldOfferPlanCreation = true;
         }
         
         console.log(`[COACH-CHAT] Step 11: Intent detection:`);
-        console.log(`[COACH-CHAT]   - lowerMessage="${lowerMessage}"`);
-        console.log(`[COACH-CHAT]   - hasPlanIntent=${hasPlanIntent}, isConfirmation=${isConfirmation}, mentionsPlan=${mentionsPlan}`);
+        console.log(`[COACH-CHAT]   - lowerMessage="${lowerMessage}" (len=${lowerMessage.length})`);
+        console.log(`[COACH-CHAT]   - isExplicitConfirmation=${isExplicitConfirmation}, isQuestion=${isQuestion}`);
         console.log(`[COACH-CHAT]   - intent=${intent}, confidence=${confidence}, shouldOfferPlanCreation=${shouldOfferPlanCreation}`);
 
         console.log(`[COACH-CHAT] ========== SUCCESS - END ==========`);
