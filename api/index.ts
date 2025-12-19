@@ -2542,15 +2542,33 @@ RULES:
           throw dbErr;
         }
 
-        // Detect intent
+        // Detect intent - check for plan creation requests
         const lowerMessage = message.toLowerCase();
         let intent = "general";
         let confidence = 0.5;
-        if (lowerMessage.includes("sim") || lowerMessage.includes("yes") || lowerMessage.includes("criar") || lowerMessage.includes("create")) {
+        let shouldOfferPlanCreation = false;
+        
+        // Check for plan creation intent - Portuguese and English variations
+        const planCreationKeywords = [
+          "sim", "yes", "ok", "vamos", "bora", "quero",
+          "criar", "cria", "crie", "create", "make", "gera", "gerar", "generate",
+          "plano", "plan", "treino", "workout", "novo plano", "new plan"
+        ];
+        
+        const hasPlanIntent = planCreationKeywords.some(kw => lowerMessage.includes(kw));
+        const isConfirmation = ["sim", "yes", "ok", "vamos", "bora", "quero", "pode", "faz", "vai"].some(kw => lowerMessage.includes(kw));
+        const mentionsPlan = ["plano", "plan", "treino", "workout", "cria", "criar", "gera", "gerar", "create", "make"].some(kw => lowerMessage.includes(kw));
+        
+        if (mentionsPlan || (isConfirmation && !activePlan)) {
           intent = "authorize_plan";
           confidence = 0.9;
+          shouldOfferPlanCreation = true;
         }
-        console.log(`[COACH-CHAT] Step 11: Detected intent=${intent}, confidence=${confidence}`);
+        
+        console.log(`[COACH-CHAT] Step 11: Intent detection:`);
+        console.log(`[COACH-CHAT]   - lowerMessage="${lowerMessage}"`);
+        console.log(`[COACH-CHAT]   - hasPlanIntent=${hasPlanIntent}, isConfirmation=${isConfirmation}, mentionsPlan=${mentionsPlan}`);
+        console.log(`[COACH-CHAT]   - intent=${intent}, confidence=${confidence}, shouldOfferPlanCreation=${shouldOfferPlanCreation}`);
 
         console.log(`[COACH-CHAT] ========== SUCCESS - END ==========`);
         return res.json({
@@ -2558,7 +2576,9 @@ RULES:
           userMessage,
           assistantMessage,
           intent,
-          intentConfidence: confidence
+          intentConfidence: confidence,
+          shouldOfferPlanCreation,
+          hasActivePlan: !!activePlan
         });
       } catch (error) {
         console.error(`[COACH-CHAT] ========== ERROR - END ==========`);
