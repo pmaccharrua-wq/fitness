@@ -749,6 +749,55 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.json({ success: true, profile });
     }
 
+    // Activate a plan
+    if (method === "PATCH" && path.match(/^\/api\/plan\/\d+\/activate$/)) {
+      const planId = parseInt(path.split("/")[3]);
+      const { userId } = req.body;
+      if (isNaN(planId) || !userId) {
+        return res.status(400).json({ success: false, error: "Invalid plan or user ID" });
+      }
+      // Deactivate all other plans for this user
+      await db.update(fitnessPlans)
+        .set({ isActive: false } as any)
+        .where(eq(fitnessPlans.userId, userId));
+      // Activate the requested plan
+      await db.update(fitnessPlans)
+        .set({ isActive: true } as any)
+        .where(eq(fitnessPlans.id, planId));
+      return res.json({ success: true });
+    }
+
+    // Delete a plan
+    if (method === "DELETE" && path.match(/^\/api\/plan\/\d+$/) && !path.includes("/day")) {
+      const planId = parseInt(path.split("/").pop() || "");
+      if (isNaN(planId)) {
+        return res.status(400).json({ success: false, error: "Invalid plan ID" });
+      }
+      await db.delete(fitnessPlans).where(eq(fitnessPlans.id, planId));
+      return res.json({ success: true });
+    }
+
+    // Delete user and all data
+    if (method === "DELETE" && path.match(/^\/api\/users\/\d+$/)) {
+      const userId = parseInt(path.split("/").pop() || "");
+      if (isNaN(userId)) {
+        return res.status(400).json({ success: false, error: "Invalid user ID" });
+      }
+      // Verify user exists
+      const [profile] = await db.select().from(userProfiles).where(eq(userProfiles.id, userId));
+      if (!profile) {
+        return res.status(404).json({ success: false, error: "User not found" });
+      }
+      // Delete all related data in order
+      await db.delete(coachMessages).where(eq(coachMessages.userId, userId));
+      await db.delete(customMeals).where(eq(customMeals.userId, userId));
+      await db.delete(exerciseProgress).where(eq(exerciseProgress.userId, userId));
+      await db.delete(notifications).where(eq(notifications.userId, userId));
+      await db.delete(fitnessPlans).where(eq(fitnessPlans.userId, userId));
+      await db.delete(userProfiles).where(eq(userProfiles.id, userId));
+      return res.json({ success: true, message: "Account deleted successfully" });
+    }
+
     if (method === "GET" && path === "/api/exercises") {
       const exercises = await db.select().from(exerciseLibrary);
       return res.json({ success: true, exercises });
