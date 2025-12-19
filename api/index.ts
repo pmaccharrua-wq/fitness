@@ -1415,7 +1415,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 }`
                   }
                 ],
-                max_completion_tokens: 2000,
+                max_completion_tokens: 6000,
                 temperature: 1
               })
             }
