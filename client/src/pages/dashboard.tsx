@@ -8,6 +8,8 @@ import ExerciseCard from "@/components/ExerciseCard";
 import MealCard, { type MealData } from "@/components/MealCard";
 import AIMealBuilder from "@/components/AIMealBuilder";
 import CoachingCard from "@/components/CoachingCard";
+import PlanCalendar from "@/components/PlanCalendar";
+import WeeklyCalendarStrip from "@/components/WeeklyCalendarStrip";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -46,6 +48,7 @@ export default function Dashboard() {
   const [generatedWorkoutDays, setGeneratedWorkoutDays] = useState(7);
   const [userWeight, setUserWeight] = useState<number | undefined>(undefined);
   const [targetWeight, setTargetWeight] = useState<number | undefined>(undefined);
+  const [startDate, setStartDate] = useState<string | null>(null);
   const latestDayRef = useRef<number>(1);
   const { t, language } = useTranslation();
 
@@ -208,6 +211,7 @@ export default function Dashboard() {
         setDurationDays(planResponse.durationDays || 30);
         setIsExpired(planResponse.isExpired || false);
         setGeneratedWorkoutDays(planResponse.generatedWorkoutDays || planResponse.durationDays || 7);
+        if (planResponse.startDate) setStartDate(planResponse.startDate);
         
         // Fetch custom meals for this plan
         const customMealsResponse = await getCustomMeals(userId, planResponse.planId);
@@ -626,6 +630,7 @@ export default function Dashboard() {
           <TabsList className="bg-card border border-border">
             <TabsTrigger value="workout" data-testid="tab-workout">{t("dashboard", "todaysWorkout")}</TabsTrigger>
             <TabsTrigger value="nutrition" data-testid="tab-nutrition">{t("dashboard", "nutritionPlan")}</TabsTrigger>
+            <TabsTrigger value="calendar" data-testid="tab-calendar">{language === "pt" ? "Calendário" : "Calendar"}</TabsTrigger>
             <TabsTrigger value="progress" data-testid="tab-progress">{language === "pt" ? "Progresso" : "Progress"}</TabsTrigger>
             <TabsTrigger value="schedule" data-testid="tab-schedule">{t("dashboard", "fullSchedule")}</TabsTrigger>
           </TabsList>
@@ -823,6 +828,39 @@ export default function Dashboard() {
                 </div>
               </>
             );})()}
+          </TabsContent>
+
+          <TabsContent value="calendar" className="space-y-6">
+            {startDate && planData ? (
+              <>
+                <WeeklyCalendarStrip
+                  startDate={startDate}
+                  durationDays={durationDays}
+                  progress={progress}
+                  planData={planData}
+                  currentDay={currentDay}
+                  onDayClick={(day) => {
+                    setCurrentDay(day);
+                    setSelectedDay(day);
+                  }}
+                />
+                <PlanCalendar
+                  startDate={startDate}
+                  durationDays={durationDays}
+                  progress={progress}
+                  planData={planData}
+                  currentDay={currentDay}
+                  onDayClick={(day) => {
+                    setCurrentDay(day);
+                    setSelectedDay(day);
+                  }}
+                />
+              </>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                {language === "pt" ? "Carregando calendário..." : "Loading calendar..."}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="progress">

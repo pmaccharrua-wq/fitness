@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import Layout from "@/components/Layout";
 import ProgressCharts from "@/components/ProgressCharts";
+import WeeklyCalendarStrip from "@/components/WeeklyCalendarStrip";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { getUserPlan, getUserId, getUserProfile } from "@/lib/api";
@@ -16,6 +17,8 @@ export default function Progress() {
   const [progress, setProgress] = useState<any[]>([]);
   const [userWeight, setUserWeight] = useState<number | undefined>(undefined);
   const [targetWeight, setTargetWeight] = useState<number | undefined>(undefined);
+  const [durationDays, setDurationDays] = useState(30);
+  const [startDate, setStartDate] = useState<string | null>(null);
   const { t, language } = useTranslation();
 
   useEffect(() => {
@@ -38,6 +41,8 @@ export default function Progress() {
         setPlanData(planResponse.plan);
         setCurrentDay(planResponse.currentDay);
         setProgress(planResponse.progress || []);
+        setDurationDays(planResponse.durationDays || 30);
+        if (planResponse.startDate) setStartDate(planResponse.startDate);
       } else {
         toast.error(t("dashboard", "loadFailed"));
         setLocation("/onboarding");
@@ -90,6 +95,17 @@ export default function Progress() {
             {language === "pt" ? "Acompanhe sua evolução ao longo do programa" : "Track your evolution throughout the program"}
           </p>
         </div>
+
+        {startDate && planData && (
+          <WeeklyCalendarStrip
+            startDate={startDate}
+            durationDays={durationDays}
+            progress={progress}
+            planData={planData}
+            currentDay={currentDay}
+            onDayClick={(day) => setCurrentDay(day)}
+          />
+        )}
 
         <ProgressCharts 
           progress={progress}
