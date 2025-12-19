@@ -954,6 +954,146 @@ export async function registerRoutes(
     }
   });
 
+  // Enrich a single exercise on-demand (for unmatched exercises)
+  app.post("/api/exercises/enrich-single", async (req: Request, res: Response) => {
+    try {
+      const { exerciseName, exerciseNamePt, exerciseId } = req.body;
+      
+      if (!exerciseName && !exerciseNamePt && !exerciseId) {
+        return res.status(400).json({ success: false, error: "exerciseName, exerciseNamePt, or exerciseId required" });
+      }
+      
+      const searchName = exerciseName || exerciseNamePt || exerciseId;
+      const generatedId = exerciseId || searchName
+        .toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]+/g, "_")
+        .replace(/^_|_$/g, "");
+      
+      console.log(`[enrich-single] Enriching exercise: ${searchName} (id: ${generatedId})`);
+      
+      let result: any = {
+        id: generatedId,
+        name: exerciseName || exerciseNamePt || searchName,
+        namePt: exerciseNamePt || exerciseName || searchName,
+        instructions: null,
+        instructionsPt: null,
+        primaryMuscles: [],
+        secondaryMuscles: [],
+        equipment: "bodyweight",
+        difficulty: "beginner",
+        imageUrl: null,
+        videoUrl: null
+      };
+      
+      // 1. Generate AI descriptions using Azure OpenAI
+      const azureOpenAIApiKey = process.env.AZURE_OPENAI_API_KEY;
+      const azureOpenAIEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
+      const azureOpenAIDeployment = process.env.AZURE_OPENAI_DEPLOYMENT || "gpt-5";
+      const azureOpenAIApiVersion = process.env.AZURE_OPENAI_API_VERSION || "2025-01-01-preview";
+      
+      if (azureOpenAIApiKey && azureOpenAIEndpoint) {
+        try {
+          const aiResponse = await fetch(
+            `${azureOpenAIEndpoint}/openai/deployments/${azureOpenAIDeployment}/chat/completions?api-version=${azureOpenAIApiVersion}`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "api-key": azureOpenAIApiKey
+              },
+              body: JSON.stringify({
+                messages: [
+                  {
+                    role: "system",
+                    content: "You are a fitness expert. Provide exercise information in JSON format only, no other text."
+                  },
+                  {
+                    role: "user",
+                    content: `Provide complete information about the exercise "${searchName}". Return ONLY valid JSON:
+{
+  "name_en": "English name of the exercise",
+  "name_pt": "Nome do exercício em Português",
+  "instructions_en": "Clear step-by-step instructions in English (2-3 sentences)",
+  "instructions_pt": "Instruções claras passo a passo em Português (2-3 frases)",
+  "primary_muscles": ["muscle1", "muscle2"],
+  "secondary_muscles": ["muscle1"],
+  "equipment": "bodyweight/dumbbell/barbell/kettlebell/machine/cable/bench/stability ball",
+  "difficulty": "beginner/intermediate/advanced"
+}`
+                  }
+                ],
+                max_completion_tokens: 2000,
+                temperature: 1
+              })
+            }
+          );
+          
+          if (aiResponse.ok) {
+            const aiData = await aiResponse.json();
+            const content = aiData.choices?.[0]?.message?.content || "";
+            
+            try {
+              const jsonMatch = content.match(/\{[\s\S]*\}/);
+              if (jsonMatch) {
+                const parsed = JSON.parse(jsonMatch[0]);
+                result.name = parsed.name_en || result.name || searchName;
+                result.namePt = parsed.name_pt || result.namePt || searchName;
+                result.instructions = parsed.instructions_en || null;
+                result.instructionsPt = parsed.instructions_pt || null;
+                result.primaryMuscles = parsed.primary_muscles || [];
+                result.secondaryMuscles = parsed.secondary_muscles || [];
+                result.equipment = parsed.equipment || "bodyweight";
+                result.difficulty = parsed.difficulty || "intermediate";
+                console.log(`[enrich-single] AI generated data for: ${searchName}`);
+              }
+            } catch (parseErr) {
+              console.log(`[enrich-single] Could not parse AI response for ${searchName}:`, parseErr);
+            }
+          } else {
+            const errorText = await aiResponse.text();
+            console.log(`[enrich-single] AI response not OK:`, errorText);
+          }
+        } catch (aiErr) {
+          console.log(`[enrich-single] AI error for ${searchName}:`, aiErr);
+        }
+      } else {
+        console.log(`[enrich-single] Azure OpenAI not configured`);
+      }
+      
+      // 2. Fetch Pexels image
+      const pexelsApiKey = process.env.PEXELS_API_KEY;
+      if (pexelsApiKey) {
+        try {
+          const searchTerm = `fitness ${result.name || searchName} exercise workout`;
+          const pexelsResponse = await fetch(
+            `https://api.pexels.com/v1/search?query=${encodeURIComponent(searchTerm)}&per_page=3&orientation=landscape`,
+            { headers: { Authorization: pexelsApiKey } }
+          );
+          if (pexelsResponse.ok) {
+            const pexelsData = await pexelsResponse.json();
+            if (pexelsData.photos?.[0]) {
+              result.imageUrl = pexelsData.photos[0].src.large;
+              result.pexelsImage = {
+                url: pexelsData.photos[0].src.large,
+                source: pexelsData.photos[0].url,
+                photographer: pexelsData.photos[0].photographer
+              };
+              console.log(`[enrich-single] Found Pexels image for: ${searchName}`);
+            }
+          }
+        } catch (pexErr) {
+          console.log(`[enrich-single] Pexels error for ${searchName}:`, pexErr);
+        }
+      }
+      
+      res.json({ success: true, exercise: result });
+    } catch (error) {
+      console.error("[enrich-single] Error:", error);
+      res.status(500).json({ success: false, error: "Failed to enrich exercise" });
+    }
+  });
+
   // ============ WEIGHT GOAL VALIDATION ============
 
   // Validate weight goal with AI feedback
