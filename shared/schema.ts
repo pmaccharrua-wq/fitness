@@ -85,6 +85,7 @@ export const userProfiles = pgTable("user_profiles", {
   goalFeedback: text("goal_feedback"), // AI feedback on the goal
   timePerDay: integer("time_per_day").default(45), // Workout time in minutes
   difficulty: text("difficulty").default("medium"), // "very_easy", "easy", "medium", "hard", "very_hard"
+  mealsPerDay: integer("meals_per_day").default(5), // Number of meals per day (2-6)
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

@@ -277,11 +277,13 @@ async function callAzureOpenAI(systemPrompt: string, userPrompt: string, maxToke
 }
 
 // Generate plan in 3 smaller chunks (7 workout days + 7 nutrition days)
-async function generatePlanChunk(userProfile: any, step: number): Promise<any> {
-  console.log(`[generatePlanChunk] Starting step ${step} for user ${userProfile.id}`);
+async function generatePlanChunk(userProfile: any, step: number, mealsPerDay?: number): Promise<any> {
+  console.log(`[generatePlanChunk] Starting step ${step} for user ${userProfile.id}, mealsPerDay=${mealsPerDay || 'default'}`);
   
   const { targetCalories, waterTarget } = calculateUserMetrics(userProfile);
-  console.log(`[generatePlanChunk] Metrics: calories=${targetCalories}, water=${waterTarget}`);
+  // Use provided mealsPerDay, or from profile, or default to 5
+  const numMeals = mealsPerDay || userProfile.mealsPerDay || 5;
+  console.log(`[generatePlanChunk] Metrics: calories=${targetCalories}, water=${waterTarget}, meals=${numMeals}`);
   
   const goalPt: Record<string, string> = { loss: "Perda de Peso", muscle: "Ganho Muscular", gain: "Ganho de Peso", endurance: "Resistência" };
   const profile = `${userProfile.sex === "Male" ? "M" : "F"}, ${userProfile.age}a, ${userProfile.weight}kg, ${userProfile.height}cm. Obj: ${goalPt[userProfile.goal] || "Fitness"}. Cal: ${targetCalories}. Equip: ${AVAILABLE_EQUIPMENT.slice(0,5).join(",")}. Limitações: ${userProfile.impediments || "Nenhuma"}`;
@@ -305,13 +307,31 @@ async function generatePlanChunk(userProfile: any, step: number): Promise<any> {
       console.log(`[generatePlanChunk] Step 2: Got result, isArray=${Array.isArray(result)}, length=${Array.isArray(result) ? result.length : 'N/A'}`);
       return result;
     }
-    // Step 3: Nutrition plan
+    // Step 3: Nutrition plan - respects mealsPerDay
     else if (step === 3) {
-      const nutritionStructure = `{"plan_summary_pt":"","nutrition_plan_7_days":[{"day":1,"total_daily_calories":${targetCalories},"meals":[{"meal_time_pt":"Pequeno Almoço","description_pt":"","calories":0,"protein_g":0,"carbs_g":0,"fat_g":0}]}],"hydration_guidelines_pt":{"water_target_ml":${waterTarget}}}`;
-      const prompt = `${profile}\n\nGera nutrição 7 dias. ${targetCalories} kcal/dia. JSON:\n${nutritionStructure}`;
-      console.log(`[generatePlanChunk] Step 3: Calling Azure for nutrition`);
-      const result = await callAzureOpenAI("Nutricionista. 7 dias. JSON only.", prompt, 10000);
+      // Build meal structure based on numMeals
+      const mealNames: Record<number, string[]> = {
+        2: ["Almoço", "Jantar"],
+        3: ["Pequeno Almoço", "Almoço", "Jantar"],
+        4: ["Pequeno Almoço", "Almoço", "Lanche", "Jantar"],
+        5: ["Pequeno Almoço", "Lanche Manhã", "Almoço", "Lanche Tarde", "Jantar"],
+        6: ["Pequeno Almoço", "Lanche Manhã", "Almoço", "Lanche Tarde", "Jantar", "Ceia"]
+      };
+      const mealsTemplate = (mealNames[numMeals] || mealNames[5]).map(name => 
+        `{"meal_time_pt":"${name}","description_pt":"","calories":0,"protein_g":0,"carbs_g":0,"fat_g":0}`
+      ).join(",");
+      
+      const nutritionStructure = `{"plan_summary_pt":"","nutrition_plan_7_days":[{"day":1,"total_daily_calories":${targetCalories},"meals":[${mealsTemplate}]}],"hydration_guidelines_pt":{"water_target_ml":${waterTarget}}}`;
+      const prompt = `${profile}\n\nGera nutrição 7 dias com EXATAMENTE ${numMeals} refeições por dia. ${targetCalories} kcal/dia dividido por ${numMeals} refeições. JSON:\n${nutritionStructure}`;
+      console.log(`[generatePlanChunk] Step 3: Calling Azure for nutrition with ${numMeals} meals/day`);
+      const result = await callAzureOpenAI(`Nutricionista. 7 dias. EXATAMENTE ${numMeals} refeições por dia. JSON only.`, prompt, 10000);
       console.log(`[generatePlanChunk] Step 3: Got result, hasNutrition=${!!result?.nutrition_plan_7_days}, nutritionDays=${result?.nutrition_plan_7_days?.length || 0}`);
+      
+      // Validate meal count
+      if (result?.nutrition_plan_7_days?.[0]?.meals) {
+        const actualMeals = result.nutrition_plan_7_days[0].meals.length;
+        console.log(`[generatePlanChunk] Step 3: Requested ${numMeals} meals, got ${actualMeals} meals`);
+      }
       return result;
     }
     throw new Error("Invalid step");
@@ -2615,6 +2635,25 @@ RULES:
       const isPt = profile.language === "pt";
       console.log(`[regenerate-plan] User: ${profile.firstName}, language=${isPt ? 'pt' : 'en'}`);
 
+      // Parse meal count from context if provided (e.g., "3 refeições", "4 meals")
+      let mealsPerDay = (profile as any).mealsPerDay || 5;
+      if (coachContext) {
+        const mealMatch = coachContext.match(/(\d+)\s*(refeições|refeicoes|meals|meal)/i);
+        if (mealMatch) {
+          const parsedMeals = parseInt(mealMatch[1]);
+          if (parsedMeals >= 2 && parsedMeals <= 6) {
+            mealsPerDay = parsedMeals;
+            console.log(`[regenerate-plan] Parsed mealsPerDay=${mealsPerDay} from context`);
+            // Update profile with new meal preference
+            await db.update(userProfiles)
+              .set({ mealsPerDay } as any)
+              .where(eq(userProfiles.id, userId));
+            console.log(`[regenerate-plan] Updated profile mealsPerDay to ${mealsPerDay}`);
+          }
+        }
+      }
+      console.log(`[regenerate-plan] Using mealsPerDay=${mealsPerDay}`);
+
       // Deactivate current plan
       await db.update(fitnessPlans)
         .set({ isActive: false } as any)
@@ -2631,8 +2670,8 @@ RULES:
         const chunk2 = await generatePlanChunk(profile, 2);
         console.log(`[regenerate-plan] Step 2 OK: Got ${chunk2?.length || 0} days`);
         
-        console.log(`[regenerate-plan] Step 3/3: Generating nutrition...`);
-        const chunk3 = await generatePlanChunk(profile, 3);
+        console.log(`[regenerate-plan] Step 3/3: Generating nutrition with ${mealsPerDay} meals/day...`);
+        const chunk3 = await generatePlanChunk(profile, 3, mealsPerDay);
         console.log(`[regenerate-plan] Step 3 OK: Got ${chunk3?.nutrition_plan_7_days?.length || 0} nutrition days`);
         
         // Combine all chunks
