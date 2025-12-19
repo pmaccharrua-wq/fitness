@@ -72,6 +72,24 @@ Preferred communication style: Simple, everyday language.
   - `generationStatus` - "idle", "extending", "error"
 - **Frontend Trigger**: "Gerar +7 Dias" button appears when user is within 2 days of generated limit
 
+### Calendar System
+- **Location**: `client/src/components/PlanCalendar.tsx`, `client/src/components/WeeklyCalendarStrip.tsx`
+- **Purpose**: Visual tracking of workout schedule and progress
+- **Components**:
+  - `PlanCalendar` - Monthly calendar view with workout/rest/completion status
+  - `WeeklyCalendarStrip` - Compact 7-day view centered on current day
+- **Status Types**:
+  - `completed` (green) - Workout day marked complete in exercise_progress
+  - `missed` (red) - Past workout day without completion record
+  - `rest` (blue) - Rest day per plan's is_rest_day field
+  - `today` (primary) - Current day highlight
+  - `upcoming` (muted) - Future workout days
+- **Data Dependencies**:
+  - `startDate` from fitness_plans table
+  - `is_rest_day` field in plan JSON
+  - `exercise_progress` records for completion tracking
+- **Integration**: Dashboard "Calendário" tab, Progress page weekly strip
+
 ### Key Design Patterns
 - **Monorepo Structure**: `client/`, `server/`, `shared/` directories
 - **Path Aliases**: `@/` for client source, `@shared/` for shared code
