@@ -45,7 +45,18 @@ Preferred communication style: Simple, everyday language.
 - **Token Limits by Function**:
   - `generateSimpleCoachPlan`: 32000 tokens (7-day plan with warmup/cooldown)
   - `extendCoachPlan`: 12000 tokens (7-day extension)
-  - Coach chat: 8000 tokens
+  - Coach chat: 2000-8000 tokens (contextual responses)
+
+### Virtual Coach Context System
+- **Location**: `server/services/coach-context.ts`
+- **Purpose**: Builds comprehensive context for AI coach responses
+- **Context Includes**:
+  - Workout summaries (today, yesterday, tomorrow) with exercises
+  - Nutrition summary with macros and meals
+  - Progress stats (completion rate, current streak)
+  - User metrics (weight, goal, equipment)
+- **Bilingual**: Full support for Portuguese (pt-PT) and English
+- **Intent Classification**: Detects user intent (greeting, question, plan request, authorization)
 
 ### Incremental Plan Generation (7-day chunks)
 - **Initial Generation**: Creates 7 days of workout + 7 days of nutrition in 3 steps
