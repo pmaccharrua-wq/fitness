@@ -2292,28 +2292,42 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Virtual Coach - Send message (chat) with full plan context
     if (method === "POST" && path.match(/^\/api\/coach\/\d+\/chat$/)) {
+      console.log(`[COACH-CHAT] ========== START ==========`);
+      console.log(`[COACH-CHAT] Timestamp: ${new Date().toISOString()}`);
+      
       const userId = parseInt(path.split("/")[3]);
       const { message } = req.body;
       
+      console.log(`[COACH-CHAT] userId=${userId}, message="${message?.substring(0, 100) || 'EMPTY'}"`);
+      
       if (!message) {
+        console.log(`[COACH-CHAT] ERROR: Message is empty or missing`);
         return res.status(400).json({ success: false, error: "Message is required" });
       }
 
+      console.log(`[COACH-CHAT] Step 1: Fetching user profile...`);
       const [profile] = await db.select().from(userProfiles).where(eq(userProfiles.id, userId));
       if (!profile) {
+        console.log(`[COACH-CHAT] ERROR: User ${userId} not found in database`);
         return res.status(404).json({ success: false, error: "User not found" });
       }
+      console.log(`[COACH-CHAT] Step 1 OK: Found profile for ${profile.firstName}, language=${profile.language}`);
 
       // Get active plan and progress for context
+      console.log(`[COACH-CHAT] Step 2: Fetching active plan for user ${userId}...`);
       const [activePlan] = await db.select().from(fitnessPlans)
         .where(and(eq(fitnessPlans.userId, userId), eq(fitnessPlans.isActive, true)))
         .limit(1);
       
+      console.log(`[COACH-CHAT] Step 2 OK: activePlan=${activePlan ? `id=${activePlan.id}` : 'NONE'}`);
+      
       const progress = activePlan ? await db.select().from(exerciseProgress)
         .where(eq(exerciseProgress.planId, activePlan.id)) : [];
+      console.log(`[COACH-CHAT] Step 2b: Found ${progress.length} progress entries`);
 
       // Build plan context
       const isPt = profile.language === "pt";
+      console.log(`[COACH-CHAT] Language: ${isPt ? 'Portuguese' : 'English'}`);
       let planContextStr = "";
       
       if (activePlan) {
@@ -2367,12 +2381,15 @@ ${(todayNutrition?.meals || []).slice(0, 3).map((m: any) => m.name || m.name_pt)
 You can answer about the user's plan, exercises and nutrition.`;
       }
 
+      console.log(`[COACH-CHAT] Step 3: Built plan context, length=${planContextStr.length}`);
+
       const goalMap: Record<string, { pt: string; en: string }> = {
         loss: { pt: "perda de peso", en: "weight loss" },
         muscle: { pt: "ganho muscular", en: "muscle gain" },
         maintenance: { pt: "manutenção", en: "maintenance" }
       };
       const userGoal = profile.goal ? (isPt ? goalMap[profile.goal]?.pt : goalMap[profile.goal]?.en) || profile.goal : "";
+      console.log(`[COACH-CHAT] Step 3b: User goal=${userGoal}`);
 
       const systemPrompt = isPt
         ? `És o Coach Virtual do AI Fitness Planner - um treinador pessoal amigável e motivador.
@@ -2405,28 +2422,44 @@ RULES:
 5. If they ask for a new plan, confirm before creating`;
 
       // Save user message
-      const [userMessage] = await db.insert(coachMessages)
-        .values({ userId, role: "user", content: message })
-        .returning();
+      console.log(`[COACH-CHAT] Step 4: Saving user message to DB...`);
+      let userMessage;
+      try {
+        [userMessage] = await db.insert(coachMessages)
+          .values({ userId, role: "user", content: message })
+          .returning();
+        console.log(`[COACH-CHAT] Step 4 OK: Saved user message id=${userMessage.id}`);
+      } catch (dbErr) {
+        console.error(`[COACH-CHAT] Step 4 ERROR: Failed to save user message:`, dbErr);
+        throw dbErr;
+      }
 
       // Get conversation history
+      console.log(`[COACH-CHAT] Step 5: Fetching conversation history...`);
       const history = await db.select().from(coachMessages)
         .where(eq(coachMessages.userId, userId))
         .orderBy(coachMessages.createdAt);
+      console.log(`[COACH-CHAT] Step 5 OK: Found ${history.length} messages in history`);
 
       // Build conversation for AI
       const messages = history.slice(-10).map((m: any) => ({
         role: m.role,
         content: m.content
       }));
+      console.log(`[COACH-CHAT] Step 5b: Using last ${messages.length} messages for AI context`);
 
       try {
+        console.log(`[COACH-CHAT] Step 6: Getting Azure config...`);
         const { apiKey, endpoint, deployment, apiVersion } = getAzureConfig();
-        const url = `${endpoint}/openai/deployments/${deployment}/chat/completions?api-version=${apiVersion}`;
+        console.log(`[COACH-CHAT] Step 6 OK: deployment=${deployment}, apiVersion=${apiVersion}`);
+        console.log(`[COACH-CHAT] Step 6b: endpoint starts with=${endpoint?.substring(0, 40)}...`);
+        console.log(`[COACH-CHAT] Step 6c: apiKey length=${apiKey?.length || 0}, starts with=${apiKey?.substring(0, 5)}...`);
         
-        console.log(`[coach-chat] User ${userId}: "${message.substring(0, 50)}..."`);
-        console.log(`[coach-chat] Azure config: endpoint=${endpoint?.substring(0, 30)}..., deployment=${deployment}, apiVersion=${apiVersion}`);
-        console.log(`[coach-chat] Sending ${messages.length} messages, system prompt length: ${systemPrompt.length}`);
+        const url = `${endpoint}/openai/deployments/${deployment}/chat/completions?api-version=${apiVersion}`;
+        console.log(`[COACH-CHAT] Step 6d: Full URL=${url}`);
+        
+        console.log(`[COACH-CHAT] System prompt length: ${systemPrompt.length}`);
+        console.log(`[COACH-CHAT] System prompt (first 200): ${systemPrompt.substring(0, 200)}...`);
         
         const requestBody = {
           messages: [{ role: "system", content: systemPrompt }, ...messages],
@@ -2434,46 +2467,80 @@ RULES:
           temperature: 1
         };
         
+        console.log(`[COACH-CHAT] Step 7: Calling Azure OpenAI...`);
+        console.log(`[COACH-CHAT] Step 7: Request has ${requestBody.messages.length} messages, max_tokens=4000`);
+        
+        const fetchStartTime = Date.now();
         const response = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json", "api-key": apiKey },
           body: JSON.stringify(requestBody)
         });
+        const fetchElapsed = Date.now() - fetchStartTime;
 
-        console.log(`[coach-chat] Azure response status: ${response.status}`);
+        console.log(`[COACH-CHAT] Step 7 RESPONSE: status=${response.status}, time=${fetchElapsed}ms`);
+        console.log(`[COACH-CHAT] Step 7b: Response headers:`, Object.fromEntries(response.headers.entries()));
         
         if (!response.ok) {
           const errorText = await response.text();
-          console.error(`[coach-chat] Azure API error: ${response.status} - ${errorText}`);
+          console.error(`[COACH-CHAT] Step 7 ERROR: Azure returned ${response.status}`);
+          console.error(`[COACH-CHAT] Step 7 ERROR body: ${errorText.substring(0, 500)}`);
           throw new Error(`Azure API error: ${response.status} - ${errorText}`);
         }
 
-        const data = await response.json();
+        console.log(`[COACH-CHAT] Step 8: Parsing JSON response...`);
+        const responseText = await response.text();
+        console.log(`[COACH-CHAT] Step 8: Raw response length=${responseText.length}`);
+        console.log(`[COACH-CHAT] Step 8b: Raw response (first 300): ${responseText.substring(0, 300)}`);
+        
+        let data;
+        try {
+          data = JSON.parse(responseText);
+          console.log(`[COACH-CHAT] Step 8 OK: Parsed JSON successfully`);
+        } catch (parseErr) {
+          console.error(`[COACH-CHAT] Step 8 ERROR: Failed to parse JSON:`, parseErr);
+          console.error(`[COACH-CHAT] Step 8 ERROR: Full raw response: ${responseText}`);
+          throw new Error(`Failed to parse Azure response as JSON`);
+        }
         
         // Detailed logging
         const finishReason = data.choices?.[0]?.finish_reason;
         const usage = data.usage;
         const contentLength = data.choices?.[0]?.message?.content?.length || 0;
         
-        console.log(`[coach-chat] Azure response: finish_reason=${finishReason}, content_length=${contentLength}`);
-        console.log(`[coach-chat] Usage: prompt_tokens=${usage?.prompt_tokens}, completion_tokens=${usage?.completion_tokens}, reasoning_tokens=${usage?.completion_tokens_details?.reasoning_tokens}`);
+        console.log(`[COACH-CHAT] Step 9: Response analysis:`);
+        console.log(`[COACH-CHAT]   - finish_reason=${finishReason}`);
+        console.log(`[COACH-CHAT]   - content_length=${contentLength}`);
+        console.log(`[COACH-CHAT]   - prompt_tokens=${usage?.prompt_tokens}`);
+        console.log(`[COACH-CHAT]   - completion_tokens=${usage?.completion_tokens}`);
+        console.log(`[COACH-CHAT]   - reasoning_tokens=${usage?.completion_tokens_details?.reasoning_tokens || 0}`);
+        console.log(`[COACH-CHAT]   - choices count=${data.choices?.length || 0}`);
         
         if (finishReason === "length") {
-          console.warn(`[coach-chat] WARNING: Response truncated (finish_reason=length)`);
+          console.warn(`[COACH-CHAT] WARNING: Response TRUNCATED (finish_reason=length)! Need more tokens.`);
         }
         
         if (!data.choices?.[0]?.message?.content) {
-          console.error(`[coach-chat] No content in response. Full response:`, JSON.stringify(data, null, 2));
+          console.error(`[COACH-CHAT] Step 9 ERROR: No content in response!`);
+          console.error(`[COACH-CHAT] Full data object:`, JSON.stringify(data, null, 2));
         }
         
         const aiResponse = data.choices?.[0]?.message?.content || (isPt ? "Desculpa, não consegui responder." : "Sorry, I couldn't respond.");
         
-        console.log(`[coach-chat] AI response (first 100 chars): "${aiResponse.substring(0, 100)}..."`);
+        console.log(`[COACH-CHAT] Step 9b: AI response (first 200): "${aiResponse.substring(0, 200)}"`);
 
         // Save assistant message
-        const [assistantMessage] = await db.insert(coachMessages)
-          .values({ userId, role: "assistant", content: aiResponse })
-          .returning();
+        console.log(`[COACH-CHAT] Step 10: Saving assistant message to DB...`);
+        let assistantMessage;
+        try {
+          [assistantMessage] = await db.insert(coachMessages)
+            .values({ userId, role: "assistant", content: aiResponse })
+            .returning();
+          console.log(`[COACH-CHAT] Step 10 OK: Saved assistant message id=${assistantMessage.id}`);
+        } catch (dbErr) {
+          console.error(`[COACH-CHAT] Step 10 ERROR: Failed to save assistant message:`, dbErr);
+          throw dbErr;
+        }
 
         // Detect intent
         const lowerMessage = message.toLowerCase();
@@ -2483,7 +2550,9 @@ RULES:
           intent = "authorize_plan";
           confidence = 0.9;
         }
+        console.log(`[COACH-CHAT] Step 11: Detected intent=${intent}, confidence=${confidence}`);
 
+        console.log(`[COACH-CHAT] ========== SUCCESS - END ==========`);
         return res.json({
           success: true,
           userMessage,
@@ -2492,9 +2561,12 @@ RULES:
           intentConfidence: confidence
         });
       } catch (error) {
-        console.error("[coach-chat] Error:", error);
+        console.error(`[COACH-CHAT] ========== ERROR - END ==========`);
+        console.error(`[COACH-CHAT] Caught error:`, error);
         const errorMessage = error instanceof Error ? error.message : "Unknown error";
-        console.error(`[coach-chat] Error details: ${errorMessage}`);
+        const errorStack = error instanceof Error ? error.stack : "";
+        console.error(`[COACH-CHAT] Error message: ${errorMessage}`);
+        console.error(`[COACH-CHAT] Error stack: ${errorStack}`);
         return res.status(500).json({ success: false, error: "Failed to get AI response", details: errorMessage });
       }
     }
