@@ -58,6 +58,68 @@ export default function Dashboard() {
     return exerciseLibrary[exerciseKey];
   };
 
+  // Parse warmup/cooldown text into structured exercises for old plans
+  const parseWarmupCooldownText = (text: string, type: "warmup" | "cooldown"): any[] => {
+    if (!text) return [];
+    
+    // Common warmup exercise patterns (PT and EN)
+    const warmupPatterns = [
+      { pattern: /marcha|march|caminhada|walk/i, name: "March in Place", name_pt: "Marcha no Lugar", description_pt: "Caminhar no lugar para aquecer", duration: 60 },
+      { pattern: /rotaç|rotation|círculos.*braço|arm.*circle/i, name: "Arm Circles", name_pt: "Rotações de Braços", description_pt: "Círculos com os braços", duration: 45 },
+      { pattern: /agachamento.*leve|light.*squat|bodyweight.*squat/i, name: "Bodyweight Squats", name_pt: "Agachamentos Leves", description_pt: "Agachamentos sem peso", duration: 45 },
+      { pattern: /joelhos|knee|high.*knee/i, name: "High Knees", name_pt: "Joelhos Altos", description_pt: "Elevar joelhos alternadamente", duration: 45 },
+      { pattern: /pêndulo|leg.*swing|balanço/i, name: "Leg Swings", name_pt: "Pêndulos de Perna", description_pt: "Balançar pernas para frente e trás", duration: 45 },
+      { pattern: /anca|hip|quadril/i, name: "Hip Circles", name_pt: "Rotações de Anca", description_pt: "Círculos com a anca", duration: 45 },
+      { pattern: /jumping.*jack|polichinelo/i, name: "Jumping Jacks", name_pt: "Polichinelos", description_pt: "Saltos com abertura", duration: 60 },
+      { pattern: /alongamento|stretch|estir/i, name: "Dynamic Stretches", name_pt: "Alongamentos Dinâmicos", description_pt: "Alongamentos com movimento", duration: 60 },
+    ];
+
+    // Common cooldown exercise patterns
+    const cooldownPatterns = [
+      { pattern: /alongamento.*quadríceps|quad.*stretch/i, name: "Quadriceps Stretch", name_pt: "Alongamento de Quadríceps", description_pt: "Alongar parte frontal da coxa", duration: 60 },
+      { pattern: /isquiotibiais|hamstring/i, name: "Hamstring Stretch", name_pt: "Alongamento de Isquiotibiais", description_pt: "Alongar parte posterior da coxa", duration: 60 },
+      { pattern: /gémeos|panturrilha|calf/i, name: "Calf Stretch", name_pt: "Alongamento de Gémeos", description_pt: "Alongar panturrilhas", duration: 60 },
+      { pattern: /glúteo|glute|piriforme/i, name: "Glute Stretch", name_pt: "Alongamento de Glúteos", description_pt: "Alongar glúteos", duration: 60 },
+      { pattern: /respiração|breath|deep/i, name: "Deep Breathing", name_pt: "Respiração Profunda", description_pt: "Respirar profundamente para relaxar", duration: 60 },
+      { pattern: /flexor|hip.*flexor/i, name: "Hip Flexor Stretch", name_pt: "Alongamento de Flexores", description_pt: "Alongar flexores da anca", duration: 60 },
+      { pattern: /costas|back|lombar/i, name: "Lower Back Stretch", name_pt: "Alongamento Lombar", description_pt: "Alongar zona lombar", duration: 60 },
+      { pattern: /ombro|shoulder/i, name: "Shoulder Stretch", name_pt: "Alongamento de Ombros", description_pt: "Alongar ombros", duration: 45 },
+    ];
+
+    const patterns = type === "warmup" ? warmupPatterns : cooldownPatterns;
+    const exercises: any[] = [];
+    const lowerText = text.toLowerCase();
+
+    // Try to match patterns in the text
+    for (const p of patterns) {
+      if (p.pattern.test(lowerText) && !exercises.some(e => e.name === p.name)) {
+        exercises.push({
+          name: p.name,
+          name_pt: p.name_pt,
+          description_pt: p.description_pt,
+          duration_seconds: p.duration
+        });
+      }
+    }
+
+    // Return empty if no matches found - UI will show original text instead
+    return exercises;
+  };
+
+  // Get warmup exercises - either from plan or parse from text
+  const getWarmupExercises = (plan: any) => {
+    if (plan.warmup_exercises?.length > 0) return plan.warmup_exercises;
+    if (plan.warmup_pt) return parseWarmupCooldownText(plan.warmup_pt, "warmup");
+    return [];
+  };
+
+  // Get cooldown exercises - either from plan or parse from text
+  const getCooldownExercises = (plan: any) => {
+    if (plan.cooldown_exercises?.length > 0) return plan.cooldown_exercises;
+    if (plan.cooldown_pt) return parseWarmupCooldownText(plan.cooldown_pt, "cooldown");
+    return [];
+  };
+
   // Handler for when an exercise is enriched - updates the library so it persists
   const handleEnrichmentComplete = (exerciseName: string, enrichedData: any) => {
     setExerciseLibrary(prev => ({
@@ -97,8 +159,15 @@ export default function Dashboard() {
     const todaysPlan = fitnessPlanData?.[dayIndex] || fitnessPlanData?.[0];
     if (todaysPlan?.exercises) {
       const mainExercises = todaysPlan.exercises.map((ex: any) => ({ name: ex.name || ex.name_pt, exerciseId: ex.exerciseId }));
-      const warmupExercises = (todaysPlan.warmup_exercises || []).map((ex: any) => ({ name: ex.name || ex.name_pt, exerciseId: ex.exerciseId }));
-      const cooldownExercises = (todaysPlan.cooldown_exercises || []).map((ex: any) => ({ name: ex.name || ex.name_pt, exerciseId: ex.exerciseId }));
+      
+      // Get warmup exercises - use structured if available, otherwise parse from text
+      const warmupData = getWarmupExercises(todaysPlan);
+      const warmupExercises = warmupData.map((ex: any) => ({ name: ex.name || ex.name_pt, exerciseId: ex.exerciseId }));
+      
+      // Get cooldown exercises - use structured if available, otherwise parse from text
+      const cooldownData = getCooldownExercises(todaysPlan);
+      const cooldownExercises = cooldownData.map((ex: any) => ({ name: ex.name || ex.name_pt, exerciseId: ex.exerciseId }));
+      
       const allExercises = [...warmupExercises, ...mainExercises, ...cooldownExercises].filter(ex => ex.name || ex.exerciseId);
       try {
         const matchResult = await matchExercises(allExercises);
@@ -562,44 +631,48 @@ export default function Dashboard() {
                </Card>
              ) : (
                <>
-                 {(todaysPlan.warmup_exercises?.length > 0 || todaysPlan.warmup_pt) && (
-                   <div>
-                     <h4 className="font-bold text-green-600 mb-3 flex items-center gap-2">
-                       <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                       {language === "pt" ? "Aquecimento" : "Warm-up"}
-                     </h4>
-                     {todaysPlan.warmup_exercises?.length > 0 ? (
-                       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                         {todaysPlan.warmup_exercises.map((ex: any, i: number) => {
-                           return (
-                             <ExerciseCard 
-                               key={`warmup-${i}`} 
-                               exercise={{ 
-                                 name: ex.name,
-                                 name_pt: ex.name_pt, 
-                                 sets: 1, 
-                                 reps_or_time: language === "pt" ? `${ex.duration_seconds} segundos` : `${ex.duration_seconds} seconds`,
-                                 reps_or_time_pt: `${ex.duration_seconds} segundos`,
-                                 focus: ex.description_pt || (language === "pt" ? "Aquecimento" : "Warm-up"),
-                                 equipment_used: language === "pt" ? "Peso corporal" : "Bodyweight",
-                                 equipment_used_pt: "Peso corporal"
-                               }} 
-                               libraryMatch={getLibraryMatch(ex)} 
-                               index={i}
-                               onEnrichmentComplete={handleEnrichmentComplete}
-                             />
-                           );
-                         })}
-                       </div>
-                     ) : (
-                       <Card className="bg-green-500/10 border-green-500/30" data-testid="card-warmup">
-                         <CardContent className="p-4">
-                           <p className="text-sm text-muted-foreground">{todaysPlan.warmup_pt}</p>
-                         </CardContent>
-                       </Card>
-                     )}
-                   </div>
-                 )}
+                 {(() => {
+                   const warmupExercises = getWarmupExercises(todaysPlan);
+                   if (warmupExercises.length === 0 && !todaysPlan.warmup_pt) return null;
+                   return (
+                     <div>
+                       <h4 className="font-bold text-green-600 mb-3 flex items-center gap-2">
+                         <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                         {language === "pt" ? "Aquecimento" : "Warm-up"}
+                       </h4>
+                       {warmupExercises.length > 0 ? (
+                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                           {warmupExercises.map((ex: any, i: number) => {
+                             return (
+                               <ExerciseCard 
+                                 key={`warmup-${i}`} 
+                                 exercise={{ 
+                                   name: ex.name,
+                                   name_pt: ex.name_pt, 
+                                   sets: 1, 
+                                   reps_or_time: language === "pt" ? `${ex.duration_seconds} segundos` : `${ex.duration_seconds} seconds`,
+                                   reps_or_time_pt: `${ex.duration_seconds} segundos`,
+                                   focus: ex.description_pt || (language === "pt" ? "Aquecimento" : "Warm-up"),
+                                   equipment_used: language === "pt" ? "Peso corporal" : "Bodyweight",
+                                   equipment_used_pt: "Peso corporal"
+                                 }} 
+                                 libraryMatch={getLibraryMatch(ex)} 
+                                 index={i}
+                                 onEnrichmentComplete={handleEnrichmentComplete}
+                               />
+                             );
+                           })}
+                         </div>
+                       ) : (
+                         <Card className="bg-green-500/10 border-green-500/30" data-testid="card-warmup">
+                           <CardContent className="p-4">
+                             <p className="text-sm text-muted-foreground">{todaysPlan.warmup_pt}</p>
+                           </CardContent>
+                         </Card>
+                       )}
+                     </div>
+                   );
+                 })()}
                  <div>
                    <h4 className="font-bold text-primary mb-3 flex items-center gap-2">
                      <span className="w-2 h-2 bg-primary rounded-full"></span>
@@ -619,44 +692,48 @@ export default function Dashboard() {
                       })}
                    </div>
                  </div>
-                 {(todaysPlan.cooldown_exercises?.length > 0 || todaysPlan.cooldown_pt) && (
-                   <div>
-                     <h4 className="font-bold text-blue-600 mb-3 flex items-center gap-2">
-                       <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                       {language === "pt" ? "Arrefecimento" : "Cool-down"}
-                     </h4>
-                     {todaysPlan.cooldown_exercises?.length > 0 ? (
-                       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                         {todaysPlan.cooldown_exercises.map((ex: any, i: number) => {
-                           return (
-                             <ExerciseCard 
-                               key={`cooldown-${i}`} 
-                               exercise={{ 
-                                 name: ex.name,
-                                 name_pt: ex.name_pt, 
-                                 sets: 1, 
-                                 reps_or_time: language === "pt" ? `${ex.duration_seconds} segundos` : `${ex.duration_seconds} seconds`,
-                                 reps_or_time_pt: `${ex.duration_seconds} segundos`,
-                                 focus: ex.description_pt || (language === "pt" ? "Arrefecimento" : "Cool-down"),
-                                 equipment_used: language === "pt" ? "Peso corporal" : "Bodyweight",
-                                 equipment_used_pt: "Peso corporal"
-                               }} 
-                               libraryMatch={getLibraryMatch(ex)} 
-                               index={i}
-                               onEnrichmentComplete={handleEnrichmentComplete}
-                             />
-                           );
-                         })}
-                       </div>
-                     ) : (
-                       <Card className="bg-blue-500/10 border-blue-500/30" data-testid="card-cooldown">
-                         <CardContent className="p-4">
-                           <p className="text-sm text-muted-foreground">{todaysPlan.cooldown_pt}</p>
-                         </CardContent>
-                       </Card>
-                     )}
-                   </div>
-                 )}
+                 {(() => {
+                   const cooldownExercises = getCooldownExercises(todaysPlan);
+                   if (cooldownExercises.length === 0 && !todaysPlan.cooldown_pt) return null;
+                   return (
+                     <div>
+                       <h4 className="font-bold text-blue-600 mb-3 flex items-center gap-2">
+                         <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                         {language === "pt" ? "Arrefecimento" : "Cool-down"}
+                       </h4>
+                       {cooldownExercises.length > 0 ? (
+                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                           {cooldownExercises.map((ex: any, i: number) => {
+                             return (
+                               <ExerciseCard 
+                                 key={`cooldown-${i}`} 
+                                 exercise={{ 
+                                   name: ex.name,
+                                   name_pt: ex.name_pt, 
+                                   sets: 1, 
+                                   reps_or_time: language === "pt" ? `${ex.duration_seconds} segundos` : `${ex.duration_seconds} seconds`,
+                                   reps_or_time_pt: `${ex.duration_seconds} segundos`,
+                                   focus: ex.description_pt || (language === "pt" ? "Arrefecimento" : "Cool-down"),
+                                   equipment_used: language === "pt" ? "Peso corporal" : "Bodyweight",
+                                   equipment_used_pt: "Peso corporal"
+                                 }} 
+                                 libraryMatch={getLibraryMatch(ex)} 
+                                 index={i}
+                                 onEnrichmentComplete={handleEnrichmentComplete}
+                               />
+                             );
+                           })}
+                         </div>
+                       ) : (
+                         <Card className="bg-blue-500/10 border-blue-500/30" data-testid="card-cooldown">
+                           <CardContent className="p-4">
+                             <p className="text-sm text-muted-foreground">{todaysPlan.cooldown_pt}</p>
+                           </CardContent>
+                         </Card>
+                       )}
+                     </div>
+                   );
+                 })()}
                </>
              )}
           </TabsContent>
@@ -789,8 +866,8 @@ export default function Dashboard() {
         exercises={todaysPlan.exercises}
         exerciseLibrary={exerciseLibrary}
         exerciseLibraryById={exerciseLibraryById}
-        warmupExercises={todaysPlan.warmup_exercises || []}
-        cooldownExercises={todaysPlan.cooldown_exercises || []}
+        warmupExercises={getWarmupExercises(todaysPlan)}
+        cooldownExercises={getCooldownExercises(todaysPlan)}
         open={showTimer}
         onClose={() => setShowTimer(false)}
         onComplete={handleWorkoutComplete}
