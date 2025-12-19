@@ -1,0 +1,69 @@
+[COACH-CHAT] ========== START ==========
+[COACH-CHAT] Timestamp: 2025-12-19T15:37:15.678Z
+[COACH-CHAT] userId=34, message="ok. cria o plano"
+[COACH-CHAT] Step 1: Fetching user profile...
+[COACH-CHAT] Step 1 OK: Found profile for Peter, language=pt
+[COACH-CHAT] Step 2: Fetching active plan for user 34...
+[COACH-CHAT] Step 2 OK: activePlan=NONE
+[COACH-CHAT] Step 2b: Found 0 progress entries
+[COACH-CHAT] Language: Portuguese
+[COACH-CHAT] Step 3: Built plan context, length=0
+[COACH-CHAT] Step 3b: User goal=ganho muscular
+[COACH-CHAT] Step 4: Saving user message to DB...
+[COACH-CHAT] Step 4 OK: Saved user message id=41
+[COACH-CHAT] Step 5: Fetching conversation history...
+[COACH-CHAT] Step 5 OK: Found 3 messages in history
+[COACH-CHAT] Step 5b: Using last 3 messages for AI context
+[COACH-CHAT] Step 6: Getting Azure config...
+[COACH-CHAT] Step 6 OK: deployment=gpt-5, apiVersion=2025-01-01-preview
+[COACH-CHAT] Step 6b: endpoint starts with=https://agentic-ai-lab.cognitiveservices...
+[COACH-CHAT] Step 6c: apiKey length=84, starts with=2OQbx...
+[COACH-CHAT] Step 6d: Full URL=https://agentic-ai-lab.cognitiveservices.azure.com/openai/deployments/gpt-5/chat/completions?api-version=2025-01-01-preview
+[COACH-CHAT] System prompt length: 412
+[COACH-CHAT] System prompt (first 200): És o Coach Virtual do AI Fitness Planner - um treinador pessoal amigável e motivador.
+
+SOBRE O UTILIZADOR:
+- Nome: Peter
+- Objetivo: ganho muscular
+- Peso: 69kg
+
+
+REGRAS:
+1. Responde SEMPRE em Portugu...
+[COACH-CHAT] Step 7: Calling Azure OpenAI...
+[COACH-CHAT] Step 7: Request has 4 messages, max_tokens=4000
+[COACH-CHAT] Step 7 RESPONSE: status=200, time=30125ms
+[COACH-CHAT] Step 7b: Response headers: {
+  'apim-request-id': '693800cf-146c-4809-b39b-e2f6219d3bd3',
+  'azureml-model-session': 'd404-20251214135259',
+  'content-length': '3151',
+  'content-type': 'application/json',
+  date: 'Fri, 19 Dec 2025 15:37:45 GMT',
+  'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+  'x-accel-buffering': 'no',
+  'x-content-type-options': 'nosniff',
+  'x-ms-deployment-name': 'gpt-5',
+  'x-ms-rai-invoked': 'true',
+  'x-ms-region': 'East US',
+  'x-ratelimit-limit-requests': '1500',
+  'x-ratelimit-limit-tokens': '150000',
+  'x-ratelimit-remaining-requests': '1498',
+  'x-ratelimit-remaining-tokens': '149304',
+  'x-request-id': '52deb5d6-f9f6-478f-a34c-778911ef614d'
+}
+[COACH-CHAT] Step 8: Parsing JSON response...
+[COACH-CHAT] Step 8: Raw response length=3082
+[COACH-CHAT] Step 8b: Raw response (first 300): {"choices":[{"content_filter_results":{"hate":{"filtered":false,"severity":"safe"},"protected_material_code":{"filtered":false,"detected":false},"protected_material_text":{"filtered":false,"detected":false},"self_harm":{"filtered":false,"severity":"safe"},"sexual":{"filtered":false,"severity":"safe"
+[COACH-CHAT] Step 8 OK: Parsed JSON successfully
+[COACH-CHAT] Step 9: Response analysis:
+[COACH-CHAT]   - finish_reason=stop
+[COACH-CHAT]   - content_length=1870
+[COACH-CHAT]   - prompt_tokens=648
+[COACH-CHAT]   - completion_tokens=2326
+[COACH-CHAT]   - reasoning_tokens=1728
+[COACH-CHAT]   - choices count=1
+[COACH-CHAT] Step 9b: AI response (first 200): "Bora, Peter! Plano simples para ganhar peso com 3 refeições/dia e 3 treinos/semana — refeições fáceis de comer e treinos amigos dos pulsos. Mantém o acompanhamento clínico e dá tempo ao corpo; aqui va"
+[COACH-CHAT] Step 10: Saving assistant message to DB...
+[COACH-CHAT] Step 10 OK: Saved assistant message id=42
+[COACH-CHAT] Step 11: Detected intent=general, confidence=0.5
+[COACH-CHAT] ========== SUCCESS - END ==========
