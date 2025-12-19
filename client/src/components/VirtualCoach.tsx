@@ -19,9 +19,19 @@ function detectQuickActions(content: string, language: string): QuickAction[] {
   
   const isPt = language === "pt";
   
-  // Detect plan creation suggestion
-  const planKeywordsPt = ["criar um novo plano", "criar novo plano", "novo plano personalizado", "queres que crie", "posso criar", "gostarias que criasse"];
-  const planKeywordsEn = ["create a new plan", "create new plan", "new personalized plan", "would you like me to create", "i can create", "shall i create"];
+  // Detect plan creation suggestion - expanded keywords
+  const planKeywordsPt = [
+    "criar um novo plano", "criar novo plano", "novo plano personalizado",
+    "queres que crie", "queres que eu crie", "posso criar", "gostarias que criasse",
+    "novo plano completo", "plano de 7 dias", "plano completo",
+    "se sim", "diz sim", "diz \"sim"
+  ];
+  const planKeywordsEn = [
+    "create a new plan", "create new plan", "new personalized plan",
+    "would you like me to create", "i can create", "shall i create",
+    "new complete plan", "7-day plan", "complete plan",
+    "if yes", "say yes"
+  ];
   const planKeywords = isPt ? planKeywordsPt : planKeywordsEn;
   
   if (planKeywords.some(kw => lowerContent.includes(kw))) {
