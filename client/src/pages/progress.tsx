@@ -15,6 +15,7 @@ export default function Progress() {
   const [isLoading, setIsLoading] = useState(true);
   const [progress, setProgress] = useState<any[]>([]);
   const [userWeight, setUserWeight] = useState<number | undefined>(undefined);
+  const [targetWeight, setTargetWeight] = useState<number | undefined>(undefined);
   const { t, language } = useTranslation();
 
   useEffect(() => {
@@ -42,8 +43,9 @@ export default function Progress() {
         setLocation("/onboarding");
       }
       
-      if (profileResponse.success && profileResponse.profile?.weight) {
-        setUserWeight(profileResponse.profile.weight);
+      if (profileResponse.success && profileResponse.profile) {
+        if (profileResponse.profile.weight) setUserWeight(profileResponse.profile.weight);
+        if (profileResponse.profile.targetWeight) setTargetWeight(profileResponse.profile.targetWeight);
       }
     } catch (error) {
       console.error("Error loading plan:", error);
@@ -94,6 +96,7 @@ export default function Progress() {
           planData={planData}
           currentDay={currentDay}
           userWeight={userWeight}
+          targetWeight={targetWeight}
         />
       </div>
     </Layout>

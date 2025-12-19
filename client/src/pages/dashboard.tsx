@@ -45,6 +45,7 @@ export default function Dashboard() {
   const [isExtending, setIsExtending] = useState(false);
   const [generatedWorkoutDays, setGeneratedWorkoutDays] = useState(7);
   const [userWeight, setUserWeight] = useState<number | undefined>(undefined);
+  const [targetWeight, setTargetWeight] = useState<number | undefined>(undefined);
   const latestDayRef = useRef<number>(1);
   const { t, language } = useTranslation();
 
@@ -193,8 +194,9 @@ export default function Dashboard() {
         getUserProfile(userId)
       ]);
       
-      if (profileResponse.success && profileResponse.profile?.weight) {
-        setUserWeight(profileResponse.profile.weight);
+      if (profileResponse.success && profileResponse.profile) {
+        if (profileResponse.profile.weight) setUserWeight(profileResponse.profile.weight);
+        if (profileResponse.profile.targetWeight) setTargetWeight(profileResponse.profile.targetWeight);
       }
       
       if (planResponse.success) {
@@ -829,6 +831,7 @@ export default function Dashboard() {
               planData={planData}
               currentDay={currentDay}
               userWeight={userWeight}
+              targetWeight={targetWeight}
             />
           </TabsContent>
 

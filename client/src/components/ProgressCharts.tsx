@@ -12,6 +12,7 @@ interface ProgressChartsProps {
   planData: any;
   currentDay: number;
   userWeight?: number;
+  targetWeight?: number;
   calorieTarget?: number;
 }
 
@@ -20,6 +21,7 @@ export default function ProgressCharts({
   planData, 
   currentDay,
   userWeight = 75,
+  targetWeight,
   calorieTarget = 2000
 }: ProgressChartsProps) {
   const { language } = useTranslation();
@@ -43,11 +45,12 @@ export default function ProgressCharts({
   }
 
   const weightData = [];
-  const targetWeight = userWeight - 2;
+  const goalWeight = targetWeight ?? userWeight - 2; // Use real target or fallback to -2kg
+  const weightDiff = userWeight - goalWeight;
   for (let day = 1; day <= 30; day++) {
-    const dailyLoss = (userWeight - targetWeight) / 30;
-    const projected = userWeight - (dailyLoss * day);
-    const actual = day <= completedDays ? userWeight - (dailyLoss * day * 0.9 + Math.random() * 0.3 - 0.15) : null;
+    const dailyChange = weightDiff / 30;
+    const projected = userWeight - (dailyChange * day);
+    const actual = day <= completedDays ? userWeight - (dailyChange * day * 0.9 + Math.random() * 0.3 - 0.15) : null;
     weightData.push({
       day: day,
       projected: parseFloat(projected.toFixed(1)),
