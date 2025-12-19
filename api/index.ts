@@ -2598,60 +2598,101 @@ RULES:
       return res.json({ success: true });
     }
 
-    // Virtual Coach - Regenerate plan
+    // Virtual Coach - Regenerate plan (generates full plan in one request)
     if (method === "POST" && path.match(/^\/api\/coach\/\d+\/regenerate-plan$/)) {
       const userId = parseInt(path.split("/")[3]);
       const { coachContext } = req.body;
       
-      console.log(`[regenerate-plan] Starting for user ${userId}`);
+      console.log(`[regenerate-plan] ========== START ==========`);
+      console.log(`[regenerate-plan] userId=${userId}, context="${coachContext?.substring(0, 50) || 'none'}"`);
 
       const [profile] = await db.select().from(userProfiles).where(eq(userProfiles.id, userId));
       if (!profile) {
-        console.log(`[regenerate-plan] User ${userId} not found`);
+        console.log(`[regenerate-plan] ERROR: User ${userId} not found`);
         return res.status(404).json({ success: false, error: "User not found" });
       }
 
       const isPt = profile.language === "pt";
-      console.log(`[regenerate-plan] User ${userId} found, language: ${isPt ? 'pt' : 'en'}`);
+      console.log(`[regenerate-plan] User: ${profile.firstName}, language=${isPt ? 'pt' : 'en'}`);
 
       // Deactivate current plan
-      const deactivateResult = await db.update(fitnessPlans)
+      await db.update(fitnessPlans)
         .set({ isActive: false } as any)
         .where(and(eq(fitnessPlans.userId, userId), eq(fitnessPlans.isActive, true)));
-      console.log(`[regenerate-plan] Deactivated existing plans for user ${userId}`);
+      console.log(`[regenerate-plan] Deactivated existing plans`);
 
-      // Create generation status
       try {
-        const [status] = await db.insert(planGenerationStatus)
+        // Generate all 3 chunks directly
+        console.log(`[regenerate-plan] Step 1/3: Generating workout days 1-4...`);
+        const chunk1 = await generatePlanChunk(profile, 1);
+        console.log(`[regenerate-plan] Step 1 OK: Got ${chunk1?.length || 0} days`);
+        
+        console.log(`[regenerate-plan] Step 2/3: Generating workout days 5-7...`);
+        const chunk2 = await generatePlanChunk(profile, 2);
+        console.log(`[regenerate-plan] Step 2 OK: Got ${chunk2?.length || 0} days`);
+        
+        console.log(`[regenerate-plan] Step 3/3: Generating nutrition...`);
+        const chunk3 = await generatePlanChunk(profile, 3);
+        console.log(`[regenerate-plan] Step 3 OK: Got ${chunk3?.nutrition_plan_7_days?.length || 0} nutrition days`);
+        
+        // Combine all chunks
+        const workoutDays = [...(chunk1 || []), ...(chunk2 || [])];
+        const nutritionDays = chunk3?.nutrition_plan_7_days || [];
+        
+        const planData = {
+          fitness_plan_7_days: workoutDays,
+          nutrition_plan_7_days: nutritionDays
+        };
+        
+        console.log(`[regenerate-plan] Combined: ${workoutDays.length} workout days, ${nutritionDays.length} nutrition days`);
+        
+        // Save the complete plan
+        const [newPlan] = await db.insert(fitnessPlans)
           .values({
             userId,
-            status: "generating",
-            currentStep: 0,
-            totalSteps: 3,
-            partialData: { fitness_plan_7_days: [], nutrition_plan_7_days: [] }
+            planData,
+            isActive: true,
+            currentDay: 1,
+            generatedWorkoutDays: workoutDays.length,
+            generatedNutritionDays: nutritionDays.length,
+            generationStatus: "idle"
           } as any)
           .returning();
-        console.log(`[regenerate-plan] Created generation status ${status.id} for user ${userId}`);
+        
+        console.log(`[regenerate-plan] SUCCESS: Created plan ${newPlan.id} for user ${userId}`);
 
-        // Add coach message
+        // Add coach confirmation message
         await db.insert(coachMessages)
           .values({
             userId,
             role: "assistant",
             content: isPt
-              ? "Perfeito! Estou a gerar um novo plano de 7 dias para ti. Vai ao Dashboard e usa o botão Continuar para acompanhar o progresso. 🏋️"
-              : "Perfect! I'm generating a new 7-day plan for you. Go to Dashboard and use the Continue button to track progress. 🏋️"
+              ? `Pronto, ${profile.firstName}! O teu novo plano de 7 dias está criado e ativo! Vai ao Dashboard para ver os teus treinos e nutrição. 💪`
+              : `Done, ${profile.firstName}! Your new 7-day plan is created and active! Go to Dashboard to see your workouts and nutrition. 💪`
           });
-        console.log(`[regenerate-plan] Added coach confirmation message for user ${userId}`);
-
+        
+        console.log(`[regenerate-plan] ========== SUCCESS - END ==========`);
         return res.json({
           success: true,
-          statusId: status.id,
-          message: isPt ? "A gerar novo plano..." : "Generating new plan..."
+          planId: newPlan.id,
+          message: isPt ? "Plano criado com sucesso!" : "Plan created successfully!"
         });
-      } catch (dbError) {
-        console.error(`[regenerate-plan] DB error for user ${userId}:`, dbError);
-        throw dbError;
+      } catch (genError) {
+        console.error(`[regenerate-plan] ========== ERROR - END ==========`);
+        console.error(`[regenerate-plan] Generation error:`, genError);
+        const errorMsg = genError instanceof Error ? genError.message : "Unknown error";
+        
+        // Add error message to coach
+        await db.insert(coachMessages)
+          .values({
+            userId,
+            role: "assistant",
+            content: isPt
+              ? `Desculpa, houve um erro ao criar o plano: ${errorMsg}. Por favor tenta novamente.`
+              : `Sorry, there was an error creating the plan: ${errorMsg}. Please try again.`
+          });
+        
+        return res.status(500).json({ success: false, error: errorMsg });
       }
     }
 
