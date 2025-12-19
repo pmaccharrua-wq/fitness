@@ -19,7 +19,6 @@ export default function VirtualCoach({ className }: VirtualCoachProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const { t, language } = useTranslation();
   const queryClient = useQueryClient();
@@ -34,14 +33,18 @@ export default function VirtualCoach({ className }: VirtualCoachProps) {
 
   useEffect(() => {
     // Auto-scroll to bottom when messages change or when chat opens
-    if (scrollRef.current) {
-      setTimeout(() => {
-        if (scrollRef.current) {
-          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-        }
-      }, 100);
-    }
+    const scrollToBottom = () => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+      }
+    };
+    // Use multiple timeouts to ensure scroll happens after render
+    setTimeout(scrollToBottom, 50);
+    setTimeout(scrollToBottom, 150);
+    setTimeout(scrollToBottom, 300);
   }, [messages, isOpen, isLoadingHistory]);
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isOpen && inputRef.current) {
@@ -215,7 +218,7 @@ export default function VirtualCoach({ className }: VirtualCoachProps) {
               </div>
             </div>
 
-            <ScrollArea className="flex-1 p-4" ref={scrollRef as any}>
+            <ScrollArea className="flex-1 p-4">
               <div className="space-y-4">
                 {isLoadingHistory ? (
                   <div className="flex justify-center py-8">
@@ -273,6 +276,7 @@ export default function VirtualCoach({ className }: VirtualCoachProps) {
                     </div>
                   </div>
                 )}
+                <div ref={messagesEndRef} />
               </div>
             </ScrollArea>
 
