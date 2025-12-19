@@ -159,6 +159,14 @@ export const planGenerationStatus = pgTable("plan_generation_status", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const coachMessages = pgTable("coach_messages", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  role: text("role").notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 const db = drizzle(pool);
 
 const AVAILABLE_EQUIPMENT = [
@@ -2156,6 +2164,146 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         daysCompleted,
         totalDays,
         currentStreak
+      });
+    }
+
+    // Virtual Coach - Get messages
+    if (method === "GET" && path.match(/^\/api\/coach\/\d+\/messages$/)) {
+      const userId = parseInt(path.split("/")[3]);
+      const messages = await db.select().from(coachMessages)
+        .where(eq(coachMessages.userId, userId))
+        .orderBy(coachMessages.createdAt);
+      return res.json({ success: true, messages });
+    }
+
+    // Virtual Coach - Send message (chat)
+    if (method === "POST" && path.match(/^\/api\/coach\/\d+\/chat$/)) {
+      const userId = parseInt(path.split("/")[3]);
+      const { message } = req.body;
+      
+      if (!message) {
+        return res.status(400).json({ success: false, error: "Message is required" });
+      }
+
+      const [profile] = await db.select().from(userProfiles).where(eq(userProfiles.id, userId));
+      if (!profile) {
+        return res.status(404).json({ success: false, error: "User not found" });
+      }
+
+      // Save user message
+      const [userMessage] = await db.insert(coachMessages)
+        .values({ userId, role: "user", content: message })
+        .returning();
+
+      // Get conversation history
+      const history = await db.select().from(coachMessages)
+        .where(eq(coachMessages.userId, userId))
+        .orderBy(coachMessages.createdAt);
+
+      const isPt = profile.language === "pt";
+      const systemPrompt = isPt
+        ? `És um treinador pessoal virtual amigável. Responde de forma concisa e motivadora. Ajuda com treinos, nutrição e motivação. Se o utilizador pedir para criar um novo plano, confirma primeiro se ele quer realmente criar um novo plano de treino.`
+        : `You are a friendly virtual personal trainer. Respond concisely and motivationally. Help with workouts, nutrition and motivation. If the user asks to create a new plan, first confirm if they really want to create a new workout plan.`;
+
+      // Build conversation for AI
+      const messages = history.slice(-10).map((m: any) => ({
+        role: m.role,
+        content: m.content
+      }));
+
+      try {
+        const { apiKey, endpoint, deployment, apiVersion } = getAzureConfig();
+        const url = `${endpoint}/openai/deployments/${deployment}/chat/completions?api-version=${apiVersion}`;
+        
+        const response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "api-key": apiKey },
+          body: JSON.stringify({
+            messages: [{ role: "system", content: systemPrompt }, ...messages],
+            max_completion_tokens: 1000,
+            temperature: 1
+          })
+        });
+
+        const data = await response.json();
+        const aiResponse = data.choices?.[0]?.message?.content || (isPt ? "Desculpa, não consegui responder." : "Sorry, I couldn't respond.");
+
+        // Save assistant message
+        const [assistantMessage] = await db.insert(coachMessages)
+          .values({ userId, role: "assistant", content: aiResponse })
+          .returning();
+
+        // Detect intent
+        const lowerMessage = message.toLowerCase();
+        let intent = "general";
+        let confidence = 0.5;
+        if (lowerMessage.includes("sim") || lowerMessage.includes("yes") || lowerMessage.includes("criar") || lowerMessage.includes("create")) {
+          intent = "authorize_plan";
+          confidence = 0.9;
+        }
+
+        return res.json({
+          success: true,
+          userMessage,
+          assistantMessage,
+          intent,
+          intentConfidence: confidence
+        });
+      } catch (error) {
+        console.error("Coach chat error:", error);
+        return res.status(500).json({ success: false, error: "Failed to get AI response" });
+      }
+    }
+
+    // Virtual Coach - Clear messages
+    if (method === "DELETE" && path.match(/^\/api\/coach\/\d+\/messages$/)) {
+      const userId = parseInt(path.split("/")[3]);
+      await db.delete(coachMessages).where(eq(coachMessages.userId, userId));
+      return res.json({ success: true });
+    }
+
+    // Virtual Coach - Regenerate plan
+    if (method === "POST" && path.match(/^\/api\/coach\/\d+\/regenerate-plan$/)) {
+      const userId = parseInt(path.split("/")[3]);
+      const { coachContext } = req.body;
+
+      const [profile] = await db.select().from(userProfiles).where(eq(userProfiles.id, userId));
+      if (!profile) {
+        return res.status(404).json({ success: false, error: "User not found" });
+      }
+
+      const isPt = profile.language === "pt";
+
+      // Deactivate current plan
+      await db.update(fitnessPlans)
+        .set({ isActive: false } as any)
+        .where(and(eq(fitnessPlans.userId, userId), eq(fitnessPlans.isActive, true)));
+
+      // Create generation status
+      const [status] = await db.insert(planGenerationStatus)
+        .values({
+          userId,
+          status: "generating",
+          currentStep: 0,
+          totalSteps: 3,
+          partialData: { fitness_plan_7_days: [], nutrition_plan_7_days: [] }
+        } as any)
+        .returning();
+
+      // Add coach message
+      await db.insert(coachMessages)
+        .values({
+          userId,
+          role: "assistant",
+          content: isPt
+            ? "Perfeito! Estou a gerar um novo plano de 7 dias para ti. Vai ao Dashboard e usa o botão Continuar para acompanhar o progresso. 🏋️"
+            : "Perfect! I'm generating a new 7-day plan for you. Go to Dashboard and use the Continue button to track progress. 🏋️"
+        });
+
+      return res.json({
+        success: true,
+        statusId: status.id,
+        message: isPt ? "A gerar novo plano..." : "Generating new plan..."
       });
     }
 
