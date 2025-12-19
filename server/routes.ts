@@ -1375,6 +1375,7 @@ export async function registerRoutes(
   });
 
   // Virtual Coach - Regenerate plan based on coach conversation
+  // Preserves completed days and only replaces days from currentDay onwards
   app.post("/api/coach/:userId/regenerate-plan", async (req: Request, res: Response) => {
     try {
       const userId = parseInt(req.params.userId);
@@ -1390,59 +1391,145 @@ export async function registerRoutes(
         return res.status(404).json({ success: false, error: "User profile not found" });
       }
 
-      // Deactivate current active plan (keeps it for history, but no longer active)
+      const isPt = userProfile.language === "pt";
+      
+      // Get current active plan and progress
       const currentPlan = await storage.getUserActivePlan(userId);
+      let preservedWorkoutDays: any[] = [];
+      let preservedNutritionDays: any[] = [];
+      let startFromDay = 1;
+      let existingProgress: any[] = [];
+      
       if (currentPlan) {
+        // Get progress to find completed days
+        existingProgress = await storage.getUserProgress(userId, currentPlan.id);
+        const completedDays = existingProgress.filter(p => p.completed === 1).map(p => p.day);
+        const lastCompletedDay = completedDays.length > 0 ? Math.max(...completedDays) : 0;
+        
+        // Preserve completed days from existing plan
+        const planData = currentPlan.planData as any;
+        if (lastCompletedDay > 0 && planData) {
+          // Keep workout days that were completed
+          preservedWorkoutDays = (planData.fitness_plan_15_days || [])
+            .filter((d: any) => d.day <= lastCompletedDay);
+          
+          // Keep nutrition days that correspond to completed workout days
+          preservedNutritionDays = (planData.nutrition_plan_7_days || [])
+            .filter((d: any) => d.day <= lastCompletedDay);
+          
+          startFromDay = lastCompletedDay + 1;
+          
+          console.log(`[Coach Regen] Preserving days 1-${lastCompletedDay}, generating from day ${startFromDay}`);
+        }
+        
+        // Deactivate old plan (will create new one with merged data)
         await storage.deactivatePlan(currentPlan.id);
       }
 
       // Add coach message about plan creation
-      const isPt = userProfile.language === "pt";
       await storage.createCoachMessage({
         userId,
         role: "assistant",
         content: isPt 
-          ? "Perfeito! Estou a gerar um novo plano personalizado de 7 dias para ti. Aguarda um momento... 🏋️"
-          : "Perfect! I'm generating a new personalized 7-day plan for you. Just a moment... 🏋️",
+          ? preservedWorkoutDays.length > 0
+            ? `Perfeito! Vou manter os teus ${preservedWorkoutDays.length} dias concluídos e gerar novos dias a partir do dia ${startFromDay}. Aguarda um momento... 🏋️`
+            : "Perfeito! Estou a gerar um novo plano personalizado de 7 dias para ti. Aguarda um momento... 🏋️"
+          : preservedWorkoutDays.length > 0
+            ? `Perfect! I'll keep your ${preservedWorkoutDays.length} completed days and generate new days from day ${startFromDay}. Just a moment... 🏋️`
+            : "Perfect! I'm generating a new personalized 7-day plan for you. Just a moment... 🏋️",
       });
 
-      // Generate new AI fitness plan with coach context (using simplified version for speed)
+      // Generate new AI fitness plan with coach context
       console.log("Coach generating new AI plan for user:", userId);
       const aiPlan = await generateSimpleCoachPlan(
         userProfile,
         coachContext || "User requested new plan via Virtual Coach"
       );
 
-      // Create new plan with generation context for future extensions
-      const startDate = new Date();
+      // Merge preserved days with new generated days
+      const generatedWorkoutDays = aiPlan.fitness_plan_15_days || [];
+      const generatedNutritionDays = aiPlan.nutrition_plan_7_days || [];
+      
+      let mergedWorkoutDays: any[];
+      let mergedNutritionDays: any[];
+      
+      if (preservedWorkoutDays.length > 0) {
+        // Renumber generated days to start from startFromDay
+        const renumberedWorkoutDays = generatedWorkoutDays.map((d: any, i: number) => ({
+          ...d,
+          day: startFromDay + i,
+        }));
+        const renumberedNutritionDays = generatedNutritionDays.map((d: any, i: number) => ({
+          ...d,
+          day: startFromDay + i,
+        }));
+        
+        mergedWorkoutDays = [...preservedWorkoutDays, ...renumberedWorkoutDays];
+        mergedNutritionDays = [...preservedNutritionDays, ...renumberedNutritionDays];
+        
+        console.log(`[Coach Regen] Merged: ${preservedWorkoutDays.length} preserved + ${renumberedWorkoutDays.length} new = ${mergedWorkoutDays.length} total workout days`);
+      } else {
+        mergedWorkoutDays = generatedWorkoutDays;
+        mergedNutritionDays = generatedNutritionDays;
+      }
+      
+      // Create merged plan data
+      const mergedPlanData = {
+        ...aiPlan,
+        fitness_plan_15_days: mergedWorkoutDays,
+        nutrition_plan_7_days: mergedNutritionDays,
+      };
+
+      // Create new plan with merged data
+      const startDate = currentPlan?.startDate || new Date();
       const endDate = new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000);
       const contextToStore = coachContext || "User requested new plan via Virtual Coach";
 
       const fitnessPlan = await storage.createFitnessPlan({
         userId: userProfile.id,
-        planData: aiPlan as any,
-        currentDay: 1,
+        planData: mergedPlanData as any,
+        currentDay: startFromDay,
         durationDays: 30,
-        generatedWorkoutDays: 7,
-        generatedNutritionDays: 7,
+        generatedWorkoutDays: mergedWorkoutDays.length,
+        generatedNutritionDays: mergedNutritionDays.length,
         generationContext: contextToStore,
         startDate,
         endDate,
       });
+      
+      // Copy progress from old plan for preserved days
+      if (preservedWorkoutDays.length > 0 && existingProgress.length > 0) {
+        for (const prog of existingProgress.filter(p => p.day <= preservedWorkoutDays.length)) {
+          await storage.recordProgress({
+            planId: fitnessPlan.id,
+            day: prog.day,
+            completed: prog.completed,
+            difficultyRating: prog.difficultyRating,
+            caloriesBurned: prog.caloriesBurned,
+          });
+        }
+        console.log(`[Coach Regen] Copied ${existingProgress.filter(p => p.day <= preservedWorkoutDays.length).length} progress records to new plan`);
+      }
 
       // Add success message from coach
       await storage.createCoachMessage({
         userId,
         role: "assistant",
         content: isPt 
-          ? `O teu novo plano está pronto! 🎉 Criei um plano personalizado de 7 dias com base nas nossas conversas e no teu perfil. Vai ao Dashboard para ver o teu primeiro treino!`
-          : `Your new plan is ready! 🎉 I created a personalized 7-day plan based on our conversations and your profile. Go to the Dashboard to see your first workout!`,
+          ? preservedWorkoutDays.length > 0
+            ? `O teu plano foi atualizado! 🎉 Mantive os teus ${preservedWorkoutDays.length} dias concluídos e criei ${generatedWorkoutDays.length} novos dias. Vai ao Dashboard para continuar!`
+            : `O teu novo plano está pronto! 🎉 Criei um plano personalizado de 7 dias com base nas nossas conversas e no teu perfil. Vai ao Dashboard para ver o teu primeiro treino!`
+          : preservedWorkoutDays.length > 0
+            ? `Your plan has been updated! 🎉 I kept your ${preservedWorkoutDays.length} completed days and created ${generatedWorkoutDays.length} new days. Go to the Dashboard to continue!`
+            : `Your new plan is ready! 🎉 I created a personalized 7-day plan based on our conversations and your profile. Go to the Dashboard to see your first workout!`,
       });
 
       res.json({
         success: true,
         planId: fitnessPlan.id,
-        message: isPt ? "Novo plano criado com sucesso!" : "New plan created successfully!",
+        preservedDays: preservedWorkoutDays.length,
+        newDays: generatedWorkoutDays.length,
+        message: isPt ? "Plano atualizado com sucesso!" : "Plan updated successfully!",
       });
     } catch (error) {
       console.error("Error regenerating plan via coach:", error);

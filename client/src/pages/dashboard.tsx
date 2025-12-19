@@ -8,7 +8,6 @@ import ExerciseCard from "@/components/ExerciseCard";
 import MealCard, { type MealData } from "@/components/MealCard";
 import AIMealBuilder from "@/components/AIMealBuilder";
 import CoachingCard from "@/components/CoachingCard";
-import VirtualCoach from "@/components/VirtualCoach";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -796,8 +795,6 @@ export default function Dashboard() {
         onClose={() => setShowTimer(false)}
         onComplete={handleWorkoutComplete}
       />
-
-      <VirtualCoach />
     </Layout>
   );
 }

@@ -1,13 +1,15 @@
 import { Link, useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, User, Activity, Calendar, LogOut, Home, Maximize2, Minimize2 } from "lucide-react";
+import { LayoutDashboard, User, Activity, Calendar, LogOut, Home, Maximize2, Minimize2, MessageCircle } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
+import VirtualCoach from "@/components/VirtualCoach";
 import { clearUserId } from "@/lib/api";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isCoachOpen, setIsCoachOpen] = useState(false);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -74,6 +76,21 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </div>
             </Link>
           ))}
+          
+          {/* Virtual Coach - Desktop */}
+          <button
+            onClick={() => setIsCoachOpen(true)}
+            className={cn(
+              "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group cursor-pointer w-full",
+              isCoachOpen
+                ? "bg-primary/10 text-primary border-l-2 border-primary"
+                : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+            )}
+            data-testid="button-coach-desktop"
+          >
+            <MessageCircle className="w-5 h-5" />
+            <span className="font-medium">Coach</span>
+          </button>
         </nav>
 
         <div className="p-4 border-t border-border">
@@ -115,7 +132,36 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Mobile Bottom Navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-card/95 backdrop-blur-md border-t border-border flex items-center justify-around px-2 z-50 safe-area-pb">
-        {navItems.map((item) => (
+        {navItems.slice(0, 2).map((item) => (
+          <Link key={item.href} href={item.href}>
+            <div className={cn(
+              "flex flex-col items-center justify-center min-w-[60px] py-2 px-3 rounded-xl transition-all touch-manipulation",
+              location === item.href 
+                ? "text-primary bg-primary/10" 
+                : "text-muted-foreground active:bg-white/10"
+            )}>
+              <item.icon className="w-6 h-6 mb-1" />
+              <span className="text-[10px] font-medium">{item.label}</span>
+            </div>
+          </Link>
+        ))}
+        
+        {/* Coach Button - Center */}
+        <button
+          onClick={() => setIsCoachOpen(true)}
+          className={cn(
+            "flex flex-col items-center justify-center min-w-[60px] py-2 px-3 rounded-xl transition-all touch-manipulation",
+            isCoachOpen
+              ? "text-emerald-500 bg-emerald-500/10"
+              : "text-muted-foreground active:bg-white/10"
+          )}
+          data-testid="button-coach-nav"
+        >
+          <MessageCircle className="w-6 h-6 mb-1" />
+          <span className="text-[10px] font-medium">Coach</span>
+        </button>
+        
+        {navItems.slice(2).map((item) => (
           <Link key={item.href} href={item.href}>
             <div className={cn(
               "flex flex-col items-center justify-center min-w-[60px] py-2 px-3 rounded-xl transition-all touch-manipulation",
@@ -129,6 +175,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </Link>
         ))}
       </nav>
+      
+      {/* Virtual Coach - Controlled */}
+      <VirtualCoach isOpenExternal={isCoachOpen} onCloseExternal={() => setIsCoachOpen(false)} />
     </div>
   );
 }

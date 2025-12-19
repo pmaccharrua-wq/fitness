@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import Layout from "@/components/Layout";
-import VirtualCoach from "@/components/VirtualCoach";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -644,9 +643,6 @@ export default function Profile() {
           </CardContent>
         </Card>
       </div>
-      
-      {/* Virtual Coach */}
-      <VirtualCoach />
     </Layout>
   );
 }

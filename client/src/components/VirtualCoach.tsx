@@ -10,10 +10,19 @@ import { useQueryClient } from "@tanstack/react-query";
 
 interface VirtualCoachProps {
   className?: string;
+  isOpenExternal?: boolean;
+  onCloseExternal?: () => void;
 }
 
-export default function VirtualCoach({ className }: VirtualCoachProps) {
-  const [isOpen, setIsOpen] = useState(false);
+export default function VirtualCoach({ className, isOpenExternal, onCloseExternal }: VirtualCoachProps) {
+  const [isOpenInternal, setIsOpenInternal] = useState(false);
+  
+  // Support both internal and external control
+  const isControlled = isOpenExternal !== undefined;
+  const isOpen = isControlled ? isOpenExternal : isOpenInternal;
+  const setIsOpen = isControlled 
+    ? (open: boolean) => { if (!open && onCloseExternal) onCloseExternal(); }
+    : setIsOpenInternal;
   const [messages, setMessages] = useState<CoachMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -312,37 +321,40 @@ export default function VirtualCoach({ className }: VirtualCoachProps) {
         )}
       </AnimatePresence>
 
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-4 right-4 z-50 w-14 h-14 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg flex items-center justify-center hover:shadow-xl transition-shadow"
-        data-testid="button-open-coach"
-      >
-        <AnimatePresence mode="wait">
-          {isOpen ? (
-            <motion.div
-              key="close"
-              initial={{ rotate: -90, opacity: 0 }}
-              animate={{ rotate: 0, opacity: 1 }}
-              exit={{ rotate: 90, opacity: 0 }}
-              transition={{ duration: 0.15 }}
-            >
-              <X className="w-6 h-6" />
-            </motion.div>
-          ) : (
-            <motion.div
-              key="open"
-              initial={{ rotate: 90, opacity: 0 }}
-              animate={{ rotate: 0, opacity: 1 }}
-              exit={{ rotate: -90, opacity: 0 }}
-              transition={{ duration: 0.15 }}
-            >
-              <MessageCircle className="w-6 h-6" />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.button>
+      {/* Only show floating button when not controlled externally */}
+      {!isControlled && (
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setIsOpen(!isOpen)}
+          className="fixed bottom-20 right-4 md:bottom-4 z-40 w-14 h-14 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg flex items-center justify-center hover:shadow-xl transition-shadow"
+          data-testid="button-open-coach"
+        >
+          <AnimatePresence mode="wait">
+            {isOpen ? (
+              <motion.div
+                key="close"
+                initial={{ rotate: -90, opacity: 0 }}
+                animate={{ rotate: 0, opacity: 1 }}
+                exit={{ rotate: 90, opacity: 0 }}
+                transition={{ duration: 0.15 }}
+              >
+                <X className="w-6 h-6" />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="open"
+                initial={{ rotate: 90, opacity: 0 }}
+                animate={{ rotate: 0, opacity: 1 }}
+                exit={{ rotate: -90, opacity: 0 }}
+                transition={{ duration: 0.15 }}
+              >
+                <MessageCircle className="w-6 h-6" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.button>
+      )}
     </>
   );
 }
