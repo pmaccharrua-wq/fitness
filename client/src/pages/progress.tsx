@@ -4,7 +4,7 @@ import Layout from "@/components/Layout";
 import ProgressCharts from "@/components/ProgressCharts";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
-import { getUserPlan, getUserId } from "@/lib/api";
+import { getUserPlan, getUserId, getUserProfile } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
 import { toast } from "sonner";
 
@@ -14,6 +14,7 @@ export default function Progress() {
   const [currentDay, setCurrentDay] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [progress, setProgress] = useState<any[]>([]);
+  const [userWeight, setUserWeight] = useState<number | undefined>(undefined);
   const { t, language } = useTranslation();
 
   useEffect(() => {
@@ -27,7 +28,11 @@ export default function Progress() {
 
   async function loadPlan(userId: number) {
     try {
-      const planResponse = await getUserPlan(userId);
+      const [planResponse, profileResponse] = await Promise.all([
+        getUserPlan(userId),
+        getUserProfile(userId)
+      ]);
+      
       if (planResponse.success) {
         setPlanData(planResponse.plan);
         setCurrentDay(planResponse.currentDay);
@@ -35,6 +40,10 @@ export default function Progress() {
       } else {
         toast.error(t("dashboard", "loadFailed"));
         setLocation("/onboarding");
+      }
+      
+      if (profileResponse.success && profileResponse.profile?.weight) {
+        setUserWeight(profileResponse.profile.weight);
       }
     } catch (error) {
       console.error("Error loading plan:", error);
@@ -84,6 +93,7 @@ export default function Progress() {
           progress={progress}
           planData={planData}
           currentDay={currentDay}
+          userWeight={userWeight}
         />
       </div>
     </Layout>

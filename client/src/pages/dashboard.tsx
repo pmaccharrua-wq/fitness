@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlayCircle, Flame, Clock, Trophy, Loader2, Trash2, CheckCircle, ChevronLeft, ChevronRight, RefreshCw, Calendar } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getUserPlan, getUserId, recordProgress, matchExercises, getUserPlans, activatePlan, deletePlan, getCustomMeals, deleteCustomMeal, renewPlan, extendPlan } from "@/lib/api";
+import { getUserPlan, getUserId, recordProgress, matchExercises, getUserPlans, activatePlan, deletePlan, getCustomMeals, deleteCustomMeal, renewPlan, extendPlan, getUserProfile } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
 import { toast } from "sonner";
 
@@ -44,6 +44,7 @@ export default function Dashboard() {
   const [selectedDay, setSelectedDay] = useState(1);
   const [isExtending, setIsExtending] = useState(false);
   const [generatedWorkoutDays, setGeneratedWorkoutDays] = useState(7);
+  const [userWeight, setUserWeight] = useState<number | undefined>(undefined);
   const latestDayRef = useRef<number>(1);
   const { t, language } = useTranslation();
 
@@ -186,10 +187,16 @@ export default function Dashboard() {
 
   async function loadPlan(userId: number) {
     try {
-      const [planResponse, plansResponse] = await Promise.all([
+      const [planResponse, plansResponse, profileResponse] = await Promise.all([
         getUserPlan(userId),
-        getUserPlans(userId)
+        getUserPlans(userId),
+        getUserProfile(userId)
       ]);
+      
+      if (profileResponse.success && profileResponse.profile?.weight) {
+        setUserWeight(profileResponse.profile.weight);
+      }
+      
       if (planResponse.success) {
         setPlanData(planResponse.plan);
         setCurrentDay(planResponse.currentDay);
@@ -821,6 +828,7 @@ export default function Dashboard() {
               progress={progress}
               planData={planData}
               currentDay={currentDay}
+              userWeight={userWeight}
             />
           </TabsContent>
 
