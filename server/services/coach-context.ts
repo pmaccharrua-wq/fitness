@@ -1,6 +1,28 @@
 import { storage } from "../storage";
 import { FitnessPlan, ExerciseProgress, UserProfile } from "@shared/schema";
 
+export interface WorkoutDaySummary {
+  day: number;
+  name: string;
+  focus: string;
+  duration: number;
+  exerciseCount: number;
+  exercises: string[];
+  isRestDay: boolean;
+  completed: boolean;
+  difficulty?: string;
+}
+
+export interface NutritionDaySummary {
+  day: number;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+  mealCount: number;
+  meals: string[];
+}
+
 export interface CoachContext {
   hasPlan: boolean;
   planSummary: string;
@@ -10,11 +32,56 @@ export interface CoachContext {
     completionRate: number;
     currentDay: number;
     daysRemaining: number;
+    currentStreak: number;
   } | null;
   recentProgress: string;
   exerciseCategories: string[];
   nutritionSummary: string;
   canCreateNewPlan: boolean;
+  todayWorkout: WorkoutDaySummary | null;
+  yesterdayWorkout: WorkoutDaySummary | null;
+  tomorrowWorkout: WorkoutDaySummary | null;
+  todayNutrition: NutritionDaySummary | null;
+  userGoal: string;
+  userMetrics: string;
+}
+
+function buildWorkoutSummary(dayData: any, dayProgress: any, isPt: boolean): WorkoutDaySummary {
+  if (!dayData) return null as any;
+  
+  const exercises = (dayData.exercises || []).map((e: any) => 
+    isPt ? (e.name_pt || e.name) : (e.name || e.name_pt)
+  ).slice(0, 6);
+  
+  return {
+    day: dayData.day,
+    name: dayData.workout_name_pt || dayData.workout_name || `Day ${dayData.day}`,
+    focus: dayData.focus_pt || dayData.focus || "",
+    duration: dayData.duration_minutes || 30,
+    exerciseCount: (dayData.exercises || []).length,
+    exercises,
+    isRestDay: dayData.is_rest_day || false,
+    completed: dayProgress?.completed || false,
+    difficulty: dayProgress?.difficulty
+  };
+}
+
+function buildNutritionSummary(dayData: any, isPt: boolean): NutritionDaySummary | null {
+  if (!dayData) return null;
+  
+  const meals = (dayData.meals || []).map((m: any) => 
+    isPt ? (m.name_pt || m.name) : (m.name || m.name_pt)
+  ).slice(0, 6);
+  
+  return {
+    day: dayData.day,
+    calories: dayData.total_daily_calories || 0,
+    protein: dayData.macros?.protein_grams || 0,
+    carbs: dayData.macros?.carbs_grams || 0,
+    fats: dayData.macros?.fat_grams || 0,
+    mealCount: (dayData.meals || []).length,
+    meals
+  };
 }
 
 export async function getCoachContext(userId: number, language: string = "pt"): Promise<CoachContext> {
@@ -26,6 +93,21 @@ export async function getCoachContext(userId: number, language: string = "pt"): 
     storage.getUserProgress(userId, 0).catch(() => [])
   ]);
 
+  const goalLabels: Record<string, { pt: string; en: string }> = {
+    loss: { pt: "perda de peso", en: "weight loss" },
+    muscle: { pt: "ganho muscular", en: "muscle gain" },
+    maintenance: { pt: "manutenção", en: "maintenance" },
+    endurance: { pt: "resistência", en: "endurance" }
+  };
+
+  const userGoal = profile?.goal 
+    ? (isPt ? goalLabels[profile.goal]?.pt : goalLabels[profile.goal]?.en) || profile.goal
+    : "";
+  
+  const userMetrics = profile 
+    ? `${profile.weight}kg, ${profile.height}cm, ${profile.age} ${isPt ? "anos" : "years"}`
+    : "";
+
   if (!activePlan) {
     return {
       hasPlan: false,
@@ -36,7 +118,13 @@ export async function getCoachContext(userId: number, language: string = "pt"): 
       recentProgress: "",
       exerciseCategories: [],
       nutritionSummary: "",
-      canCreateNewPlan: true
+      canCreateNewPlan: true,
+      todayWorkout: null,
+      yesterdayWorkout: null,
+      tomorrowWorkout: null,
+      todayNutrition: null,
+      userGoal,
+      userMetrics
     };
   }
 
@@ -55,6 +143,24 @@ export async function getCoachContext(userId: number, language: string = "pt"): 
   const currentDay = activePlan.currentDay || 1;
   const generatedWorkoutDays = activePlan.generatedWorkoutDays || workoutDays.length;
   const daysRemaining = generatedWorkoutDays - currentDay;
+
+  // Calculate current streak
+  const completedDayNumbers = userProgress
+    .filter(p => p.completed)
+    .map(p => p.day)
+    .sort((a, b) => b - a);
+  
+  let currentStreak = 0;
+  if (completedDayNumbers.length > 0) {
+    currentStreak = 1;
+    for (let i = 0; i < completedDayNumbers.length - 1; i++) {
+      if (completedDayNumbers[i] - completedDayNumbers[i + 1] === 1) {
+        currentStreak++;
+      } else {
+        break;
+      }
+    }
+  }
 
   const recentProgressEntries = userProgress
     .slice(-5)
@@ -81,8 +187,38 @@ export async function getCoachContext(userId: number, language: string = "pt"): 
     : (isPt ? "Sem plano nutricional." : "No nutrition plan.");
 
   const planSummaryText = isPt
-    ? `Plano ativo: ${generatedWorkoutDays} dias de treino gerados. Dia atual: ${currentDay}. Taxa de conclusão: ${completionRate}%. ${daysRemaining <= 2 ? "Pode estender o plano com +7 dias." : ""}`
-    : `Active plan: ${generatedWorkoutDays} workout days generated. Current day: ${currentDay}. Completion rate: ${completionRate}%. ${daysRemaining <= 2 ? "Can extend plan with +7 days." : ""}`;
+    ? `Plano ativo: ${generatedWorkoutDays} dias de treino gerados. Dia atual: ${currentDay}. Taxa de conclusão: ${completionRate}%. Sequência atual: ${currentStreak} dias. ${daysRemaining <= 2 ? "Pode estender o plano com +7 dias." : ""}`
+    : `Active plan: ${generatedWorkoutDays} workout days generated. Current day: ${currentDay}. Completion rate: ${completionRate}%. Current streak: ${currentStreak} days. ${daysRemaining <= 2 ? "Can extend plan with +7 days." : ""}`;
+
+  // Build workout summaries for today, yesterday, tomorrow (guard against empty arrays)
+  let todayWorkout: WorkoutDaySummary | null = null;
+  let yesterdayWorkout: WorkoutDaySummary | null = null;
+  let tomorrowWorkout: WorkoutDaySummary | null = null;
+  let todayNutrition: NutritionDaySummary | null = null;
+
+  if (workoutDays.length > 0) {
+    const todayIndex = (currentDay - 1) % workoutDays.length;
+    const yesterdayIndex = currentDay > 1 ? ((currentDay - 2) % workoutDays.length) : -1;
+    const tomorrowIndex = currentDay < generatedWorkoutDays ? (currentDay % workoutDays.length) : -1;
+
+    const todayData = workoutDays[todayIndex];
+    const yesterdayData = yesterdayIndex >= 0 ? workoutDays[yesterdayIndex] : null;
+    const tomorrowData = tomorrowIndex >= 0 ? workoutDays[tomorrowIndex] : null;
+
+    const todayProgress = userProgress.find(p => p.day === currentDay);
+    const yesterdayProgress = userProgress.find(p => p.day === currentDay - 1);
+
+    todayWorkout = todayData ? buildWorkoutSummary(todayData, todayProgress, isPt) : null;
+    yesterdayWorkout = yesterdayData ? buildWorkoutSummary(yesterdayData, yesterdayProgress, isPt) : null;
+    tomorrowWorkout = tomorrowData ? buildWorkoutSummary(tomorrowData, null, isPt) : null;
+  }
+
+  // Nutrition for today (guard against empty arrays)
+  if (nutritionDays.length > 0) {
+    const nutritionDayIndex = (currentDay - 1) % nutritionDays.length;
+    const todayNutritionData = nutritionDays[nutritionDayIndex];
+    todayNutrition = buildNutritionSummary(todayNutritionData, isPt);
+  }
 
   return {
     hasPlan: true,
@@ -92,12 +228,19 @@ export async function getCoachContext(userId: number, language: string = "pt"): 
       completedDays,
       completionRate,
       currentDay,
-      daysRemaining
+      daysRemaining,
+      currentStreak
     },
     recentProgress: recentProgressEntries || (isPt ? "Sem progresso registado ainda." : "No progress recorded yet."),
     exerciseCategories,
     nutritionSummary,
-    canCreateNewPlan: completionRate < 30 || daysRemaining <= 0
+    canCreateNewPlan: completionRate < 30 || daysRemaining <= 0,
+    todayWorkout,
+    yesterdayWorkout,
+    tomorrowWorkout,
+    todayNutrition,
+    userGoal,
+    userMetrics
   };
 }
 

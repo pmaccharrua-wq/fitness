@@ -1604,6 +1604,28 @@ function generateFallbackCoachingTips(input: CoachingTipsInput, progressPercenta
 }
 
 // Virtual Coach Chat - Conversational AI for fitness advice
+interface WorkoutSummary {
+  day: number;
+  name: string;
+  focus: string;
+  duration: number;
+  exerciseCount: number;
+  exercises: string[];
+  isRestDay: boolean;
+  completed: boolean;
+  difficulty?: string;
+}
+
+interface NutritionSummary {
+  day: number;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+  mealCount: number;
+  meals: string[];
+}
+
 export interface CoachChatInput {
   userMessage: string;
   conversationHistory: Array<{ role: string; content: string }>;
@@ -1625,10 +1647,17 @@ export interface CoachChatInput {
       completionRate: number;
       currentDay: number;
       daysRemaining: number;
+      currentStreak?: number;
     } | null;
     recentProgress: string;
     nutritionSummary: string;
     canCreateNewPlan: boolean;
+    todayWorkout?: WorkoutSummary | null;
+    yesterdayWorkout?: WorkoutSummary | null;
+    tomorrowWorkout?: WorkoutSummary | null;
+    todayNutrition?: NutritionSummary | null;
+    userGoal?: string;
+    userMetrics?: string;
   };
 }
 
@@ -1646,20 +1675,62 @@ export async function generateCoachResponse(input: CoachChatInput): Promise<stri
   
   const userGoal = profile?.goal ? (goalMap[profile.goal] || profile.goal) : (isPt ? "melhoria geral" : "general improvement");
   
+  // Build workout summary strings
+  const formatWorkoutPt = (w: WorkoutSummary | null | undefined, label: string): string => {
+    if (!w) return "";
+    if (w.isRestDay) return `${label}: Dia de descanso`;
+    return `${label}: "${w.name}" (${w.focus}) - ${w.exerciseCount} exercícios, ${w.duration} min${w.completed ? " ✓ Concluído" : ""}${w.difficulty ? ` (${w.difficulty})` : ""}
+  Exercícios: ${w.exercises.join(", ")}`;
+  };
+
+  const formatWorkoutEn = (w: WorkoutSummary | null | undefined, label: string): string => {
+    if (!w) return "";
+    if (w.isRestDay) return `${label}: Rest day`;
+    return `${label}: "${w.name}" (${w.focus}) - ${w.exerciseCount} exercises, ${w.duration} min${w.completed ? " ✓ Completed" : ""}${w.difficulty ? ` (${w.difficulty})` : ""}
+  Exercises: ${w.exercises.join(", ")}`;
+  };
+
+  const formatNutritionPt = (n: NutritionSummary | null | undefined): string => {
+    if (!n) return "";
+    return `NUTRIÇÃO DE HOJE (Dia ${n.day}):
+- Calorias: ${n.calories} kcal
+- Proteína: ${n.protein}g | Carboidratos: ${n.carbs}g | Gorduras: ${n.fats}g
+- ${n.mealCount} refeições: ${n.meals.join(", ")}`;
+  };
+
+  const formatNutritionEn = (n: NutritionSummary | null | undefined): string => {
+    if (!n) return "";
+    return `TODAY'S NUTRITION (Day ${n.day}):
+- Calories: ${n.calories} kcal
+- Protein: ${n.protein}g | Carbs: ${n.carbs}g | Fats: ${n.fats}g
+- ${n.mealCount} meals: ${n.meals.join(", ")}`;
+  };
+
   const planContextPt = planContext ? `
 ESTADO DO PLANO DO UTILIZADOR:
 ${planContext.planSummary}
 ${planContext.completionStats ? `- Dias de treino completados: ${planContext.completionStats.completedDays}/${planContext.completionStats.totalWorkoutDays}
 - Taxa de conclusão: ${planContext.completionStats.completionRate}%
 - Dia atual: ${planContext.completionStats.currentDay}
-- Dias restantes: ${planContext.completionStats.daysRemaining}` : ""}
+- Dias restantes: ${planContext.completionStats.daysRemaining}
+- Sequência atual: ${planContext.completionStats.currentStreak || 0} dias consecutivos` : ""}
+
+TREINOS:
+${formatWorkoutPt(planContext.yesterdayWorkout, "ONTEM")}
+${formatWorkoutPt(planContext.todayWorkout, "HOJE")}
+${formatWorkoutPt(planContext.tomorrowWorkout, "AMANHÃ")}
+
+${formatNutritionPt(planContext.todayNutrition)}
+
 ${planContext.nutritionSummary}
 ${planContext.recentProgress ? `
 PROGRESSO RECENTE:
 ${planContext.recentProgress}` : ""}
 
 CAPACIDADES ESPECIAIS:
-- Tens acesso ao plano de fitness e nutrição do utilizador
+- Tens acesso COMPLETO ao plano de fitness e nutrição do utilizador
+- Podes responder sobre exercícios específicos, treinos passados e futuros
+- Podes dar feedback sobre a nutrição do dia
 - Podes sugerir criar um NOVO PLANO personalizado de 7 dias se o utilizador não estiver satisfeito ou quiser mudar
 - Se o utilizador concordar em criar um novo plano, diz-lhe para confirmar dizendo algo como "sim, cria o plano" ou "pode criar"
 - ${planContext.canCreateNewPlan ? "O utilizador está elegível para um novo plano." : "O utilizador tem um plano ativo em andamento."}` : "";
@@ -1670,14 +1741,25 @@ ${planContext.planSummary}
 ${planContext.completionStats ? `- Workout days completed: ${planContext.completionStats.completedDays}/${planContext.completionStats.totalWorkoutDays}
 - Completion rate: ${planContext.completionStats.completionRate}%
 - Current day: ${planContext.completionStats.currentDay}
-- Days remaining: ${planContext.completionStats.daysRemaining}` : ""}
+- Days remaining: ${planContext.completionStats.daysRemaining}
+- Current streak: ${planContext.completionStats.currentStreak || 0} consecutive days` : ""}
+
+WORKOUTS:
+${formatWorkoutEn(planContext.yesterdayWorkout, "YESTERDAY")}
+${formatWorkoutEn(planContext.todayWorkout, "TODAY")}
+${formatWorkoutEn(planContext.tomorrowWorkout, "TOMORROW")}
+
+${formatNutritionEn(planContext.todayNutrition)}
+
 ${planContext.nutritionSummary}
 ${planContext.recentProgress ? `
 RECENT PROGRESS:
 ${planContext.recentProgress}` : ""}
 
 SPECIAL CAPABILITIES:
-- You have access to the user's fitness and nutrition plan
+- You have FULL access to the user's fitness and nutrition plan
+- You can answer questions about specific exercises, past and future workouts
+- You can give feedback on today's nutrition
 - You can suggest creating a NEW personalized 7-day plan if the user is not satisfied or wants to change
 - If the user agrees to create a new plan, tell them to confirm by saying something like "yes, create the plan" or "go ahead"
 - ${planContext.canCreateNewPlan ? "The user is eligible for a new plan." : "The user has an active plan in progress."}` : "";

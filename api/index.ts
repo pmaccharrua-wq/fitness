@@ -2176,7 +2176,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.json({ success: true, messages });
     }
 
-    // Virtual Coach - Send message (chat)
+    // Virtual Coach - Send message (chat) with full plan context
     if (method === "POST" && path.match(/^\/api\/coach\/\d+\/chat$/)) {
       const userId = parseInt(path.split("/")[3]);
       const { message } = req.body;
@@ -2190,6 +2190,106 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(404).json({ success: false, error: "User not found" });
       }
 
+      // Get active plan and progress for context
+      const [activePlan] = await db.select().from(fitnessPlans)
+        .where(and(eq(fitnessPlans.userId, userId), eq(fitnessPlans.isActive, true)))
+        .limit(1);
+      
+      const progress = activePlan ? await db.select().from(exerciseProgress)
+        .where(eq(exerciseProgress.planId, activePlan.id)) : [];
+
+      // Build plan context
+      const isPt = profile.language === "pt";
+      let planContextStr = "";
+      
+      if (activePlan) {
+        const planData = activePlan.planData as any;
+        const workoutDays = planData?.fitness_plan_7_days || planData?.fitness_plan_15_days || [];
+        const nutritionDays = planData?.nutrition_plan_7_days || [];
+        const currentDay = activePlan.currentDay || 1;
+        const completedDays = progress.filter((p: any) => p.completed).length;
+        const totalWorkoutDays = workoutDays.filter((d: any) => !d.is_rest_day).length;
+        const completionRate = totalWorkoutDays > 0 ? Math.round((completedDays / totalWorkoutDays) * 100) : 0;
+        
+        // Get today's workout details
+        const todayIndex = (currentDay - 1) % workoutDays.length;
+        const todayWorkout = workoutDays[todayIndex];
+        const todayProgress = progress.find((p: any) => p.day === currentDay);
+        
+        // Get nutrition for today
+        const nutritionIndex = (currentDay - 1) % nutritionDays.length;
+        const todayNutrition = nutritionDays[nutritionIndex];
+        
+        const workoutInfo = todayWorkout?.is_rest_day 
+          ? (isPt ? "Dia de descanso" : "Rest day")
+          : `"${todayWorkout?.workout_name_pt || 'Treino'}" (${todayWorkout?.focus_pt || ''}) - ${(todayWorkout?.exercises || []).length} exercícios`;
+        
+        const exercises = (todayWorkout?.exercises || []).slice(0, 5).map((e: any) => e.name_pt || e.name).join(", ");
+        
+        planContextStr = isPt ? `
+PLANO ATUAL DO UTILIZADOR:
+- Dia atual: ${currentDay}
+- Progresso: ${completedDays}/${totalWorkoutDays} treinos (${completionRate}%)
+
+TREINO DE HOJE: ${workoutInfo}
+${exercises ? `Exercícios: ${exercises}` : ""}
+${todayProgress?.completed ? "✓ CONCLUÍDO" : ""}
+
+NUTRIÇÃO DE HOJE: ${todayNutrition?.total_daily_calories || 0} kcal
+${(todayNutrition?.meals || []).slice(0, 3).map((m: any) => m.name_pt || m.name).join(", ")}
+
+Podes responder sobre o plano, exercícios e nutrição do utilizador.` : `
+USER'S CURRENT PLAN:
+- Current day: ${currentDay}
+- Progress: ${completedDays}/${totalWorkoutDays} workouts (${completionRate}%)
+
+TODAY'S WORKOUT: ${workoutInfo}
+${exercises ? `Exercises: ${exercises}` : ""}
+${todayProgress?.completed ? "✓ COMPLETED" : ""}
+
+TODAY'S NUTRITION: ${todayNutrition?.total_daily_calories || 0} kcal
+${(todayNutrition?.meals || []).slice(0, 3).map((m: any) => m.name || m.name_pt).join(", ")}
+
+You can answer about the user's plan, exercises and nutrition.`;
+      }
+
+      const goalMap: Record<string, { pt: string; en: string }> = {
+        loss: { pt: "perda de peso", en: "weight loss" },
+        muscle: { pt: "ganho muscular", en: "muscle gain" },
+        maintenance: { pt: "manutenção", en: "maintenance" }
+      };
+      const userGoal = profile.goal ? (isPt ? goalMap[profile.goal]?.pt : goalMap[profile.goal]?.en) || profile.goal : "";
+
+      const systemPrompt = isPt
+        ? `És o Coach Virtual do AI Fitness Planner - um treinador pessoal amigável e motivador.
+
+SOBRE O UTILIZADOR:
+- Nome: ${profile.firstName}
+- Objetivo: ${userGoal}
+- Peso: ${profile.weight}kg
+${planContextStr}
+
+REGRAS:
+1. Responde SEMPRE em Português (pt-PT)
+2. Sê motivador e conciso (máx 3 parágrafos)
+3. Usa linguagem informal (tu) e emojis ocasionais 💪
+4. Podes discutir os exercícios e refeições do plano
+5. Se pedirem novo plano, confirma antes de criar`
+        : `You are the Virtual Coach of AI Fitness Planner - a friendly and motivating personal trainer.
+
+ABOUT THE USER:
+- Name: ${profile.firstName}
+- Goal: ${userGoal}
+- Weight: ${profile.weight}kg
+${planContextStr}
+
+RULES:
+1. ALWAYS respond in English
+2. Be motivating and concise (max 3 paragraphs)
+3. Use informal language and occasional emojis 💪
+4. You can discuss the exercises and meals in the plan
+5. If they ask for a new plan, confirm before creating`;
+
       // Save user message
       const [userMessage] = await db.insert(coachMessages)
         .values({ userId, role: "user", content: message })
@@ -2199,11 +2299,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const history = await db.select().from(coachMessages)
         .where(eq(coachMessages.userId, userId))
         .orderBy(coachMessages.createdAt);
-
-      const isPt = profile.language === "pt";
-      const systemPrompt = isPt
-        ? `És um treinador pessoal virtual amigável. Responde de forma concisa e motivadora. Ajuda com treinos, nutrição e motivação. Se o utilizador pedir para criar um novo plano, confirma primeiro se ele quer realmente criar um novo plano de treino.`
-        : `You are a friendly virtual personal trainer. Respond concisely and motivationally. Help with workouts, nutrition and motivation. If the user asks to create a new plan, first confirm if they really want to create a new workout plan.`;
 
       // Build conversation for AI
       const messages = history.slice(-10).map((m: any) => ({
@@ -2220,7 +2315,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           headers: { "Content-Type": "application/json", "api-key": apiKey },
           body: JSON.stringify({
             messages: [{ role: "system", content: systemPrompt }, ...messages],
-            max_completion_tokens: 1000,
+            max_completion_tokens: 2000,
             temperature: 1
           })
         });

@@ -1315,7 +1315,7 @@ export async function registerRoutes(
         content: m.content,
       }));
 
-      // Generate AI response
+      // Generate AI response with full context
       const aiResponse = await generateCoachResponse({
         userMessage: message.trim(),
         conversationHistory: conversationHistory.slice(0, -1),
@@ -1335,6 +1335,12 @@ export async function registerRoutes(
           recentProgress: planContext.recentProgress,
           nutritionSummary: planContext.nutritionSummary,
           canCreateNewPlan: planContext.canCreateNewPlan,
+          todayWorkout: planContext.todayWorkout,
+          yesterdayWorkout: planContext.yesterdayWorkout,
+          tomorrowWorkout: planContext.tomorrowWorkout,
+          todayNutrition: planContext.todayNutrition,
+          userGoal: planContext.userGoal,
+          userMetrics: planContext.userMetrics,
         },
       });
 
