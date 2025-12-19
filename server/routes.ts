@@ -1500,12 +1500,13 @@ export async function registerRoutes(
       // Copy progress from old plan for preserved days
       if (preservedWorkoutDays.length > 0 && existingProgress.length > 0) {
         for (const prog of existingProgress.filter(p => p.day <= preservedWorkoutDays.length)) {
-          await storage.recordProgress({
+          await storage.createExerciseProgress({
+            userId: userProfile.id,
             planId: fitnessPlan.id,
             day: prog.day,
             completed: prog.completed,
-            difficultyRating: prog.difficultyRating,
-            caloriesBurned: prog.caloriesBurned,
+            difficulty: prog.difficulty,
+            completedAt: prog.completedAt,
           });
         }
         console.log(`[Coach Regen] Copied ${existingProgress.filter(p => p.day <= preservedWorkoutDays.length).length} progress records to new plan`);
