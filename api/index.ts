@@ -295,7 +295,7 @@ async function generatePlanChunk(userProfile: any, step: number, mealsPerDay?: n
     if (step === 1) {
       const prompt = `${profile}\n\nGera dias 1-4 treino. JSON array:\n${dayStructure}`;
       console.log(`[generatePlanChunk] Step 1: Calling Azure for days 1-4`);
-      const result = await callAzureOpenAI(`Fitness coach. Dias 1-4. JSON array only.`, prompt, 8000);
+      const result = await callAzureOpenAI(`Fitness coach. Dias 1-4. JSON array only.`, prompt, 16000);
       console.log(`[generatePlanChunk] Step 1: Got result, isArray=${Array.isArray(result)}, length=${Array.isArray(result) ? result.length : 'N/A'}`);
       return result;
     }
@@ -303,7 +303,7 @@ async function generatePlanChunk(userProfile: any, step: number, mealsPerDay?: n
     else if (step === 2) {
       const prompt = `${profile}\n\nGera dias 5-7 treino. JSON array:\n${dayStructure}`;
       console.log(`[generatePlanChunk] Step 2: Calling Azure for days 5-7`);
-      const result = await callAzureOpenAI(`Fitness coach. Dias 5-7. JSON array only.`, prompt, 8000);
+      const result = await callAzureOpenAI(`Fitness coach. Dias 5-7. JSON array only.`, prompt, 12000);
       console.log(`[generatePlanChunk] Step 2: Got result, isArray=${Array.isArray(result)}, length=${Array.isArray(result) ? result.length : 'N/A'}`);
       return result;
     }
@@ -324,7 +324,7 @@ async function generatePlanChunk(userProfile: any, step: number, mealsPerDay?: n
       const nutritionStructure = `{"plan_summary_pt":"","nutrition_plan_7_days":[{"day":1,"total_daily_calories":${targetCalories},"meals":[${mealsTemplate}]}],"hydration_guidelines_pt":{"water_target_ml":${waterTarget}}}`;
       const prompt = `${profile}\n\nGera nutrição 7 dias com EXATAMENTE ${numMeals} refeições por dia. ${targetCalories} kcal/dia dividido por ${numMeals} refeições. JSON:\n${nutritionStructure}`;
       console.log(`[generatePlanChunk] Step 3: Calling Azure for nutrition with ${numMeals} meals/day`);
-      const result = await callAzureOpenAI(`Nutricionista. 7 dias. EXATAMENTE ${numMeals} refeições por dia. JSON only.`, prompt, 10000);
+      const result = await callAzureOpenAI(`Nutricionista. 7 dias. EXATAMENTE ${numMeals} refeições por dia. JSON only.`, prompt, 16000);
       console.log(`[generatePlanChunk] Step 3: Got result, hasNutrition=${!!result?.nutrition_plan_7_days}, nutritionDays=${result?.nutrition_plan_7_days?.length || 0}`);
       
       // Validate meal count
@@ -2644,11 +2644,13 @@ RULES:
           if (parsedMeals >= 2 && parsedMeals <= 6) {
             mealsPerDay = parsedMeals;
             console.log(`[regenerate-plan] Parsed mealsPerDay=${mealsPerDay} from context`);
-            // Update profile with new meal preference
-            await db.update(userProfiles)
-              .set({ mealsPerDay } as any)
-              .where(eq(userProfiles.id, userId));
-            console.log(`[regenerate-plan] Updated profile mealsPerDay to ${mealsPerDay}`);
+            // Update profile with new meal preference (use raw SQL for snake_case column)
+            try {
+              await db.execute(sql`UPDATE user_profiles SET meals_per_day = ${mealsPerDay} WHERE id = ${userId}`);
+              console.log(`[regenerate-plan] Updated profile mealsPerDay to ${mealsPerDay}`);
+            } catch (updateErr) {
+              console.error(`[regenerate-plan] Failed to update mealsPerDay:`, updateErr);
+            }
           }
         }
       }
