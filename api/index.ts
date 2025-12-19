@@ -450,64 +450,94 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (method === "POST" && path === "/api/generate-chunk") {
       const { userId, statusId } = req.body;
       
+      console.log(`[generate-chunk] Request received: userId=${userId}, statusId=${statusId}`);
+      
       const [status] = await db.select().from(planGenerationStatus).where(eq(planGenerationStatus.id, statusId));
-      if (!status) return res.status(404).json({ success: false, error: "Status not found" });
-      if (status.status === "completed") return res.json({ success: true, status: "completed", planId: status.planId });
-      if (status.status === "error") return res.status(500).json({ success: false, error: status.error });
+      if (!status) {
+        console.log(`[generate-chunk] Status ${statusId} not found`);
+        return res.status(404).json({ success: false, error: "Status not found" });
+      }
+      if (status.status === "completed") {
+        console.log(`[generate-chunk] Status ${statusId} already completed, planId=${status.planId}`);
+        return res.json({ success: true, status: "completed", planId: status.planId });
+      }
+      if (status.status === "error") {
+        console.log(`[generate-chunk] Status ${statusId} has error: ${status.error}`);
+        return res.status(500).json({ success: false, error: status.error });
+      }
 
       const [userProfile] = await db.select().from(userProfiles).where(eq(userProfiles.id, userId));
-      if (!userProfile) return res.status(404).json({ success: false, error: "User not found" });
+      if (!userProfile) {
+        console.log(`[generate-chunk] User ${userId} not found`);
+        return res.status(404).json({ success: false, error: "User not found" });
+      }
 
       const nextStep = status.currentStep + 1;
-      console.log(`Generating chunk ${nextStep}/3 for user ${userId}`);
+      console.log(`[generate-chunk] Generating chunk ${nextStep}/3 for user ${userId}, statusId=${statusId}`);
 
       try {
-        console.log("Calling generatePlanChunk for step", nextStep);
+        console.log(`[generate-chunk] Calling generatePlanChunk for step ${nextStep}`);
         const chunkData = await generatePlanChunk(userProfile, nextStep);
-        console.log("Chunk data received, type:", Array.isArray(chunkData) ? "array" : typeof chunkData);
+        console.log(`[generate-chunk] Chunk data received, type: ${Array.isArray(chunkData) ? "array" : typeof chunkData}, length: ${Array.isArray(chunkData) ? chunkData.length : 'N/A'}`);
         const partial = (status.partialData || {}) as any;
 
         // Steps 1-2: Workout days (4 + 3 days = 7 total)
         if (nextStep <= 2) {
           const days = Array.isArray(chunkData) ? chunkData : [];
           partial.fitness_plan_7_days = [...(partial.fitness_plan_7_days || []), ...days];
+          console.log(`[generate-chunk] Added ${days.length} workout days, total now: ${partial.fitness_plan_7_days.length}`);
         } 
         // Step 3: Nutrition plan
         else {
           partial.plan_summary_pt = chunkData.plan_summary_pt || "";
           partial.nutrition_plan_7_days = chunkData.nutrition_plan_7_days || [];
           partial.hydration_guidelines_pt = chunkData.hydration_guidelines_pt || null;
+          console.log(`[generate-chunk] Added nutrition plan, ${partial.nutrition_plan_7_days.length} days`);
         }
 
         if (nextStep >= 3) {
           // All chunks done - save final plan with 7 days initially
-          const [fitnessPlan] = await db.insert(fitnessPlans)
-            .values({
-              userId: userProfile.id,
-              planData: partial,
-              currentDay: 1,
-              durationDays: 7,
-              generatedWorkoutDays: 7,
-              generatedNutritionDays: 7,
-              generationStatus: "idle",
-              isActive: true,
-            } as any)
-            .returning();
+          console.log(`[generate-chunk] Step 3 complete - saving final plan to DB for user ${userId}`);
+          
+          try {
+            const [fitnessPlan] = await db.insert(fitnessPlans)
+              .values({
+                userId: userProfile.id,
+                planData: partial,
+                currentDay: 1,
+                durationDays: 7,
+                generatedWorkoutDays: 7,
+                generatedNutritionDays: 7,
+                generationStatus: "idle",
+                isActive: true,
+              } as any)
+              .returning();
+            
+            console.log(`[generate-chunk] SUCCESS - Created fitness plan ${fitnessPlan.id} for user ${userId}`);
 
-          await db.update(planGenerationStatus)
-            .set({ status: "completed", currentStep: 3, partialData: partial, planId: fitnessPlan.id, updatedAt: new Date() } as any)
-            .where(eq(planGenerationStatus.id, statusId));
+            await db.update(planGenerationStatus)
+              .set({ status: "completed", currentStep: 3, partialData: partial, planId: fitnessPlan.id, updatedAt: new Date() } as any)
+              .where(eq(planGenerationStatus.id, statusId));
+            
+            console.log(`[generate-chunk] Updated generation status ${statusId} to completed with planId=${fitnessPlan.id}`);
 
-          return res.json({ success: true, status: "completed", planId: fitnessPlan.id, plan: partial });
+            return res.json({ success: true, status: "completed", planId: fitnessPlan.id, plan: partial });
+          } catch (dbError) {
+            console.error(`[generate-chunk] DB ERROR saving plan for user ${userId}:`, dbError);
+            throw dbError;
+          }
         } else {
           await db.update(planGenerationStatus)
             .set({ currentStep: nextStep, partialData: partial, updatedAt: new Date() } as any)
             .where(eq(planGenerationStatus.id, statusId));
+          
+          console.log(`[generate-chunk] Updated status ${statusId} to step ${nextStep}/3`);
 
           return res.json({ success: true, status: "generating", currentStep: nextStep, totalSteps: 3 });
         }
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : "Generation failed";
+        console.error(`[generate-chunk] ERROR for user ${userId}, step ${nextStep}:`, error);
         await db.update(planGenerationStatus)
           .set({ status: "error", error: errorMsg, updatedAt: new Date() } as any)
           .where(eq(planGenerationStatus.id, statusId));
@@ -2445,45 +2475,57 @@ RULES:
     if (method === "POST" && path.match(/^\/api\/coach\/\d+\/regenerate-plan$/)) {
       const userId = parseInt(path.split("/")[3]);
       const { coachContext } = req.body;
+      
+      console.log(`[regenerate-plan] Starting for user ${userId}`);
 
       const [profile] = await db.select().from(userProfiles).where(eq(userProfiles.id, userId));
       if (!profile) {
+        console.log(`[regenerate-plan] User ${userId} not found`);
         return res.status(404).json({ success: false, error: "User not found" });
       }
 
       const isPt = profile.language === "pt";
+      console.log(`[regenerate-plan] User ${userId} found, language: ${isPt ? 'pt' : 'en'}`);
 
       // Deactivate current plan
-      await db.update(fitnessPlans)
+      const deactivateResult = await db.update(fitnessPlans)
         .set({ isActive: false } as any)
         .where(and(eq(fitnessPlans.userId, userId), eq(fitnessPlans.isActive, true)));
+      console.log(`[regenerate-plan] Deactivated existing plans for user ${userId}`);
 
       // Create generation status
-      const [status] = await db.insert(planGenerationStatus)
-        .values({
-          userId,
-          status: "generating",
-          currentStep: 0,
-          totalSteps: 3,
-          partialData: { fitness_plan_7_days: [], nutrition_plan_7_days: [] }
-        } as any)
-        .returning();
+      try {
+        const [status] = await db.insert(planGenerationStatus)
+          .values({
+            userId,
+            status: "generating",
+            currentStep: 0,
+            totalSteps: 3,
+            partialData: { fitness_plan_7_days: [], nutrition_plan_7_days: [] }
+          } as any)
+          .returning();
+        console.log(`[regenerate-plan] Created generation status ${status.id} for user ${userId}`);
 
-      // Add coach message
-      await db.insert(coachMessages)
-        .values({
-          userId,
-          role: "assistant",
-          content: isPt
-            ? "Perfeito! Estou a gerar um novo plano de 7 dias para ti. Vai ao Dashboard e usa o botão Continuar para acompanhar o progresso. 🏋️"
-            : "Perfect! I'm generating a new 7-day plan for you. Go to Dashboard and use the Continue button to track progress. 🏋️"
+        // Add coach message
+        await db.insert(coachMessages)
+          .values({
+            userId,
+            role: "assistant",
+            content: isPt
+              ? "Perfeito! Estou a gerar um novo plano de 7 dias para ti. Vai ao Dashboard e usa o botão Continuar para acompanhar o progresso. 🏋️"
+              : "Perfect! I'm generating a new 7-day plan for you. Go to Dashboard and use the Continue button to track progress. 🏋️"
+          });
+        console.log(`[regenerate-plan] Added coach confirmation message for user ${userId}`);
+
+        return res.json({
+          success: true,
+          statusId: status.id,
+          message: isPt ? "A gerar novo plano..." : "Generating new plan..."
         });
-
-      return res.json({
-        success: true,
-        statusId: status.id,
-        message: isPt ? "A gerar novo plano..." : "Generating new plan..."
-      });
+      } catch (dbError) {
+        console.error(`[regenerate-plan] DB error for user ${userId}:`, dbError);
+        throw dbError;
+      }
     }
 
     return res.status(404).json({ success: false, error: "Route not found", path, method });
