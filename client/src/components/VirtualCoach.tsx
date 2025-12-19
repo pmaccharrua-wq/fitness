@@ -1,12 +1,58 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageCircle, X, Send, Loader2, Trash2, Bot, Sparkles } from "lucide-react";
+import { MessageCircle, X, Send, Loader2, Trash2, Bot, Sparkles, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getUserId, getCoachMessages, sendCoachMessage, clearCoachMessages, regeneratePlanViaCoach, type CoachMessage } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+
+interface QuickAction {
+  label: string;
+  message: string;
+}
+
+function detectQuickActions(content: string, language: string): QuickAction[] {
+  const actions: QuickAction[] = [];
+  const lowerContent = content.toLowerCase();
+  
+  const isPt = language === "pt";
+  
+  // Detect plan creation suggestion
+  const planKeywordsPt = ["criar um novo plano", "criar novo plano", "novo plano personalizado", "queres que crie", "posso criar", "gostarias que criasse"];
+  const planKeywordsEn = ["create a new plan", "create new plan", "new personalized plan", "would you like me to create", "i can create", "shall i create"];
+  const planKeywords = isPt ? planKeywordsPt : planKeywordsEn;
+  
+  if (planKeywords.some(kw => lowerContent.includes(kw))) {
+    actions.push({
+      label: isPt ? "Sim, cria o plano" : "Yes, create the plan",
+      message: isPt ? "Sim, cria o plano" : "Yes, create the plan"
+    });
+    actions.push({
+      label: isPt ? "Não, obrigado" : "No, thanks",
+      message: isPt ? "Não, obrigado" : "No, thanks"
+    });
+  }
+  
+  // Detect confirmation request
+  const confirmKeywordsPt = ["confirma", "confirmar", "tens a certeza", "queres continuar", "prosseguir"];
+  const confirmKeywordsEn = ["confirm", "are you sure", "want to continue", "proceed"];
+  const confirmKeywords = isPt ? confirmKeywordsPt : confirmKeywordsEn;
+  
+  if (confirmKeywords.some(kw => lowerContent.includes(kw)) && actions.length === 0) {
+    actions.push({
+      label: isPt ? "Sim" : "Yes",
+      message: isPt ? "Sim" : "Yes"
+    });
+    actions.push({
+      label: isPt ? "Não" : "No",
+      message: isPt ? "Não" : "No"
+    });
+  }
+  
+  return actions;
+}
 
 interface VirtualCoachProps {
   className?: string;
@@ -170,6 +216,43 @@ export default function VirtualCoach({ className, isOpenExternal, onCloseExterna
     }
   }
 
+  async function handleQuickAction(actionMessage: string) {
+    if (!userId || isLoading || isRegenerating) return;
+    
+    setIsLoading(true);
+
+    const tempUserMessage: CoachMessage = {
+      id: Date.now(),
+      userId,
+      role: "user",
+      content: actionMessage,
+      createdAt: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, tempUserMessage]);
+
+    try {
+      const result = await sendCoachMessage(userId, actionMessage);
+      if (result.success) {
+        setMessages((prev) => {
+          const filtered = prev.filter((m) => m.id !== tempUserMessage.id);
+          return [...filtered, result.userMessage, result.assistantMessage];
+        });
+
+        if (result.intent === "authorize_plan" && (result.intentConfidence || 0) > 0.8) {
+          await handleRegeneratePlan(actionMessage);
+        }
+      } else {
+        toast.error(result.error || (language === "pt" ? "Erro ao enviar mensagem" : "Failed to send message"));
+        setMessages((prev) => prev.filter((m) => m.id !== tempUserMessage.id));
+      }
+    } catch (error) {
+      toast.error(language === "pt" ? "Erro ao contactar o coach" : "Failed to contact coach");
+      setMessages((prev) => prev.filter((m) => m.id !== tempUserMessage.id));
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   const welcomeMessage = language === "pt"
     ? "Olá! Sou o teu Coach Virtual. Estou aqui para te ajudar com dúvidas sobre exercícios, nutrição, motivação e muito mais. Posso até criar um novo plano personalizado para ti! Como posso ajudar hoje?"
     : "Hi! I'm your Virtual Coach. I'm here to help you with questions about exercises, nutrition, motivation and more. I can even create a new personalized plan for you! How can I help you today?";
@@ -238,23 +321,46 @@ export default function VirtualCoach({ className, isOpenExternal, onCloseExterna
                     <p className="text-sm">{welcomeMessage}</p>
                   </div>
                 ) : (
-                  messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-                    >
-                      <div
-                        className={`rounded-2xl p-3 max-w-[85%] ${
-                          message.role === "user"
-                            ? "bg-emerald-500 text-white rounded-br-sm"
-                            : "bg-muted/50 rounded-bl-sm"
-                        }`}
-                        data-testid={`message-${message.role}-${message.id}`}
-                      >
-                        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  messages.map((message, index) => {
+                    const isLastAssistantMessage = message.role === "assistant" && index === messages.length - 1;
+                    const quickActions = isLastAssistantMessage ? detectQuickActions(message.content, language) : [];
+                    
+                    return (
+                      <div key={message.id}>
+                        <div
+                          className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                        >
+                          <div
+                            className={`rounded-2xl p-3 max-w-[85%] ${
+                              message.role === "user"
+                                ? "bg-emerald-500 text-white rounded-br-sm"
+                                : "bg-muted/50 rounded-bl-sm"
+                            }`}
+                            data-testid={`message-${message.role}-${message.id}`}
+                          >
+                            <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                          </div>
+                        </div>
+                        {quickActions.length > 0 && !isLoading && !isRegenerating && (
+                          <div className="flex flex-wrap gap-2 mt-2 ml-1">
+                            {quickActions.map((action, actionIndex) => (
+                              <Button
+                                key={actionIndex}
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleQuickAction(action.message)}
+                                className="text-xs h-8 px-3 border-emerald-500/50 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-500"
+                                data-testid={`button-quick-action-${actionIndex}`}
+                              >
+                                <Zap className="w-3 h-3 mr-1.5" />
+                                {action.label}
+                              </Button>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
                 {isLoading && (
                   <div className="flex justify-start">
