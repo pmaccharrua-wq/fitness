@@ -57,9 +57,11 @@ export default function Home() {
                   {t("home", "startJourney")}
                 </Button>
               </Link>
-              <Button size="lg" variant="outline" className="w-full sm:w-auto h-14 px-8 text-base sm:text-lg font-bold rounded-full border-muted-foreground/30 hover:bg-white/5 active:scale-95 transition-all touch-manipulation" data-testid="button-learn-more">
-                {t("home", "learnMore")}
-              </Button>
+              <Link href="/login">
+                <Button size="lg" variant="outline" className="w-full sm:w-auto h-14 px-8 text-base sm:text-lg font-bold rounded-full border-muted-foreground/30 hover:bg-white/5 active:scale-95 transition-all touch-manipulation" data-testid="button-learn-more">
+                  {t("home", "learnMore")}
+                </Button>
+              </Link>
             </div>
           </motion.div>
           
