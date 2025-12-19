@@ -11,7 +11,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "bodyweight",
     difficulty: "beginner",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/04/push-up-variations.jpg",
-    videoUrl: "https://www.youtube.com/watch?v=IODxDxX7oi4",
+    videoUrl: "https://www.youtube.com/watch?v=_l3ySVKYVJ8",
     instructions: "Start in plank position, lower chest to floor, push back up",
     instructionsPt: "Comece em posição de prancha, baixe o peito até ao chão, empurre para cima"
   },
@@ -24,7 +24,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "barbell",
     difficulty: "intermediate",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2021/06/barbell-bench-press.jpg",
-    videoUrl: "https://www.youtube.com/watch?v=rT7DgCr-3pg",
+    videoUrl: "https://www.youtube.com/watch?v=vcBig73ojpE",
     instructions: "Lie on bench, grip bar slightly wider than shoulders, lower to chest, press up",
     instructionsPt: "Deite no banco, segure a barra um pouco mais larga que os ombros, baixe ao peito, empurre"
   },
@@ -37,7 +37,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "dumbbell",
     difficulty: "intermediate",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/11/dumbbell-bench-press-1.gif",
-    videoUrl: "https://www.youtube.com/watch?v=VmB1G1K7v94",
+    videoUrl: "https://www.youtube.com/watch?v=Y_7aHqXeCfQ",
     instructions: "Lie on bench with dumbbells, press up and together, lower slowly",
     instructionsPt: "Deite no banco com halteres, empurre para cima e junte, baixe lentamente"
   },
@@ -50,7 +50,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "dumbbell",
     difficulty: "intermediate",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/10/incline-dumbbell-press.gif",
-    videoUrl: "https://www.youtube.com/watch?v=8iPEnn-ltC8",
+    videoUrl: "https://www.youtube.com/watch?v=IP4oeKh1Sd4",
     instructions: "Set bench to 30-45 degrees, press dumbbells up from shoulders",
     instructionsPt: "Ajuste o banco para 30-45 graus, empurre os halteres para cima dos ombros"
   },
@@ -63,7 +63,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "dumbbell",
     difficulty: "intermediate",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/10/dumbbell-fly.gif",
-    videoUrl: "https://www.youtube.com/watch?v=eozdVDA78K0",
+    videoUrl: "https://www.youtube.com/watch?v=QENKPHhQVi4",
     instructions: "Lie on bench, arms extended, lower dumbbells in arc motion, squeeze to raise",
     instructionsPt: "Deite no banco, braços estendidos, baixe os halteres em arco, aperte para levantar"
   },
@@ -78,7 +78,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "pull-up bar",
     difficulty: "intermediate",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/08/pull-up-benefits.jpg",
-    videoUrl: "https://www.youtube.com/watch?v=eGo4IYlbE5g",
+    videoUrl: "https://www.youtube.com/watch?v=XB_7En-zf_M",
     instructions: "Hang from bar, pull chin above bar, lower with control",
     instructionsPt: "Pendure-se na barra, puxe o queixo acima da barra, desça com controlo"
   },
@@ -91,7 +91,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "cable machine",
     difficulty: "beginner",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/11/lat-pulldown.gif",
-    videoUrl: "https://www.youtube.com/watch?v=CAwf7n6Luuc",
+    videoUrl: "https://www.youtube.com/watch?v=SALxEARiMkw",
     instructions: "Sit at machine, pull bar to upper chest, squeeze shoulder blades",
     instructionsPt: "Sente na máquina, puxe a barra até ao peito superior, aperte as omoplatas"
   },
@@ -104,7 +104,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "barbell",
     difficulty: "intermediate",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/11/barbell-bent-over-row.gif",
-    videoUrl: "https://www.youtube.com/watch?v=FWJR5Ve8bnQ",
+    videoUrl: "https://www.youtube.com/watch?v=kBWAon7ItDw",
     instructions: "Bend at hips, keep back flat, pull bar to lower chest",
     instructionsPt: "Curve nos quadris, mantenha as costas retas, puxe a barra ao peito inferior"
   },
@@ -117,7 +117,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "dumbbell",
     difficulty: "beginner",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/09/one-arm-dumbbell-row.gif",
-    videoUrl: "https://www.youtube.com/watch?v=pYcpY20QaE8",
+    videoUrl: "https://www.youtube.com/watch?v=xl1YQFMpo1Y",
     instructions: "Support on bench with one hand, row dumbbell to hip",
     instructionsPt: "Apoie-se no banco com uma mão, reme o haltere até à anca"
   },
@@ -130,7 +130,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "barbell",
     difficulty: "advanced",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/06/conventional-deadlift-muscles.jpg",
-    videoUrl: "https://www.youtube.com/watch?v=op9kVnSso6Q",
+    videoUrl: "https://www.youtube.com/watch?v=ytGaGIn3SjE",
     instructions: "Stand with feet hip-width, grip bar, drive through heels to stand",
     instructionsPt: "Fique com os pés à largura dos quadris, agarre a barra, empurre pelos calcanhares para levantar"
   },
@@ -145,7 +145,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "bodyweight",
     difficulty: "beginner",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2023/03/air-squat.gif",
-    videoUrl: "https://www.youtube.com/watch?v=aclHkVaku9U",
+    videoUrl: "https://www.youtube.com/watch?v=gsNoPYwWXeM",
     instructions: "Stand feet shoulder-width, sit back and down, keep chest up",
     instructionsPt: "Fique com os pés à largura dos ombros, sente para trás e baixo, mantenha o peito erguido"
   },
@@ -158,7 +158,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "barbell",
     difficulty: "intermediate",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/12/barbell-squat.gif",
-    videoUrl: "https://www.youtube.com/watch?v=bEv6CCg2BC8",
+    videoUrl: "https://www.youtube.com/watch?v=SW_C1A-rejs",
     instructions: "Bar on upper back, squat down until thighs parallel, drive up",
     instructionsPt: "Barra nas costas superiores, agache até as coxas ficarem paralelas, empurre para cima"
   },
@@ -171,7 +171,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "bodyweight",
     difficulty: "beginner",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/10/walking-lunges.gif",
-    videoUrl: "https://www.youtube.com/watch?v=L8fvypPrzzs",
+    videoUrl: "https://www.youtube.com/watch?v=D7KaRcUTQeE",
     instructions: "Step forward, lower back knee toward ground, alternate legs",
     instructionsPt: "Passo à frente, baixe o joelho de trás em direção ao chão, alterne as pernas"
   },
@@ -184,7 +184,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "machine",
     difficulty: "beginner",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/11/leg-press.gif",
-    videoUrl: "https://www.youtube.com/watch?v=IZxyjW7MPJQ",
+    videoUrl: "https://www.youtube.com/watch?v=GvRgijoJ2xY",
     instructions: "Sit in machine, press platform away, lower with control",
     instructionsPt: "Sente na máquina, empurre a plataforma, baixe com controlo"
   },
@@ -197,7 +197,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "barbell",
     difficulty: "intermediate",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/06/barbell-romanian-deadlift.gif",
-    videoUrl: "https://www.youtube.com/watch?v=7j-2w4-P14I",
+    videoUrl: "https://www.youtube.com/watch?v=JCXUYuzwNrM",
     instructions: "Hold bar, hinge at hips, lower bar along legs, squeeze glutes to rise",
     instructionsPt: "Segure a barra, curve nos quadris, baixe a barra ao longo das pernas, aperte os glúteos para subir"
   },
@@ -210,7 +210,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "bodyweight",
     difficulty: "beginner",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/10/calf-raises.gif",
-    videoUrl: "https://www.youtube.com/watch?v=gwLzBJYoWlI",
+    videoUrl: "https://www.youtube.com/watch?v=_M2xN7KQdOw",
     instructions: "Stand on edge, raise heels as high as possible, lower slowly",
     instructionsPt: "Fique na borda, eleve os calcanhares o máximo possível, baixe lentamente"
   },
@@ -225,7 +225,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "barbell",
     difficulty: "intermediate",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/04/barbell-overhead-press.gif",
-    videoUrl: "https://www.youtube.com/watch?v=2yjwXTZQDDI",
+    videoUrl: "https://www.youtube.com/watch?v=F3QY5vMz_6I",
     instructions: "Hold bar at shoulders, press overhead, lower with control",
     instructionsPt: "Segure a barra nos ombros, empurre acima da cabeça, baixe com controlo"
   },
@@ -238,7 +238,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "dumbbell",
     difficulty: "beginner",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/01/dumbbell-shoulder-press-overhead.gif",
-    videoUrl: "https://www.youtube.com/watch?v=qEwKCR5JCog",
+    videoUrl: "https://www.youtube.com/watch?v=Gf0Vva2lJsE",
     instructions: "Sit or stand, press dumbbells overhead, lower to shoulders",
     instructionsPt: "Sente ou fique em pé, empurre os halteres acima da cabeça, baixe aos ombros"
   },
@@ -251,7 +251,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "dumbbell",
     difficulty: "beginner",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/09/dumbbell-lateral-raise.gif",
-    videoUrl: "https://www.youtube.com/watch?v=3VcKaXpzqRo",
+    videoUrl: "https://www.youtube.com/watch?v=OuG1smZTsQQ",
     instructions: "Hold dumbbells at sides, raise arms to shoulder height, lower slowly",
     instructionsPt: "Segure os halteres aos lados, eleve os braços à altura dos ombros, baixe lentamente"
   },
@@ -264,7 +264,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "dumbbell",
     difficulty: "beginner",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/10/front-dumbbell-raise.gif",
-    videoUrl: "https://www.youtube.com/watch?v=-t7fuZ0KhDA",
+    videoUrl: "https://www.youtube.com/watch?v=sOcYlBI85hc",
     instructions: "Hold dumbbells in front, raise to shoulder height, lower slowly",
     instructionsPt: "Segure os halteres à frente, eleve à altura dos ombros, baixe lentamente"
   },
@@ -277,7 +277,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "cable machine",
     difficulty: "beginner",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2021/11/face-pull.gif",
-    videoUrl: "https://www.youtube.com/watch?v=rep-qVOkqgk",
+    videoUrl: "https://www.youtube.com/watch?v=V8dZ3pyiCBo",
     instructions: "Set cable at face height, pull rope to face, squeeze rear delts",
     instructionsPt: "Ajuste o cabo à altura do rosto, puxe a corda ao rosto, aperte os deltóides posteriores"
   },
@@ -292,7 +292,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "dumbbell",
     difficulty: "beginner",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/10/dumbbell-bicep-curl.gif",
-    videoUrl: "https://www.youtube.com/watch?v=ykJmrZ5v0Oo",
+    videoUrl: "https://www.youtube.com/watch?v=sAq_ocpRh_I",
     instructions: "Stand holding dumbbells, curl to shoulders, squeeze, lower slowly",
     instructionsPt: "Fique em pé segurando halteres, curve até aos ombros, aperte, baixe lentamente"
   },
@@ -305,7 +305,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "dumbbell",
     difficulty: "beginner",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/10/hammer-curl.gif",
-    videoUrl: "https://www.youtube.com/watch?v=zC3nLlEvin4",
+    videoUrl: "https://www.youtube.com/watch?v=TwD-YGVP4Bk",
     instructions: "Hold dumbbells with neutral grip, curl to shoulders",
     instructionsPt: "Segure os halteres com pegada neutra, curve até aos ombros"
   },
@@ -318,7 +318,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "cable machine",
     difficulty: "beginner",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/07/straight-bar-pushdown.gif",
-    videoUrl: "https://www.youtube.com/watch?v=2-LAMcpzODU",
+    videoUrl: "https://www.youtube.com/watch?v=vB5OHsJ3EME",
     instructions: "Hold cable bar, push down until arms straight, control return",
     instructionsPt: "Segure a barra do cabo, empurre para baixo até os braços ficarem retos, controle o retorno"
   },
@@ -331,7 +331,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "bodyweight",
     difficulty: "intermediate",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/10/dips.gif",
-    videoUrl: "https://www.youtube.com/watch?v=2z8JmcrW-As",
+    videoUrl: "https://www.youtube.com/watch?v=yN6Q1UI_xkE",
     instructions: "Support on bars, lower body by bending elbows, push back up",
     instructionsPt: "Apoie-se nas barras, baixe o corpo dobrando os cotovelos, empurre para cima"
   },
@@ -344,7 +344,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "barbell",
     difficulty: "intermediate",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/08/lying-tricep-extension-skull-crusher.gif",
-    videoUrl: "https://www.youtube.com/watch?v=d_KZxkY_0cM",
+    videoUrl: "https://www.youtube.com/watch?v=NIWKqq4aoZ8",
     instructions: "Lie on bench, lower bar to forehead, extend arms",
     instructionsPt: "Deite no banco, baixe a barra até à testa, estenda os braços"
   },
@@ -359,7 +359,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "bodyweight",
     difficulty: "beginner",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/01/forearm-plank.gif",
-    videoUrl: "https://www.youtube.com/watch?v=ASdvN_XEl_c",
+    videoUrl: "https://www.youtube.com/watch?v=pSHjTRCQxIw",
     instructions: "Hold push-up position on forearms, keep body straight",
     instructionsPt: "Mantenha a posição de flexão nos antebraços, corpo reto"
   },
@@ -372,7 +372,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "bodyweight",
     difficulty: "beginner",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/08/crunch.gif",
-    videoUrl: "https://www.youtube.com/watch?v=Xyd_fa5zoEU",
+    videoUrl: "https://www.youtube.com/watch?v=5ER5Of4MOPI",
     instructions: "Lie on back, curl shoulders toward hips, squeeze abs",
     instructionsPt: "Deite de costas, curve os ombros em direção aos quadris, aperte os abdominais"
   },
@@ -385,7 +385,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "bodyweight",
     difficulty: "beginner",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/09/russian-twist.gif",
-    videoUrl: "https://www.youtube.com/watch?v=wkD8rjkodUI",
+    videoUrl: "https://www.youtube.com/watch?v=DJQGX2J4IVw",
     instructions: "Sit with feet off ground, rotate torso side to side",
     instructionsPt: "Sente com os pés fora do chão, rode o tronco de lado a lado"
   },
@@ -398,7 +398,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "bodyweight",
     difficulty: "intermediate",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2021/08/lying-leg-raise.gif",
-    videoUrl: "https://www.youtube.com/watch?v=JB2oyawG9KI",
+    videoUrl: "https://www.youtube.com/watch?v=Wp4BlxcFTkE",
     instructions: "Lie on back, raise legs to 90 degrees, lower slowly",
     instructionsPt: "Deite de costas, eleve as pernas a 90 graus, baixe lentamente"
   },
@@ -411,7 +411,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "bodyweight",
     difficulty: "beginner",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/10/mountain-climber.gif",
-    videoUrl: "https://www.youtube.com/watch?v=nmwgirgXLYM",
+    videoUrl: "https://www.youtube.com/watch?v=cnyTQDSE884",
     instructions: "Start in push-up position, drive knees alternately toward chest",
     instructionsPt: "Comece na posição de flexão, conduza os joelhos alternadamente ao peito"
   },
@@ -426,7 +426,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "bodyweight",
     difficulty: "intermediate",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/11/burpee.gif",
-    videoUrl: "https://www.youtube.com/watch?v=TU8QYVW0gDU",
+    videoUrl: "https://www.youtube.com/watch?v=JZQA08SlJnM",
     instructions: "Drop to floor, push-up, jump up with arms overhead",
     instructionsPt: "Deixe-se cair ao chão, flexão, salte com os braços acima da cabeça"
   },
@@ -439,7 +439,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "bodyweight",
     difficulty: "beginner",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/06/how-to-do-the-jumping-jack.jpg",
-    videoUrl: "https://www.youtube.com/watch?v=c4DAnQ6DtF8",
+    videoUrl: "https://www.youtube.com/watch?v=CWpmIW6l-YA",
     instructions: "Jump feet out while raising arms, return to start",
     instructionsPt: "Salte os pés para fora enquanto levanta os braços, volte ao início"
   },
@@ -452,7 +452,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "bodyweight",
     difficulty: "beginner",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2023/01/high-knees.gif",
-    videoUrl: "https://www.youtube.com/watch?v=D0096SCTGXU",
+    videoUrl: "https://www.youtube.com/watch?v=tx5rgpDAJRI",
     instructions: "Run in place, driving knees high toward chest",
     instructionsPt: "Corra no lugar, elevando os joelhos alto em direção ao peito"
   },
@@ -465,7 +465,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "bodyweight",
     difficulty: "intermediate",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/11/jump-squat.gif",
-    videoUrl: "https://www.youtube.com/watch?v=A-cFYWvaHr0",
+    videoUrl: "https://www.youtube.com/watch?v=YGGq0AE5Uyc",
     instructions: "Squat down, explode up into jump, land softly",
     instructionsPt: "Agache, exploda para cima no salto, aterrisse suavemente"
   },
@@ -478,7 +478,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "box",
     difficulty: "intermediate",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2021/11/box-jump.gif",
-    videoUrl: "https://www.youtube.com/watch?v=52r_Ul5k03g",
+    videoUrl: "https://www.youtube.com/watch?v=NBY9-kTuHEk",
     instructions: "Stand facing box, jump onto box, step down carefully",
     instructionsPt: "Fique de frente para a caixa, salte para cima da caixa, desça com cuidado"
   },
@@ -493,7 +493,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "machine",
     difficulty: "intermediate",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/10/hack-squat.gif",
-    videoUrl: "https://www.youtube.com/watch?v=0tn5K9NlCfo",
+    videoUrl: "https://www.youtube.com/watch?v=EdtaJRBqwes",
     instructions: "Position shoulders under pads, feet shoulder-width, squat down and press up",
     instructionsPt: "Posicione os ombros sob as almofadas, pés à largura dos ombros, agache e empurre para cima"
   },
@@ -506,7 +506,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "machine",
     difficulty: "beginner",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/03/leg-press-calf-raise.gif",
-    videoUrl: "https://www.youtube.com/watch?v=je5lLvmVypU",
+    videoUrl: "https://www.youtube.com/watch?v=lpuFjGYT29w",
     instructions: "Place toes on edge of platform, press through toes to extend ankles",
     instructionsPt: "Coloque os dedos na borda da plataforma, empurre pelos dedos para estender os tornozelos"
   },
@@ -521,7 +521,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "cable machine",
     difficulty: "beginner",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/02/pec-deck-machine-fly.gif",
-    videoUrl: "https://www.youtube.com/watch?v=Z57CtFmRMxA",
+    videoUrl: "https://www.youtube.com/watch?v=eGjt4lk6g34",
     instructions: "Sit with arms on pads, squeeze arms together in front of chest",
     instructionsPt: "Sente com os braços nas almofadas, aperte os braços juntos à frente do peito"
   },
@@ -534,7 +534,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "cable machine",
     difficulty: "beginner",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/10/chest-press-machine.gif",
-    videoUrl: "https://www.youtube.com/watch?v=xUm0BiZCWlQ",
+    videoUrl: "https://www.youtube.com/watch?v=sqNwDkUU_Ps",
     instructions: "Sit with back against pad, grip handles, press forward and return",
     instructionsPt: "Sente com as costas contra a almofada, agarre as pegas, empurre para a frente e volte"
   },
@@ -547,7 +547,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "cable machine",
     difficulty: "intermediate",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/11/cable-crossover.gif",
-    videoUrl: "https://www.youtube.com/watch?v=taI4XduLpTk",
+    videoUrl: "https://www.youtube.com/watch?v=Iwe6AmxVf7o",
     instructions: "Stand between cables, pull handles down and together in arc motion",
     instructionsPt: "Fique entre os cabos, puxe as pegas para baixo e junte num movimento em arco"
   },
@@ -560,7 +560,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "cable machine",
     difficulty: "beginner",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/03/seated-cable-row.gif",
-    videoUrl: "https://www.youtube.com/watch?v=GZbfZ033f74",
+    videoUrl: "https://www.youtube.com/watch?v=UCXxvVItLoM",
     instructions: "Sit with feet on platform, pull handle to abdomen, squeeze shoulder blades",
     instructionsPt: "Sente com os pés na plataforma, puxe a pega ao abdómen, aperte as omoplatas"
   },
@@ -573,7 +573,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "cable machine",
     difficulty: "beginner",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/08/overhead-tricep-extension.gif",
-    videoUrl: "https://www.youtube.com/watch?v=kiuVA0gs3EI",
+    videoUrl: "https://www.youtube.com/watch?v=_gsUck-7M74",
     instructions: "Face away from cable, extend arms overhead, control the return",
     instructionsPt: "Fique de costas para o cabo, estenda os braços acima da cabeça, controle o retorno"
   },
@@ -601,7 +601,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "barbell",
     difficulty: "intermediate",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/03/good-morning-exercise.gif",
-    videoUrl: "https://www.youtube.com/watch?v=YA-h3n9L4YU",
+    videoUrl: "https://www.youtube.com/watch?v=Fvfmg7UVoXE",
     instructions: "Bar on upper back, hinge at hips keeping back straight, return to standing",
     instructionsPt: "Barra nas costas superiores, curve nos quadris mantendo as costas retas, volte a ficar em pé"
   },
@@ -616,7 +616,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "kettlebell",
     difficulty: "beginner",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/09/goblet-squat.gif",
-    videoUrl: "https://www.youtube.com/watch?v=MeIiIdhvXT4",
+    videoUrl: "https://www.youtube.com/watch?v=CkFzgR55gho",
     instructions: "Hold kettlebell at chest, squat down keeping chest up, drive through heels",
     instructionsPt: "Segure o kettlebell ao peito, agache mantendo o peito erguido, empurre pelos calcanhares"
   },
@@ -629,7 +629,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "dumbbell",
     difficulty: "intermediate",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/06/dumbbell-romanian-deadlift.gif",
-    videoUrl: "https://www.youtube.com/watch?v=hQgFixeXdZo",
+    videoUrl: "https://www.youtube.com/watch?v=cYKYGwcg0U8",
     instructions: "Hold dumbbells, hinge at hips lowering weights along legs, squeeze glutes to rise",
     instructionsPt: "Segure os halteres, curve nos quadris baixando os pesos ao longo das pernas, aperte os glúteos para subir"
   },
@@ -642,7 +642,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "dumbbell",
     difficulty: "intermediate",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/09/bulgarian-split-squat.gif",
-    videoUrl: "https://www.youtube.com/watch?v=2C-uNgKwPLE",
+    videoUrl: "https://www.youtube.com/watch?v=hbpIyBpHEsg",
     instructions: "Rear foot on bench, lower into lunge, drive through front heel",
     instructionsPt: "Pé de trás no banco, baixe em afundo, empurre pelo calcanhar da frente"
   },
@@ -655,7 +655,7 @@ export const exerciseLibrary: InsertExerciseLibraryItem[] = [
     equipment: "kettlebell",
     difficulty: "intermediate",
     imageUrl: "https://www.inspireusafoundation.org/wp-content/uploads/2022/06/kettlebell-swing.gif",
-    videoUrl: "https://www.youtube.com/watch?v=YSxHifyI6s8",
+    videoUrl: "https://www.youtube.com/watch?v=sSESeQAir5M",
     instructions: "Hinge at hips, swing kettlebell between legs, thrust hips to swing up",
     instructionsPt: "Curve nos quadris, balance o kettlebell entre as pernas, empurre os quadris para balançar para cima"
   },
