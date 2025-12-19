@@ -1,0 +1,110 @@
+[exercises/match] UNMATCHED exercises (4): [
+  'Alongamento de peitoral na parede',
+  'Bíceps na parede',
+  'Gato-vaca',
+  'Postura da criança'
+]
+[exercises/match] Could not stage candidate alongamento_de_peitoral_na_parede: error: relation "exercise_candidates" does not exist
+    at /var/task/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///var/task/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async Object.handler (/vercel/path0/api/index.ts:1069:32)
+    at async r (/opt/rust/nodejs.js:2:15570)
+    at async Server.<anonymous> (/opt/rust/nodejs.js:2:11592)
+    at async Server.<anonymous> (/opt/rust/nodejs.js:17:9914) {
+  length: 119,
+  severity: 'ERROR',
+  code: '42P01',
+  detail: undefined,
+  hint: undefined,
+  position: '216',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '1449',
+  routine: 'parserOpenTable'
+}
+[exercises/match] Could not stage candidate biceps_na_parede: error: relation "exercise_candidates" does not exist
+    at /var/task/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///var/task/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async Object.handler (/vercel/path0/api/index.ts:1069:32)
+    at async r (/opt/rust/nodejs.js:2:15570)
+    at async Server.<anonymous> (/opt/rust/nodejs.js:2:11592)
+    at async Server.<anonymous> (/opt/rust/nodejs.js:17:9914) {
+  length: 119,
+  severity: 'ERROR',
+  code: '42P01',
+  detail: undefined,
+  hint: undefined,
+  position: '216',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '1449',
+  routine: 'parserOpenTable'
+}
+[exercises/match] Could not stage candidate gato_vaca: error: relation "exercise_candidates" does not exist
+    at /var/task/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///var/task/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async Object.handler (/vercel/path0/api/index.ts:1069:32)
+    at async r (/opt/rust/nodejs.js:2:15570)
+    at async Server.<anonymous> (/opt/rust/nodejs.js:2:11592)
+    at async Server.<anonymous> (/opt/rust/nodejs.js:17:9914) {
+  length: 119,
+  severity: 'ERROR',
+  code: '42P01',
+  detail: undefined,
+  hint: undefined,
+  position: '216',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '1449',
+  routine: 'parserOpenTable'
+}
+[exercises/match] Could not stage candidate postura_da_crianca: error: relation "exercise_candidates" does not exist
+    at /var/task/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///var/task/node_modules/drizzle-orm/node-postgres/session.js:83:22
+    at async Object.handler (/vercel/path0/api/index.ts:1069:32)
+    at async r (/opt/rust/nodejs.js:2:15570)
+    at async Server.<anonymous> (/opt/rust/nodejs.js:2:11592)
+    at async Server.<anonymous> (/opt/rust/nodejs.js:17:9914) {
+  length: 119,
+  severity: 'ERROR',
+  code: '42P01',
+  detail: undefined,
+  hint: undefined,
+  position: '216',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '1449',
+  routine: 'parserOpenTable'
+}
