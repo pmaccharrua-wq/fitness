@@ -2359,18 +2359,51 @@ RULES:
         const { apiKey, endpoint, deployment, apiVersion } = getAzureConfig();
         const url = `${endpoint}/openai/deployments/${deployment}/chat/completions?api-version=${apiVersion}`;
         
+        console.log(`[coach-chat] User ${userId}: "${message.substring(0, 50)}..."`);
+        console.log(`[coach-chat] Azure config: endpoint=${endpoint?.substring(0, 30)}..., deployment=${deployment}, apiVersion=${apiVersion}`);
+        console.log(`[coach-chat] Sending ${messages.length} messages, system prompt length: ${systemPrompt.length}`);
+        
+        const requestBody = {
+          messages: [{ role: "system", content: systemPrompt }, ...messages],
+          max_completion_tokens: 4000,
+          temperature: 1
+        };
+        
         const response = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json", "api-key": apiKey },
-          body: JSON.stringify({
-            messages: [{ role: "system", content: systemPrompt }, ...messages],
-            max_completion_tokens: 2000,
-            temperature: 1
-          })
+          body: JSON.stringify(requestBody)
         });
 
+        console.log(`[coach-chat] Azure response status: ${response.status}`);
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`[coach-chat] Azure API error: ${response.status} - ${errorText}`);
+          throw new Error(`Azure API error: ${response.status} - ${errorText}`);
+        }
+
         const data = await response.json();
+        
+        // Detailed logging
+        const finishReason = data.choices?.[0]?.finish_reason;
+        const usage = data.usage;
+        const contentLength = data.choices?.[0]?.message?.content?.length || 0;
+        
+        console.log(`[coach-chat] Azure response: finish_reason=${finishReason}, content_length=${contentLength}`);
+        console.log(`[coach-chat] Usage: prompt_tokens=${usage?.prompt_tokens}, completion_tokens=${usage?.completion_tokens}, reasoning_tokens=${usage?.completion_tokens_details?.reasoning_tokens}`);
+        
+        if (finishReason === "length") {
+          console.warn(`[coach-chat] WARNING: Response truncated (finish_reason=length)`);
+        }
+        
+        if (!data.choices?.[0]?.message?.content) {
+          console.error(`[coach-chat] No content in response. Full response:`, JSON.stringify(data, null, 2));
+        }
+        
         const aiResponse = data.choices?.[0]?.message?.content || (isPt ? "Desculpa, não consegui responder." : "Sorry, I couldn't respond.");
+        
+        console.log(`[coach-chat] AI response (first 100 chars): "${aiResponse.substring(0, 100)}..."`);
 
         // Save assistant message
         const [assistantMessage] = await db.insert(coachMessages)
@@ -2394,8 +2427,10 @@ RULES:
           intentConfidence: confidence
         });
       } catch (error) {
-        console.error("Coach chat error:", error);
-        return res.status(500).json({ success: false, error: "Failed to get AI response" });
+        console.error("[coach-chat] Error:", error);
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        console.error(`[coach-chat] Error details: ${errorMessage}`);
+        return res.status(500).json({ success: false, error: "Failed to get AI response", details: errorMessage });
       }
     }
 
