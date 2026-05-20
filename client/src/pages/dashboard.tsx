@@ -839,10 +839,7 @@ export default function Dashboard() {
                   progress={progress}
                   planData={planData}
                   currentDay={currentDay}
-                  onDayClick={(day) => {
-                    setCurrentDay(day);
-                    setSelectedDay(day);
-                  }}
+                  onDayClick={(day) => setSelectedDay(day)}
                 />
                 <PlanCalendar
                   startDate={startDate}
@@ -850,10 +847,7 @@ export default function Dashboard() {
                   progress={progress}
                   planData={planData}
                   currentDay={currentDay}
-                  onDayClick={(day) => {
-                    setCurrentDay(day);
-                    setSelectedDay(day);
-                  }}
+                  onDayClick={(day) => setSelectedDay(day)}
                 />
               </>
             ) : (

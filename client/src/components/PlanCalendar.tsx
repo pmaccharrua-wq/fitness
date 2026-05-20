@@ -42,9 +42,24 @@ export default function PlanCalendar({
   const { language } = useTranslation();
   const txt = (pt: string, en: string) => language === "pt" ? pt : en;
   
-  const start = useMemo(() => new Date(startDate), [startDate]);
+  const start = useMemo(() => {
+    if (typeof startDate === "string") {
+      const m = startDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    }
+    const d = new Date(startDate);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  }, [startDate]);
   const [viewMonth, setViewMonth] = useState(() => {
-    const planStart = new Date(startDate);
+    let planStart: Date;
+    if (typeof startDate === "string") {
+      const m = startDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      planStart = m
+        ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+        : new Date(startDate);
+    } else {
+      planStart = new Date(startDate);
+    }
     return new Date(planStart.getFullYear(), planStart.getMonth(), 1);
   });
 

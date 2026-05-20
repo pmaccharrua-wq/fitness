@@ -29,7 +29,14 @@ export default function WeeklyCalendarStrip({
   const { language } = useTranslation();
   const txt = (pt: string, en: string) => language === "pt" ? pt : en;
   
-  const start = useMemo(() => new Date(startDate), [startDate]);
+  const start = useMemo(() => {
+    if (typeof startDate === "string") {
+      const m = startDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    }
+    const d = new Date(startDate);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  }, [startDate]);
   const fitnessPlan = planData?.fitness_plan_7_days || planData?.fitness_plan_15_days || [];
   const planLength = fitnessPlan.length;
   
@@ -65,10 +72,10 @@ export default function WeeklyCalendarStrip({
       dayDate.setDate(dayDate.getDate() + planDay - 1);
       dayDate.setHours(0, 0, 0, 0);
       
-      const isToday = planDay === currentDay;
+      const isToday = dayDate.getTime() === today.getTime();
       const restDay = isRestDay(planDay);
       const isCompleted = completedDays.has(planDay);
-      const isPast = planDay < currentDay;
+      const isPast = dayDate.getTime() < today.getTime();
       
       let status: "completed" | "missed" | "rest" | "today" | "upcoming" = "upcoming";
       
